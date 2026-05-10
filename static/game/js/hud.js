@@ -74,7 +74,7 @@
         var awakening = emotions.awakening || 0;
 
         // Calculate bar widths (normalize to 0-100%)
-        var affectionWidth = Math.max(0, Math.min(100, (affection + 50)));
+        var affectionWidth = Math.max(0, Math.min(100, (affection + 100)));
         var happinessWidth = Math.max(0, Math.min(100, (happiness + 50)));
         var awakeningWidth = Math.max(0, Math.min(100, awakening));
 

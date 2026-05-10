@@ -82,7 +82,7 @@
         return '<div class="emotion-bars">' +
             '<div class="emotion-bar-row">' +
             '<span class="emotion-label">\u2764\uFE0F \u597D\u611F\u5EA6</span>' +
-            '<div class="emotion-bar"><div class="emotion-fill affection-fill" style="width:' + Math.max(0, Math.min(100, affection + 50)) + '%"></div></div>' +
+            '<div class="emotion-bar"><div class="emotion-fill affection-fill" style="width:' + Math.max(0, Math.min(100, affection + 100)) + '%"></div></div>' +
             '<span class="emotion-value">' + affection + '</span>' +
             '</div>' +
             '<div class="emotion-bar-row">' +

@@ -7,28 +7,11 @@ import os
 import json
 import time
 import logging
-import httpx
 from typing import Dict, Any, List, Optional, Tuple
 
+from ai_client import call_ai, MAX_HISTORY_MESSAGES
+
 logger = logging.getLogger(__name__)
-
-# ── AI API 配置 ──────────────────────────────────────────────
-AI_API_BASE = os.environ.get("AI_API_BASE", "https://openrouter.ai/api/v1")
-AI_API_KEY = os.environ.get("AI_API_KEY", "")
-AI_MODEL = os.environ.get("AI_MODEL", "minimax/minimax-m2.5:free")
-
-FALLBACK_MODELS = [
-    "minimax/minimax-m2.5:free",
-    "google/gemma-4-31b-it:free",
-    "tencent/hy3-preview:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "openrouter/free",
-]
-
-MAX_HISTORY_MESSAGES = 20
-MAX_RESPONSE_TOKENS = 300
-TEMPERATURE = 0.85
-REQUEST_TIMEOUT = 60.0
 
 
 class ChatEngine:
@@ -92,7 +75,7 @@ class ChatEngine:
         )
 
         # 6. 调用 AI
-        ai_response = await self._call_ai(system_prompt, chat_history, user_message)
+        ai_response = await call_ai(system_prompt, user_message, chat_history=chat_history)
 
         # 7. 分析情感变化
         emotion_changes = {'affection': 0, 'happiness': 0, 'awakening': 0}
@@ -239,7 +222,7 @@ class ChatEngine:
             new_values[key] = new_values.get(key, 0) + delta
             # 范围限制
             if key == 'affection':
-                new_values[key] = max(0, min(100, new_values[key]))
+                new_values[key] = max(-100, min(100, new_values[key]))
             elif key == 'happiness':
                 new_values[key] = max(0, min(100, new_values[key]))
             else:
@@ -422,75 +405,6 @@ class ChatEngine:
             'has_options': len(options) > 0
         }
 
-    # ── AI API 调用 ───────────────────────────────────────────
-    async def _call_ai(self, system_prompt: str, chat_history: List[Dict],
-                       user_message: str) -> str:
-        """调用 AI API（含 fallback）"""
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # 添加历史消息
-        if chat_history:
-            messages.extend(chat_history[-MAX_HISTORY_MESSAGES:])
-
-        # 添加当前用户消息
-        messages.append({"role": "user", "content": user_message})
-
-        # 依次尝试模型
-        models_to_try = [AI_MODEL] + [m for m in FALLBACK_MODELS if m != AI_MODEL]
-
-        for model in models_to_try:
-            try:
-                response = await self._make_api_request(model, messages)
-                if response:
-                    return response
-            except Exception as e:
-                logger.warning(f"Model {model} failed: {e}")
-                continue
-
-        # 所有模型失败，返回默认回复
-        logger.error("All AI models failed")
-        return "..."
-
-    async def _make_api_request(self, model: str, messages: List[Dict]) -> Optional[str]:
-        """发送 API 请求"""
-        api_key = AI_API_KEY
-        api_base = AI_API_BASE
-
-        # 动态读取最新配置
-        try:
-            config_path = os.path.join(
-                os.environ.get('DATA_DIR', '/opt/NxSiran/data'), 'config.json'
-            )
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as f:
-                    cfg = json.load(f)
-                if cfg.get('ai_api_key'):
-                    api_key = cfg['ai_api_key']
-                if cfg.get('ai_api_base'):
-                    api_base = cfg['ai_api_base']
-        except Exception:
-            pass
-
-        if not api_key:
-            raise ValueError("AI_API_KEY not set")
-
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(
-                f"{api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": MAX_RESPONSE_TOKENS,
-                    "temperature": TEMPERATURE,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data['choices'][0]['message']['content'].strip()
 
 
 # ── 全局实例 ─────────────────────────────────────────────────

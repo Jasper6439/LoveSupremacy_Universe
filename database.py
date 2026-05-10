@@ -790,8 +790,8 @@ class GameDatabase:
             if not row:
                 return {'affection': 0, 'happiness': 50, 'awakening': 0}
             
-            # 计算新值（好感度0-100，幸福度0-100，觉醒度0-100）
-            new_affection = max(0, min(100, row['affection'] + affection_delta))
+            # 计算新值（好感度-100~100，幸福度0-100，觉醒度0-100）
+            new_affection = max(-100, min(100, row['affection'] + affection_delta))
             new_happiness = max(0, min(100, row['happiness'] + happiness_delta))
             new_awakening = max(0, min(100, row['awakening'] + awakening_delta))
             
