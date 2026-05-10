@@ -40,6 +40,72 @@
         GameInventory.init();
         GameAudio.init();
 
+        // Initialize story engine (v0.5)
+        if (window.GameStory) {
+            GameStory.init();
+        }
+
+        // Initialize quests & achievements system (v0.6)
+        if (window.GameQuests) {
+            GameQuests.init();
+        }
+
+        // Initialize seasonal & weather events system (v0.8)
+        if (window.GameSeasonalEvents) {
+            GameSeasonalEvents.init();
+        }
+
+        // Initialize character schedule system (v0.8)
+        if (window.GameSchedule) {
+            GameSchedule.init();
+        }
+
+        // Initialize settings panel (v1.0)
+        if (window.GameSettings) {
+            GameSettings.init();
+        }
+
+        // Add logout button to HUD
+        addLogoutButton();
+
+        // Add audio toggle button to HUD (v0.9)
+        addAudioButton();
+
+        // Add settings button to HUD (v1.0)
+        addSettingsButton();
+
+        // Start BGM if not muted (v0.9)
+        if (window.GameAudio && !GameAudio.isMuted()) {
+            // Delay BGM start to allow user interaction for AudioContext
+            var bgmStarted = false;
+            var startBGMOnInteraction = function () {
+                if (!bgmStarted && window.GameAudio) {
+                    bgmStarted = true;
+                    GameAudio.playBGM('main');
+                }
+                document.removeEventListener('click', startBGMOnInteraction);
+                document.removeEventListener('touchstart', startBGMOnInteraction);
+            };
+            document.addEventListener('click', startBGMOnInteraction);
+            document.addEventListener('touchstart', startBGMOnInteraction);
+        }
+
+        // Update audio button UI state (v0.9)
+        if (window.GameAudio) {
+            GameAudio.updateAudioButtonUI();
+        }
+
+        // Add story button to action buttons (v0.5)
+        addStoryButton();
+
+        // Add quests button to action buttons (v0.6)
+        addQuestsButton();
+
+        // Initialize auth module
+        if (window.GameAuth) {
+            GameAuth.init();
+        }
+
         // Keyboard controls
         document.addEventListener('keydown', onKeyDown);
 
@@ -53,6 +119,8 @@
                     GameHUD.updateDayDisplay();
                     GameHUD.updateWorldLayerDisplay();
                     GameHUD.updateEmotionPanel();
+                    // v0.8: Update schedule indicator on state load
+                    if (window.GameSchedule) GameSchedule.updateScheduleDisplay();
                     break;
                 case 'TICK':
                     // Crops re-rendered by time.js
@@ -63,6 +131,10 @@
                 case 'UPDATE_EMOTION_VALUES':
                     // Update emotion bubbles when NPCs are nearby
                     if (window.GameNPC) GameNPC.updateEmotionBubbles();
+                    break;
+                case 'UPDATE_NPC':
+                    // v0.8: Update schedule indicator when NPC state changes
+                    if (window.GameSchedule) GameSchedule.updateScheduleDisplay();
                     break;
             }
         });
@@ -94,9 +166,150 @@
         console.log('[Game] Love Supremacy Zone initialized');
     });
 
+    // ── Add Logout Button ──────────────────────────────────────
+    function addLogoutButton() {
+        var hud = document.getElementById('game-hud');
+        if (!hud) return;
+
+        var logoutBtn = document.createElement('button');
+        logoutBtn.className = 'auth-logout-btn';
+        logoutBtn.title = '\u767B\u51FA';
+        logoutBtn.textContent = '\uD83D\uDEAA';
+        logoutBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.GameAuth) {
+                GameAuth.handleLogout();
+            }
+        });
+
+        hud.appendChild(logoutBtn);
+    }
+
+    // ── Add Audio Toggle Button (v0.9) ─────────────────────────
+    function addAudioButton() {
+        var hud = document.getElementById('game-hud');
+        if (!hud) return;
+
+        var audioBtn = document.createElement('button');
+        audioBtn.id = 'audio-toggle-btn';
+        audioBtn.className = 'audio-btn';
+        audioBtn.title = '\u97F3\u9891\u5F00\u5173';
+        audioBtn.textContent = window.GameAudio && GameAudio.isMuted() ? '\uD83D\uDD07' : '\uD83D\uDD0A';
+        audioBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.GameAudio) {
+                var muted = GameAudio.toggleMute();
+                if (muted) {
+                    GameAudio.stopBGM();
+                } else {
+                    GameAudio.playBGM('main');
+                }
+            }
+        });
+
+        // Insert before logout button
+        var logoutBtn = hud.querySelector('.auth-logout-btn');
+        if (logoutBtn) {
+            hud.insertBefore(audioBtn, logoutBtn);
+        } else {
+            hud.appendChild(audioBtn);
+        }
+    }
+
+    // ── Add Settings Button (v1.0) ─────────────────────────────
+    function addSettingsButton() {
+        var hud = document.getElementById('game-hud');
+        if (!hud) return;
+
+        var settingsBtn = document.createElement('button');
+        settingsBtn.id = 'settings-toggle-btn';
+        settingsBtn.className = 'settings-hud-btn';
+        settingsBtn.title = '\u8BBE\u7F6E';
+        settingsBtn.textContent = '\u2699\uFE0F';
+        settingsBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.GameSettings) {
+                GameSettings.openSettings();
+            }
+        });
+
+        // Insert before audio button
+        var audioBtn = hud.querySelector('#audio-toggle-btn');
+        if (audioBtn) {
+            hud.insertBefore(settingsBtn, audioBtn);
+        } else {
+            var logoutBtn = hud.querySelector('.auth-logout-btn');
+            if (logoutBtn) {
+                hud.insertBefore(settingsBtn, logoutBtn);
+            } else {
+                hud.appendChild(settingsBtn);
+            }
+        }
+    }
+
+    // ── Add Story Button (v0.5) ───────────────────────────────
+    function addStoryButton() {
+        var actionBtns = document.getElementById('action-buttons');
+        if (!actionBtns) return;
+
+        var storyBtn = document.createElement('button');
+        storyBtn.className = 'action-fab';
+        storyBtn.title = '\u5267\u60C5';
+        storyBtn.textContent = '\uD83D\uDCD6';
+        storyBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.GameStory) {
+                GameStory.openChapterSelect();
+            }
+        });
+
+        // Insert before shop button
+        actionBtns.insertBefore(storyBtn, actionBtns.firstChild);
+    }
+
+    // ── Add Quests Button (v0.6) ──────────────────────────────
+    function addQuestsButton() {
+        var actionBtns = document.getElementById('action-buttons');
+        if (!actionBtns) return;
+
+        var questsBtn = document.createElement('button');
+        questsBtn.className = 'action-fab quest-btn';
+        questsBtn.title = '\u6BCF\u65E5\u4EFB\u52A1';
+        questsBtn.textContent = '\uD83D\uDCCB';
+        questsBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.GameQuests) {
+                GameQuests.togglePanel();
+            }
+        });
+
+        // Insert before shop button
+        actionBtns.insertBefore(questsBtn, actionBtns.firstChild);
+    }
+
     // ── Load Game ──────────────────────────────────────────────
     function loadGame() {
         GameState.dispatch({ type: 'SET_STATUS', status: 'loading' });
+
+        // Check if user is logged in before attempting server load
+        var loggedIn = false;
+        if (window.GameAuth && typeof GameAuth.isLoggedIn === 'function') {
+            loggedIn = GameAuth.isLoggedIn();
+        } else if (window.GameAPI && typeof GameAPI.isLoggedIn === 'function') {
+            loggedIn = GameAPI.isLoggedIn();
+        }
+
+        if (!loggedIn) {
+            // Not logged in, use offline data only
+            console.log('[Game] User not logged in, using offline data');
+            loadOfflineData();
+            return;
+        }
 
         if (window.GameAPI) {
             GameAPI.getState().then(function (data) {
@@ -175,6 +388,9 @@
             weather: 'sunny',
             season: 'spring',
             gameDay: 1,
+            gameHour: 8,
+            gameMinute: 0,
+            weatherEffects: {},
             hearts: 0,
             relationshipStatus: 'stranger',
 
@@ -214,6 +430,11 @@
             setTimeout(function () {
                 GameHUD.showToast('\uD83D\uDC96 \u6B22\u8FCE\u6765\u5230\u604B\u7231\u81F3\u4E0A\u4E3B\u4E49\u533A\u57DF\uFF01', 'special', 4000);
             }, 1000);
+        }
+
+        // Initialize tutorial for new players (v1.0)
+        if (window.GameTutorial) {
+            GameTutorial.init();
         }
     }
 

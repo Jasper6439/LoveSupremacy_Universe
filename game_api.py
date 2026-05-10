@@ -88,10 +88,10 @@ async def api_plant_crop(request):
         
         db = get_db()
         
-        # 获取农场
-        farm = db.get_farm(user_id)
+        # 获取农场（自动创建）
+        farm = db.get_or_create_farm(user_id)
         if not farm:
-            return web.json_response({'success': False, 'error': '没有农场'})
+            return web.json_response({'success': False, 'error': '农场创建失败'})
         
         # 检查背包是否有种子
         if not db.remove_item(user_id, 'seed', crop_type):

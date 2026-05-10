@@ -13,6 +13,13 @@
             method: method,
             headers: { 'Content-Type': 'application/json' }
         };
+
+        // Attach Bearer token if available
+        var token = localStorage.getItem('game_token');
+        if (token) {
+            opts.headers['Authorization'] = 'Bearer ' + token;
+        }
+
         if (data) opts.body = JSON.stringify(data);
 
         return fetch(API_BASE + path, opts)
@@ -159,6 +166,70 @@
         return request('POST', '/api/game/tts', { text: text });
     }
 
+    // ── Auth APIs (v0.4) ────────────────────────────────────────
+
+    /**
+     * Register a new user
+     * @param {string} username
+     * @param {string} password
+     * @param {string} chatId - Telegram Chat ID
+     * @returns {Promise} Registration result with token
+     */
+    function register(username, password, chatId) {
+        return request('POST', '/api/register', {
+            username: username,
+            password: password,
+            chat_id: chatId
+        });
+    }
+
+    /**
+     * Login with username and password
+     * @param {string} username
+     * @param {string} password
+     * @returns {Promise} Login result with token
+     */
+    function login(username, password) {
+        return request('POST', '/api/login', {
+            username: username,
+            password: password
+        });
+    }
+
+    /**
+     * Logout - clear token from localStorage
+     * @returns {boolean} true
+     */
+    function logout() {
+        localStorage.removeItem('game_token');
+        return true;
+    }
+
+    /**
+     * Get current token from localStorage
+     * @returns {string|null} Token or null
+     */
+    function getToken() {
+        return localStorage.getItem('game_token') || null;
+    }
+
+    /**
+     * Save token to localStorage
+     * @param {string} token
+     */
+    function setToken(token) {
+        localStorage.setItem('game_token', token);
+    }
+
+    /**
+     * Check if user is logged in
+     * @returns {boolean}
+     */
+    function isLoggedIn() {
+        var token = localStorage.getItem('game_token');
+        return !!token;
+    }
+
     // ── Export ─────────────────────────────────────────────────
     window.GameAPI = {
         // Core APIs
@@ -186,6 +257,14 @@
         generateSelfie: generateSelfie,
         generateSticker: generateSticker,
         generateScene: generateScene,
-        tts: tts
+        tts: tts,
+
+        // Auth APIs (v0.4)
+        register: register,
+        login: login,
+        logout: logout,
+        getToken: getToken,
+        setToken: setToken,
+        isLoggedIn: isLoggedIn
     };
 })();

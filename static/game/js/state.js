@@ -28,6 +28,9 @@
         weather: 'sunny',
         season: 'spring',
         gameDay: 1,
+        gameHour: 8,
+        gameMinute: 0,
+        weatherEffects: {},
         hearts: 0,
         relationshipStatus: 'stranger',
         selectedTool: null,      // { type: 'seed'|'tool'|'harvest', item: 'tomato' }
@@ -127,15 +130,41 @@
                 break;
 
             case 'TICK': {
-                // Update crop growth
+                // Advance game time: 1 tick = 1 game minute
+                var newMinute = (s.gameMinute || 0) + 1;
+                var newHour = s.gameHour || 8;
+                if (newMinute >= 60) {
+                    newMinute = 0;
+                    newHour = (newHour + 1) % 24;
+                    // Advance day when hour wraps to 0
+                    if (newHour === 0) {
+                        s.gameDay = (s.gameDay || 1) + 1;
+                        // Season changes every 28 days
+                        var seasons = ['spring', 'summer', 'autumn', 'winter'];
+                        var seasonIdx = seasons.indexOf(s.season);
+                        if (s.gameDay % 28 === 0) {
+                            s.season = seasons[(seasonIdx + 1) % 4];
+                        }
+                    }
+                }
+                s.gameMinute = newMinute;
+                s.gameHour = newHour;
+
+                // Update crop growth with weather multiplier
                 var now = Date.now();
                 var cropKeys = Object.keys(s.crops);
+                var weatherMultiplier = 1.0;
+                if (s.weatherEffects && typeof s.weatherEffects.cropGrowthMultiplier === 'number') {
+                    weatherMultiplier = s.weatherEffects.cropGrowthMultiplier;
+                }
                 for (var c = 0; c < cropKeys.length; c++) {
                     var cr = s.crops[cropKeys[c]];
-                    var growthTime = (CROP_GROWTH_TIMES[cr.type] || 180) * 1000; // convert to ms (for testing, real would be minutes*60000)
+                    var growthTime = (CROP_GROWTH_TIMES[cr.type] || 180) * 1000;
                     var elapsed = now - cr.plantedAt;
                     // Water speeds up growth by 50%
                     var speedMultiplier = 1 + (cr.waterLevel * 0.25);
+                    // Apply weather effect
+                    speedMultiplier *= weatherMultiplier;
                     var effectiveElapsed = elapsed * speedMultiplier;
                     var newStage = 0;
                     if (effectiveElapsed >= growthTime) newStage = 3;
@@ -162,6 +191,11 @@
 
             case 'UPDATE_WEATHER':
                 s.weather = action.weather;
+                // Apply weather effects if seasonal events module is available
+                if (window.GameSeasonalEvents) {
+                    var wEffect = GameSeasonalEvents.getWeatherEffect(action.weather);
+                    s.weatherEffects = wEffect;
+                }
                 break;
 
             case 'SET_STATUS':
@@ -237,6 +271,42 @@
                         s.emotionValues[action.characterId].awakening = 100;
                     }
                 }
+                break;
+
+            // ── v0.7 Gift & Shop System ─────────────────────────
+            case 'SPEND_MONEY':
+                s.farm.money -= action.amount;
+                s.pendingActions.push({ type: 'spend_money', amount: action.amount, ts: Date.now() });
+                break;
+
+            case 'ADD_INVENTORY_ITEM':
+                if (action.key && action.item) {
+                    s.inventory[action.key] = deepClone(action.item);
+                    s.pendingActions.push({ type: 'add_inventory', key: action.key, item: action.item, ts: Date.now() });
+                }
+                break;
+
+            case 'UPDATE_INVENTORY_ITEM':
+                if (action.key && s.inventory[action.key] && action.updates) {
+                    var uKeys = Object.keys(action.updates);
+                    for (var u = 0; u < uKeys.length; u++) {
+                        s.inventory[action.key][uKeys[u]] = action.updates[uKeys[u]];
+                    }
+                    s.pendingActions.push({ type: 'update_inventory', key: action.key, updates: action.updates, ts: Date.now() });
+                }
+                break;
+
+            case 'REMOVE_INVENTORY_ITEM':
+                if (action.key && s.inventory[action.key]) {
+                    delete s.inventory[action.key];
+                    s.pendingActions.push({ type: 'remove_inventory', key: action.key, ts: Date.now() });
+                }
+                break;
+
+            case 'STAT_INCREMENT':
+                if (!s.stats) s.stats = {};
+                if (!s.stats[action.stat]) s.stats[action.stat] = 0;
+                s.stats[action.stat] += action.amount || 1;
                 break;
         }
 

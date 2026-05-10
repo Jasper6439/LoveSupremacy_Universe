@@ -25,6 +25,11 @@
         _currentNPC = npcId;
         _isOpen = true;
 
+        // v0.9: Switch BGM to story track when dialogue opens
+        if (window.GameAudio) {
+            GameAudio.playBGM('story');
+        }
+
         if (!_dialogueEl) return;
         _dialogueEl.classList.add('open');
 
@@ -289,6 +294,11 @@
         _emotionPanelEl = null;
         clearTimeout(_typewriterTimer);
         if (_dialogueEl) _dialogueEl.classList.remove('open');
+
+        // v0.9: Switch BGM back to previous track when dialogue closes
+        if (window.GameAudio) {
+            GameAudio.playPreviousBGM();
+        }
     }
 
     function escapeHtml(str) {

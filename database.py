@@ -403,6 +403,28 @@ class GameDatabase:
             row = cursor.fetchone()
             return dict(row) if row else None
     
+    def get_or_create_farm(self, user_id: int) -> Dict:
+        """获取或自动创建农场，返回农场数据"""
+        farm = self.get_farm(user_id)
+        if farm:
+            return farm
+        
+        with self.get_connection() as conn:
+            now = datetime.now(KR_TZ).isoformat()
+            conn.execute(
+                """INSERT INTO farms (user_id, farm_name, created_at, updated_at)
+                   VALUES (?, '我的农场', ?, ?)""",
+                (user_id, now, now)
+            )
+            # 同时创建初始关系记录
+            conn.execute(
+                """INSERT OR IGNORE INTO relationships (user_id, character_id, created_at, updated_at)
+                   VALUES (?, 'chayewoon', ?, ?)""",
+                (user_id, now, now)
+            )
+        
+        return self.get_farm(user_id)
+    
     def update_farm(self, user_id: int, **kwargs):
         """更新农场数据"""
         if not kwargs:
