@@ -4,6 +4,7 @@ AI 调用统一模块
 提供统一的模型列表、fallback 机制和异步 HTTP 调用。
 """
 import os
+import re
 import json
 import logging
 from typing import Dict, List, Optional, Any
@@ -198,4 +199,82 @@ async def _make_api_request(
             logger.warning(f"Model {model} returned empty content")
             return None
 
+        # 过滤掉 AI 思考过程（<think> 标签、<think> 标签等）
+        content = _strip_thinking_content(content)
+
         return content.strip()
+
+
+def _strip_thinking_content(content: str) -> str:
+    """去除 AI 模型返回的思考过程内容。
+    
+    某些模型（如 Minimax、DeepSeek 等 reasoning 模型）会在响应中包含
+    思考过程，需要用 <think>、<think> 等标签包裹，或者直接以自然语言
+    输出分析过程。这些内容不应该展示给用户。
+    
+    Args:
+        content: AI 原始响应内容
+        
+    Returns:
+        过滤后的最终回复内容
+    """
+    # 1. 移除标签包裹的思考过程
+    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<thinking>.*?</thinking>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'"reasoning"\s*:\s*".*?"', '', content, flags=re.DOTALL)
+    
+    content = content.strip()
+    if not content:
+        return content
+    
+    # 2. 检测非标签形式的自然语言思考过程
+    thinking_keywords = [
+        '嗯，用户', '用户发了', '根据设定', '参考之前的',
+        '回复要很短', '我需要按照', '她可能会说', '她害怕',
+        '当用户表达', '听起来像是', '车如云看到', '可能会有点',
+        '直接沉默', '不超过', '结合以上', '考虑到', '分析',
+        '我应该', '让我想想', 'Let me think', 'I need to',
+        '我需要按', '按照车如云', '按照.*性格',
+    ]
+    
+    has_thinking = any(kw in content for kw in thinking_keywords)
+    
+    if has_thinking:
+        # 策略A: 按空行分段，取最后一段短的（最常见情况）
+        parts = re.split(r'\n\s*\n', content)
+        if len(parts) > 1:
+            for part in reversed(parts):
+                part = part.strip()
+                if part and len(part) < 80:
+                    return part
+        
+        # 策略B: 找以 ... 或 （ 开头的行
+        lines = content.split('\n')
+        for line in reversed(lines):
+            stripped = line.strip()
+            if stripped and len(stripped) < 80 and (
+                stripped.startswith('...') or stripped.startswith('（') or 
+                stripped.startswith('(') or stripped.startswith('…')
+            ):
+                return stripped
+        
+        # 策略C: 找最后一个句号/问号/感叹号后的短句
+        # 思考过程通常以分析结尾，回复通常是独立短句
+        sentences = re.split(r'(?<=[。！？\n])', content)
+        if len(sentences) > 2:
+            # 取最后 1-2 个短句
+            last = ''.join(sentences[-2:]).strip()
+            if len(last) < 80 and not any(kw in last for kw in thinking_keywords):
+                return last
+        
+        # 策略D: 如果整个内容很长且包含思考，尝试找引号中的回复
+        if len(content) > 150:
+            quotes = re.findall(r'[""](.+?)[""]', content)
+            if quotes:
+                for q in reversed(quotes):
+                    q = q.strip()
+                    if 2 <= len(q) <= 50 and (q.startswith('...') or '(' in q or '。' in q or '…' in q or '学长' in q):
+                        return q
+    
+    return content
