@@ -1,14 +1,15 @@
 """
 config.py - 车如云 Telegram Bot 配置模块
 从 bot.py Phase 1 (P0) 拆分提取
-包含：路径常量、环境变量、时区、工具函数、JSON/Config 工具
+包含：路径常量、环境变量、工具函数、JSON/Config 工具
+时区由各角色文件独立定义（见 characters/*/config.json）
 """
 
 import os
 import json
 import logging
 import shutil
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 # ============================================================
 # 基础配置（必须在其他配置之前定义）
@@ -18,8 +19,15 @@ from datetime import datetime, timedelta, timezone
 DATA_DIR = os.environ.get("DATA_DIR", "/opt/NxSiran/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# 韩国时区
-KR_TZ = timezone(timedelta(hours=9))
+# 默认时区（UTC+9，韩国时间）- 仅作为 fallback
+# 实际时区由各角色配置文件定义（见 characters/*/config.json）
+DEFAULT_TZ_OFFSET = 9
+
+def get_default_tz() -> timezone:
+    """获取默认时区（可通过环境变量覆盖）"""
+    offset = int(os.environ.get("TZ_OFFSET", str(DEFAULT_TZ_OFFSET)))
+    from datetime import timedelta
+    return timezone(timedelta(hours=offset))
 
 # ============================================================
 # 路径常量
@@ -194,7 +202,9 @@ def _migrate_user_data(user_id):
             logging.info(f"[数据迁移] {len(selfie_files)}张自拍已迁移到用户目录: user_{user_id}")
     # 标记已完成迁移
     with open(migration_flag, 'w') as f:
-        f.write(str(datetime.now(KR_TZ).isoformat()))
+        from datetime import timedelta
+        tz = timezone(timedelta(hours=DEFAULT_TZ_OFFSET))
+        f.write(str(datetime.now(tz).isoformat()))
 
 # ============================================================
 # JSON/Config 工具函数

@@ -5,8 +5,7 @@ LightRAG 知识库技能 - 小说知识查询
 
 import os
 import logging
-import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 
 # LightRAG
 from lightrag import LightRAG, QueryParam
@@ -152,7 +151,7 @@ class NovelKnowledge:
                     continue
             
             self._novel_loaded = True
-            logger.info(f"[LightRAG] 小说加载完成")
+            logger.info("[LightRAG] 小说加载完成")
             return True
             
         except Exception as e:

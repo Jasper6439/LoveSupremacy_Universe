@@ -1,0 +1,4 @@
+[lint]
+# 忽略 star imports (F403, F405) - 项目使用 from xxx import * 模式
+# 忽略模块级 import 不在顶部 (E402) - 用于避免循环导入
+ignore = ["F403", "F405", "E402"]

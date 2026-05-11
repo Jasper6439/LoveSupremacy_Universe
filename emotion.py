@@ -11,19 +11,13 @@ from datetime import datetime
 
 from prompts import (
     EMOTION_PATTERNS,
-    EMOTION_RESPONSE_GUIDE,
     REACTION_MAP,
     EMOTION_REACTIONS,
     INTIMACY_LEVELS,
     PROACTIVE_MISS_MESSAGES,
     PROACTIVE_GOODNIGHT_MESSAGES,
-    MORNING_MESSAGES,
-    NIGHT_MESSAGES,
-    MISS_YOU_MESSAGES,
-    RANDOM_CARE_MESSAGES,
-    WEATHER_CARE_MESSAGES,
 )
-from config import KR_TZ, YOUR_CHAT_ID
+from config import YOUR_CHAT_ID, get_default_tz
 
 from telegram import Update
 
@@ -139,7 +133,7 @@ async def check_proactive_actions(app):
                 await asyncio.sleep(3600)
                 continue
 
-            now = datetime.now(KR_TZ)
+            now = datetime.now(get_default_tz())
             last_active = _last_user_active_time.get(YOUR_CHAT_ID)
 
             # 检查用户是否超过 24 小时没发消息

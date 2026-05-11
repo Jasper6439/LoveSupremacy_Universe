@@ -5,9 +5,8 @@
 
 import os
 import json
-import sqlite3
 from datetime import datetime, timezone, timedelta
-from database import GameDatabase, DB_PATH
+from database import GameDatabase
 
 # 韩国时区
 KR_TZ = timezone(timedelta(hours=9))
@@ -30,7 +29,7 @@ def migrate_users(db: GameDatabase):
     for username, user_data in users.items():
         chat_id = user_data.get('chat_id')
         password_hash = user_data.get('password_hash')
-        created_at = user_data.get('created_at', datetime.now(KR_TZ).isoformat())
+        user_data.get('created_at', datetime.now(KR_TZ).isoformat())
         
         if chat_id:
             # 创建用户

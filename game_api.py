@@ -7,16 +7,37 @@
 import json
 import logging
 import os
+import random
 import shutil
-from datetime import datetime, timezone, timedelta
+import urllib.parse
+from datetime import datetime
 from aiohttp import web
 from database import get_db
-from typing import Dict, Any
+from config import get_default_tz
 
 logger = logging.getLogger(__name__)
 
-# 韩国时区
-KR_TZ = timezone(timedelta(hours=9))
+
+# ============================================================
+# 认证工具函数（供各 API 复用）
+# ============================================================
+
+async def authenticate_request(request) -> tuple:
+    """统一认证逻辑：session token > api token > config fallback
+    
+    Returns:
+        (user_id, error_response) - 成功时 user_id 有效，失败时 error_response 有效
+    """
+    from bot import validate_session_token, validate_api_token, load_config
+    
+    user_id = validate_session_token(request)
+    if not user_id:
+        user_id = validate_api_token(request)
+    if not user_id:
+        user_id = load_config().get('your_chat_id', 0)
+    if not user_id:
+        return 0, web.json_response({'success': False, 'error': '未登录'})
+    return user_id, None
 
 
 # ============================================================
@@ -73,7 +94,7 @@ async def api_get_farm(request):
 async def api_plant_crop(request):
     """种植作物"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -125,7 +146,7 @@ async def api_plant_crop(request):
 async def api_harvest_crop(request):
     """收获作物"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -179,7 +200,7 @@ async def api_harvest_crop(request):
 async def api_sell_crop(request):
     """出售作物"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -230,7 +251,7 @@ async def api_sell_crop(request):
 async def api_buy_seed(request):
     """购买种子"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -463,7 +484,7 @@ async def api_awakening_events(request):
 async def api_gift_character(request):
     """给角色送礼物"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character, call_ai
+        from bot import validate_session_token, validate_api_token, get_current_character, call_ai
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -478,7 +499,6 @@ async def api_gift_character(request):
         # 获取当前角色
         character = get_current_character()
         character_id = character.config.id if character else 'chayewoon'
-        character_name = character.config.name if character else '车如云'
         
         db = get_db()
         
@@ -513,7 +533,7 @@ async def api_gift_character(request):
         new_hearts = db.update_hearts(user_id, character_id, hearts_change)
         
         # 记录礼物
-        now = datetime.now(KR_TZ).isoformat()
+        now = datetime.now(get_default_tz()).isoformat()
         with db.get_connection() as conn:
             conn.execute(
                 """INSERT INTO gift_history (user_id, character_id, item_type, item_id, reaction, hearts_change, gifted_at)
@@ -559,7 +579,7 @@ async def api_gift_character(request):
 async def api_check_heart_events(request):
     """检查可触发的心级事件"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        from bot import validate_session_token, validate_api_token, get_current_character
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -574,7 +594,7 @@ async def api_check_heart_events(request):
         
         # 获取角色当前位置
         location = db.get_character_location(character_id)
-        current_hour = datetime.now(KR_TZ).hour if location else 99
+        current_hour = datetime.now(get_default_tz()).hour if location else 99
         
         # 获取可触发事件
         available = db.get_available_events(user_id, character_id)
@@ -609,7 +629,7 @@ async def api_check_heart_events(request):
 async def api_trigger_heart_event(request):
     """触发心级事件"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -635,14 +655,14 @@ async def api_trigger_heart_event(request):
         dialogue = []
         try:
             dialogue = json.loads(event.get('dialogue', '[]'))
-        except:
+        except Exception:
             pass
         
         # 解析奖励
         rewards = {}
         try:
             rewards = json.loads(event.get('rewards', '{}'))
-        except:
+        except Exception:
             pass
         
         # 获取新的关系状态
@@ -816,7 +836,7 @@ async def api_check_daily(request):
 async def api_get_game_events(request):
     """获取未同步的游戏事件"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1024,7 +1044,7 @@ async def api_get_full_game_state(request):
 async def api_water_crop(request):
     """浇水"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1057,7 +1077,7 @@ async def api_water_crop(request):
 async def api_move_player(request):
     """记录玩家位置"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1140,7 +1160,7 @@ async def api_sync_actions(request):
 async def api_get_emotion_values(request):
     """获取情感值 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        from bot import validate_session_token, validate_api_token, get_current_character
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1168,7 +1188,7 @@ async def api_get_emotion_values(request):
 async def api_check_awakening(request):
     """检查觉醒条件 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        from bot import validate_session_token, validate_api_token, get_current_character
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1199,7 +1219,7 @@ async def api_check_awakening(request):
 async def api_trigger_awakening(request):
     """触发觉醒 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        from bot import validate_session_token, validate_api_token, get_current_character
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1236,7 +1256,7 @@ async def api_trigger_awakening(request):
 async def api_switch_world_layer(request):
     """切换世界层级 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1272,7 +1292,7 @@ async def api_switch_world_layer(request):
 async def api_get_world_state(request):
     """获取世界状态 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        from bot import validate_session_token, validate_api_token
         
         user_id = validate_session_token(request)
         if not user_id:
@@ -1296,9 +1316,6 @@ async def api_get_world_state(request):
 # ============================================================
 # 多媒体生成 API（v0.3）
 # ============================================================
-
-import random
-import urllib.parse
 
 # 自拍 Prompt（从 bot.py 复制，韩国 BL 美学风格）
 SELFIE_PROMPTS = [

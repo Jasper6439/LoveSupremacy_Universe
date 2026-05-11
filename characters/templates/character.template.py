@@ -3,11 +3,10 @@
 {角色简介}
 """
 import os
-import re
 import json
 import random
 import shutil
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 from .base import CharacterBase, CharacterConfig
 

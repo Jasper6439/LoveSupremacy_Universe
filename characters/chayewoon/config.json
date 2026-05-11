@@ -19,6 +19,7 @@
     "user_nickname": "学长",
     "theme_color": "#660874",
     "avatar_url": null,
+    "timezone": "Asia/Seoul",
     "world_layer": "stage",
     "emotion_defaults": {
         "affection": -20,

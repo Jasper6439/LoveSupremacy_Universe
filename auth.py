@@ -6,7 +6,6 @@ auth.py - 车如云 Telegram Bot 认证模块
 
 import hashlib
 import time
-import secrets
 import json
 import logging
 import os
@@ -56,7 +55,7 @@ def register_user(username, password, chat_id):
     注册新用户
     返回: (success: bool, message: str)
     """
-    from config import KR_TZ
+    from config import get_default_tz
     from datetime import datetime
 
     users = load_users()
@@ -74,7 +73,7 @@ def register_user(username, password, chat_id):
     users[username] = {
         "password_hash": hash_password(password),
         "chat_id": str(chat_id),
-        "created_at": datetime.now(KR_TZ).isoformat(),
+        "created_at": datetime.now(get_default_tz()).isoformat(),
         "last_login": None
     }
 
@@ -87,7 +86,7 @@ def validate_user(username, password):
     验证用户登录
     返回: (success: bool, chat_id: str or None)
     """
-    from config import KR_TZ
+    from config import get_default_tz
     from datetime import datetime
 
     users = load_users()
@@ -100,7 +99,7 @@ def validate_user(username, password):
         return False, None
 
     # 更新最后登录时间
-    users[username]["last_login"] = datetime.now(KR_TZ).isoformat()
+    users[username]["last_login"] = datetime.now(get_default_tz()).isoformat()
     save_users(users)
 
     return True, user.get("chat_id")

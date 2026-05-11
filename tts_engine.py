@@ -65,7 +65,7 @@ class EdgeTTSBackend:
     async def is_available(cls) -> bool:
         if cls._available is None:
             try:
-                import edge_tts
+                import edge_tts  # noqa: F401
                 cls._available = True
             except ImportError:
                 cls._available = False
@@ -279,7 +279,7 @@ class TTSEngine:
         try:
             if os.path.exists(path):
                 os.unlink(path)
-        except:
+        except Exception:
             pass
 
     @staticmethod

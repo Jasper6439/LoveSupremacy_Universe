@@ -4,8 +4,6 @@ Music Skill - 音乐搜索与角色化评价
 """
 
 import asyncio
-import re
-import json
 from typing import Optional, Dict, Any
 import logging
 

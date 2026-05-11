@@ -4,7 +4,7 @@
 import os
 import json
 import logging
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional
 from .base import CharacterBase, CharacterConfig
 
 logger = logging.getLogger(__name__)

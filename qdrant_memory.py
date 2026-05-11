@@ -14,10 +14,10 @@ Qdrant Cloud 记忆技能 - 向量数据库存储和语义搜索记忆
 import os
 import logging
 import hashlib
-import requests
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from datetime import datetime
 
+import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     PointStruct, VectorParams, Distance,
@@ -33,18 +33,29 @@ QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", os.environ.get("AI_API_KEY", ""))
 EMBEDDING_API = os.environ.get("EMBEDDING_API", "https://openrouter.ai/api/v1/embeddings")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
-VECTOR_DIMENSIONS = 768
+# text-embedding-3-small 默认 1536 维，可通过 EMBEDDING_DIMENSIONS 调整
+VECTOR_DIMENSIONS = int(os.environ.get("EMBEDDING_DIMENSIONS", "1536"))
+
+# e2-micro 内存限制：缓存最多 500 条 embedding（约 5MB）
+MAX_CACHE_SIZE = 500
 
 
 # ===== Embedding 客户端 =====
 
 class _EmbeddingClient:
-    """调用 OpenRouter API 生成文本向量（带缓存）"""
+    """调用 OpenRouter API 生成文本向量（带 LRU 缓存，e2-micro 内存友好）"""
 
     def __init__(self):
         self._cache: Dict[str, List[float]] = {}
+        self._order: List[str] = []
 
-    def embed(self, text: str) -> List[float]:
+    def _evict(self):
+        """LRU 淘汰：缓存满时移除最旧的条目"""
+        while len(self._cache) >= MAX_CACHE_SIZE:
+            oldest = self._order.pop(0)
+            self._cache.pop(oldest, None)
+
+    async def embed(self, text: str) -> List[float]:
         if text in self._cache:
             return self._cache[text]
 
@@ -53,17 +64,17 @@ class _EmbeddingClient:
             return [0.0] * VECTOR_DIMENSIONS
 
         try:
-            resp = requests.post(
-                EMBEDDING_API,
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={"model": EMBEDDING_MODEL, "input": text},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            vector = resp.json()["data"][0]["embedding"]
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    EMBEDDING_API,
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": EMBEDDING_MODEL, "input": text},
+                )
+                resp.raise_for_status()
+                vector = resp.json()["data"][0]["embedding"]
 
             # 截断/填充到目标维度
             if len(vector) > VECTOR_DIMENSIONS:
@@ -71,13 +82,15 @@ class _EmbeddingClient:
             elif len(vector) < VECTOR_DIMENSIONS:
                 vector = vector + [0.0] * (VECTOR_DIMENSIONS - len(vector))
 
+            # 缓存管理
+            self._evict()
             self._cache[text] = vector
+            self._order.append(text)
             return vector
 
         except Exception as e:
             logger.error(f"[Qdrant] Embedding 失败: {e}")
             return [0.0] * VECTOR_DIMENSIONS
-
 
 
 _embedding_client = _EmbeddingClient()
@@ -103,7 +116,13 @@ class QdrantMemory:
             return False
 
         try:
-            self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+            self.client = QdrantClient(
+                url=QDRANT_URL,
+                api_key=QDRANT_API_KEY,
+                timeout=10,
+                # e2-micro 优化：减少连接池大小
+                grpc_options={"grpc.max_receive_message_length": 64 * 1024 * 1024},
+            )
 
             # 获取或创建集合（每个角色独立）
             collection_name = self._collection_name()
@@ -136,25 +155,14 @@ class QdrantMemory:
     def _collection_name(self) -> str:
         return f"{self.character_id}_memories"
 
-    def add_memory(self, user_id: int, content: str, metadata: Dict = None) -> bool:
-        """
-        添加记忆（接口与 ChromaDBMemory 完全一致）
-
-        Args:
-            user_id: 用户ID
-            content: 记忆内容
-            metadata: 额外元数据（如角色、情绪、时间等）
-
-        Returns:
-            是否成功
-        """
+    async def add_memory(self, user_id: int, content: str, metadata: Dict = None) -> bool:
+        """添加记忆（异步版本）"""
         if not self._ensure_init():
             return False
 
         try:
             timestamp = datetime.now().isoformat()
             memory_id = f"mem_{user_id}_{timestamp}"
-            # 用 MD5 生成 Qdrant 兼容的 UUID
             uuid = hashlib.md5(memory_id.encode()).hexdigest()
 
             if metadata is None:
@@ -166,7 +174,7 @@ class QdrantMemory:
                 "content_preview": content[:100] if len(content) > 100 else content,
             })
 
-            vector = _embedding_client.embed(content)
+            vector = await _embedding_client.embed(content)
 
             self.client.upsert(
                 collection_name=self._collection_name(),
@@ -180,31 +188,19 @@ class QdrantMemory:
             logger.error(f"[Qdrant] 添加记忆失败: {e}")
             return False
 
-    def search_memories(self, query: str, user_id: int = None, n_results: int = 5) -> List[Dict]:
-        """
-        语义搜索记忆（接口与 ChromaDBMemory 完全一致）
-
-        Args:
-            query: 搜索查询
-            user_id: 可选，限制为特定用户的记忆
-            n_results: 返回结果数量
-
-        Returns:
-            匹配的记忆列表（格式与 ChromaDB 版一致）
-        """
+    async def search_memories(self, query: str, user_id: int = None, n_results: int = 5) -> List[Dict]:
+        """语义搜索记忆（异步版本）"""
         if not self._ensure_init():
             return []
 
         try:
-            # 构建过滤条件
             conditions = []
             if user_id:
                 conditions.append(FieldCondition(key="user_id", match=MatchValue(value=str(user_id))))
             query_filter = Filter(must=conditions) if conditions else None
 
-            query_vector = _embedding_client.embed(query)
+            query_vector = await _embedding_client.embed(query)
 
-            # 使用 query_points API（兼容新版 qdrant-client）
             results = self.client.query_points(
                 collection_name=self._collection_name(),
                 query=query_vector,
@@ -212,13 +208,12 @@ class QdrantMemory:
                 limit=n_results,
             ).points
 
-            # 整理结果（格式与 ChromaDB 版一致）
             memories = []
             for r in results:
                 memories.append({
                     "content": r.payload.get("content_preview", ""),
                     "metadata": {k: v for k, v in r.payload.items() if k != "content_preview"},
-                    "distance": 1.0 - r.score,  # Qdrant score 越大越相似，转成 distance
+                    "distance": 1.0 - r.score,
                 })
 
             logger.info(f"[Qdrant] 搜索 '{query[:30]}...' 找到 {len(memories)} 条记忆")
@@ -229,16 +224,7 @@ class QdrantMemory:
             return []
 
     def get_recent_memories(self, user_id: int = None, limit: int = 10) -> List[Dict]:
-        """
-        获取最近的记忆（接口与 ChromaDBMemory 完全一致）
-
-        Args:
-            user_id: 可选，限制为特定用户
-            limit: 返回数量
-
-        Returns:
-            最近的记忆列表
-        """
+        """获取最近的记忆（同步，仅滚动查询不涉及 embedding）"""
         if not self._ensure_init():
             return []
 
@@ -276,7 +262,6 @@ class QdrantMemory:
             return False
 
         try:
-            # 将 memory_id 转为 UUID
             uuid = hashlib.md5(memory_id.encode()).hexdigest()
             self.client.delete(
                 collection_name=self._collection_name(),
@@ -294,7 +279,6 @@ class QdrantMemory:
             return False
 
         try:
-            # 搜索该用户的所有记忆点
             conditions = [FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))]
             results = self.client.scroll(
                 collection_name=self._collection_name(),
@@ -343,18 +327,18 @@ def get_memory(character_id: str = 'chayewoon') -> QdrantMemory:
 
 # ===== 便捷函数（默认使用当前角色） =====
 
-def add_memory(user_id: int, content: str, metadata: Dict = None, character_id: str = 'chayewoon') -> bool:
-    """添加记忆"""
-    return get_memory(character_id).add_memory(user_id, content, metadata)
+async def add_memory(user_id: int, content: str, metadata: Dict = None, character_id: str = 'chayewoon') -> bool:
+    """添加记忆（异步）"""
+    return await get_memory(character_id).add_memory(user_id, content, metadata)
 
 
-def search_memories(query: str, user_id: int = None, n_results: int = 5, character_id: str = 'chayewoon') -> List[Dict]:
-    """搜索记忆"""
-    return get_memory(character_id).search_memories(query, user_id, n_results)
+async def search_memories(query: str, user_id: int = None, n_results: int = 5, character_id: str = 'chayewoon') -> List[Dict]:
+    """搜索记忆（异步）"""
+    return await get_memory(character_id).search_memories(query, user_id, n_results)
 
 
 def get_recent_memories(user_id: int = None, limit: int = 10, character_id: str = 'chayewoon') -> List[Dict]:
-    """获取最近记忆"""
+    """获取最近记忆（同步）"""
     return get_memory(character_id).get_recent_memories(user_id, limit)
 
 

@@ -4,17 +4,15 @@
 从 bot.py 提取的聊天统计、额度追踪和报告系统。
 """
 
-import logging
 from datetime import datetime
 
 from config import (
     QUOTA_FILE,
-    STATS_FILE,
     get_user_stats_file,
     get_user_memory_file,
     save_json,
     load_json,
-    KR_TZ,
+    get_default_tz,
     YOUR_CHAT_ID,
     _migrate_user_data,
 )
@@ -57,7 +55,7 @@ def save_stats(stats: dict, user_id=None):
 def update_stats_on_message(chat_id: int):
     """每次收到消息时更新统计"""
     stats = load_stats()
-    today = datetime.now(KR_TZ).strftime("%Y-%m-%d")
+    today = datetime.now(get_default_tz()).strftime("%Y-%m-%d")
 
     if not stats.get("first_chat_date"):
         stats["first_chat_date"] = today
@@ -89,7 +87,7 @@ def update_stats_on_message(chat_id: int):
 
 def get_current_month() -> str:
     """获取当前月份标识 YYYY-MM"""
-    return datetime.now(KR_TZ).strftime('%Y-%m')
+    return datetime.now(get_default_tz()).strftime('%Y-%m')
 
 def load_quota_usage() -> dict:
     """加载当月额度使用情况"""
@@ -154,7 +152,7 @@ def check_quota_status(usage: dict = None) -> str:
     if _quota_shutdown:
         return 'shutdown'
 
-    month = get_current_month()
+    get_current_month()
     warnings = usage.get('warnings_sent', [])
 
     # 检查各项额度
@@ -232,14 +230,14 @@ def format_quota_report() -> str:
             color = '🟢'
         return f"{color}{'█' * filled}{'░' * (width - filled)} {ratio * 100:.1f}%"
 
-    req_pct = usage['requests'] / QUOTA_LIMITS['requests'] * 100
-    cpu_pct = usage['cpu_seconds'] / QUOTA_LIMITS['cpu_seconds'] * 100
-    mem_pct = usage['memory_gib_seconds'] / QUOTA_LIMITS['memory_gib_seconds'] * 100
-    net_pct = usage['network_gb'] / QUOTA_LIMITS['network_gb'] * 100 if QUOTA_LIMITS['network_gb'] > 0 else 0
+    usage['requests'] / QUOTA_LIMITS['requests'] * 100
+    usage['cpu_seconds'] / QUOTA_LIMITS['cpu_seconds'] * 100
+    usage['memory_gib_seconds'] / QUOTA_LIMITS['memory_gib_seconds'] * 100
+    usage['network_gb'] / QUOTA_LIMITS['network_gb'] * 100 if QUOTA_LIMITS['network_gb'] > 0 else 0
 
     # 估算剩余天数
     days_in_month = 30
-    current_day = datetime.now(KR_TZ).day
+    current_day = datetime.now(get_default_tz()).day
     remaining_days = days_in_month - current_day
 
     # 估算每日用量
@@ -286,6 +284,6 @@ def format_quota_report() -> str:
     elif status == 'warning':
         report += "\n\n🟡 额度已使用超过80%，请注意。"
     else:
-        report += f"\n\n🟢 状态正常，预计本月额度充足。"
+        report += "\n\n🟢 状态正常，预计本月额度充足。"
 
     return report

@@ -11,11 +11,11 @@
 import re
 import os
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 from config import (
-    DATA_DIR, KR_TZ, YOUR_CHAT_ID,
-    SEMANTIC_MEMORY_FILE,
+    DATA_DIR, YOUR_CHAT_ID,
+    SEMANTIC_MEMORY_FILE, get_default_tz,
     get_user_memory_file, save_json, load_json, _migrate_user_data,
 )
 from prompts import AI_PATTERN_REPLACEMENTS, MEMORY_CATEGORIES
@@ -75,7 +75,7 @@ def learn_from_correction(user_text: str, bot_response: str):
     entry = {
         "user_said": user_text,
         "bot_said": bot_response,
-        "timestamp": datetime.now(KR_TZ).isoformat(),
+        "timestamp": datetime.now(get_default_tz()).isoformat(),
     }
     corrections.append(entry)
     # 只保留最近 100 条纠正记录
@@ -102,7 +102,7 @@ def save_semantic_memory(key: str, value: str, category: str = "personal"):
         if m.get("key") == key:
             m["value"] = value
             m["category"] = category
-            m["timestamp"] = datetime.now(KR_TZ).isoformat()
+            m["timestamp"] = datetime.now(get_default_tz()).isoformat()
             m["access_count"] = m.get("access_count", 0) + 1
             save_json(SEMANTIC_MEMORY_FILE, memories)
             logging.info(f"[语义记忆] 更新记忆: {key} = {value}")
@@ -112,7 +112,7 @@ def save_semantic_memory(key: str, value: str, category: str = "personal"):
         "key": key,
         "value": value,
         "category": category,
-        "timestamp": datetime.now(KR_TZ).isoformat(),
+        "timestamp": datetime.now(get_default_tz()).isoformat(),
         "access_count": 0,
     }
     memories.append(entry)

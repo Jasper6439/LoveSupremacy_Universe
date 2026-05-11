@@ -5,9 +5,8 @@
 """
 import os
 import json
-import time
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 
 from ai_client import call_ai, MAX_HISTORY_MESSAGES
 

@@ -13,7 +13,7 @@ import random
 from datetime import datetime
 
 from config import (
-    KR_TZ, YOUR_CHAT_ID,
+    YOUR_CHAT_ID, get_default_tz,
     ANNIVERSARY_FILE,
     get_user_stats_file, save_json, load_json, _migrate_user_data,
 )
@@ -55,7 +55,7 @@ def delete_anniversary(name: str) -> bool:
 
 def get_upcoming_anniversary(days_ahead: int = 7) -> dict:
     """获取即将到来的纪念日"""
-    now = datetime.now(KR_TZ).date()
+    now = datetime.now(get_default_tz()).date()
     anniversaries = load_anniversaries()
     upcoming = []
     for a in anniversaries:
@@ -82,7 +82,7 @@ def get_days_together() -> int:
     if first_chat:
         try:
             first = datetime.strptime(first_chat, "%Y-%m-%d").date()
-            return (datetime.now(KR_TZ).date() - first).days
+            return (datetime.now(get_default_tz()).date() - first).days
         except ValueError:
             pass
     return 0

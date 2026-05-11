@@ -8,9 +8,12 @@ import sqlite3
 import json
 import os
 import logging
+import threading
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List, Tuple
 from contextlib import contextmanager
+
+from config import get_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,16 @@ SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'game_schema.sql')
 
 # 韩国时区
 KR_TZ = timezone(timedelta(hours=9))
+
+# 线程本地数据库实例缓存
+_local = threading.local()
+
+
+def _get_thread_db(db_path: str = None) -> 'GameDatabase':
+    """获取线程本地的数据库实例"""
+    if not hasattr(_local, 'db_instance') or _local.db_instance is None:
+        _local.db_instance = GameDatabase(db_path)
+    return _local.db_instance
 
 
 class GameDatabase:
@@ -42,7 +55,6 @@ class GameDatabase:
             logger.info(f"[DB] 创建新数据库: {self.db_path}")
         
         with self.get_connection() as conn:
-            # 读取并执行 schema
             if os.path.exists(SCHEMA_PATH):
                 with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
                     conn.executescript(f.read())
@@ -50,7 +62,6 @@ class GameDatabase:
             else:
                 logger.warning(f"[DB] Schema 文件不存在: {SCHEMA_PATH}")
             
-            # [v0.3] 自动迁移：为旧数据库添加缺失的列
             self._migrate_db(conn)
     
     def _migrate_db(self, conn):
@@ -73,7 +84,6 @@ class GameDatabase:
         }
         
         for table, columns in migrations.items():
-            # 获取表已有的列名
             try:
                 cursor = conn.execute(f"PRAGMA table_info({table})")
                 existing_cols = {row[1] for row in cursor.fetchall()}
@@ -90,10 +100,14 @@ class GameDatabase:
     
     @contextmanager
     def get_connection(self):
-        """获取数据库连接（上下文管理器）"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # 返回字典格式
-        conn.execute("PRAGMA foreign_keys = ON")  # 启用外键约束
+        """获取数据库连接（上下文管理器，已优化 PRAGMA 设置）"""
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA cache_size=-64000")
+        conn.execute("PRAGMA temp_store=MEMORY")
         try:
             yield conn
             conn.commit()
@@ -103,6 +117,11 @@ class GameDatabase:
             raise
         finally:
             conn.close()
+    
+    def close(self):
+        """关闭可能存在的连接（清理线程本地缓存）"""
+        if hasattr(_local, 'db_instance'):
+            _local.db_instance = None
     
     # ============================================================
     # 用户管理
@@ -121,12 +140,12 @@ class GameDatabase:
                 # 更新最后活跃时间
                 conn.execute(
                     "UPDATE users SET last_active = ?, username = ? WHERE id = ?",
-                    (datetime.now(KR_TZ).isoformat(), username, row['id'])
+                    (datetime.now(get_default_tz()).isoformat(), username, row['id'])
                 )
                 return row['id']
             
             # 创建新用户
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             cursor = conn.execute(
                 """INSERT INTO users (telegram_id, username, password_hash, is_admin, created_at, last_active)
                    VALUES (?, ?, ?, ?, ?, ?)""",
@@ -225,7 +244,7 @@ class GameDatabase:
     
     def get_daily_reward(self, user_id: int) -> Optional[Dict]:
         """获取今日奖励状态"""
-        today = datetime.now(KR_TZ).strftime('%Y-%m-%d')
+        today = datetime.now(get_default_tz()).strftime('%Y-%m-%d')
         with self.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM daily_rewards WHERE user_id = ? AND reward_date = ?",
@@ -236,7 +255,7 @@ class GameDatabase:
     
     def claim_daily_reward(self, user_id: int) -> Dict:
         """领取每日登录奖励"""
-        today = datetime.now(KR_TZ).strftime('%Y-%m-%d')
+        today = datetime.now(get_default_tz()).strftime('%Y-%m-%d')
         
         # 检查是否已领取
         existing = self.get_daily_reward(user_id)
@@ -263,7 +282,6 @@ class GameDatabase:
                 self.update_farm(user_id, money=farm['money'] + reward['qty'])
         
         # 记录
-        now = datetime.now(KR_TZ).isoformat()
         with self.get_connection() as conn:
             if existing:
                 conn.execute(
@@ -296,7 +314,7 @@ class GameDatabase:
     def save_message(self, user_id: int, character_id: str, role: str, content: str, emotion: str = None) -> int:
         """保存聊天消息"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             cursor = conn.execute(
                 """INSERT INTO chat_messages (user_id, character_id, role, content, emotion, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
@@ -342,7 +360,7 @@ class GameDatabase:
     def update_hearts(self, user_id: int, character_id: str, delta: int) -> int:
         """更新心级（可正可负），返回新的心级"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             # 获取当前心级
             cursor = conn.execute(
                 "SELECT hearts FROM relationships WHERE user_id = ? AND character_id = ?",
@@ -366,7 +384,7 @@ class GameDatabase:
     def update_relationship_status(self, user_id: int, character_id: str, status: str):
         """更新关系状态"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """UPDATE relationships SET relationship_status = ?, updated_at = ?
                    WHERE user_id = ? AND character_id = ?""",
@@ -376,7 +394,7 @@ class GameDatabase:
     def record_conversation(self, user_id: int, character_id: str):
         """记录一次对话"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """UPDATE relationships 
                    SET total_conversations = total_conversations + 1, 
@@ -410,7 +428,7 @@ class GameDatabase:
             return farm
         
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """INSERT INTO farms (user_id, farm_name, created_at, updated_at)
                    VALUES (?, '我的农场', ?, ?)""",
@@ -431,7 +449,7 @@ class GameDatabase:
             return
         
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             set_clauses = [f"{k} = ?" for k in kwargs.keys()]
             set_clauses.append("updated_at = ?")
             values = list(kwargs.values()) + [now, user_id]
@@ -444,7 +462,7 @@ class GameDatabase:
     def plant_crop(self, farm_id: int, x: int, y: int, crop_type: str) -> bool:
         """种植作物"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             try:
                 conn.execute(
                     """INSERT INTO crops (farm_id, tile_x, tile_y, crop_type, planted_at, growth_stage)
@@ -488,7 +506,7 @@ class GameDatabase:
             cursor = conn.execute("SELECT id, growth_time FROM crop_types")
             growth_times = {row['id']: row['growth_time'] for row in cursor.fetchall()}
             
-            now = datetime.now(KR_TZ)
+            now = datetime.now(get_default_tz())
             
             # 获取所有作物
             cursor = conn.execute(
@@ -529,7 +547,7 @@ class GameDatabase:
     def add_item(self, user_id: int, item_type: str, item_id: str, quantity: int = 1, quality: int = 1):
         """添加物品到背包"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """INSERT INTO inventory (user_id, item_type, item_id, quantity, quality, obtained_at)
                    VALUES (?, ?, ?, ?, ?, ?)
@@ -578,9 +596,9 @@ class GameDatabase:
     def get_character_location(self, character_id: str, day_of_week: int = None, hour: int = None) -> Optional[Dict]:
         """获取角色当前位置"""
         if day_of_week is None:
-            day_of_week = datetime.now(KR_TZ).weekday()
+            day_of_week = datetime.now(get_default_tz()).weekday()
         if hour is None:
-            hour = datetime.now(KR_TZ).hour
+            hour = datetime.now(get_default_tz()).hour
         
         with self.get_connection() as conn:
             cursor = conn.execute(
@@ -641,7 +659,7 @@ class GameDatabase:
             event = dict(row)
             
             # 记录已触发
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 "INSERT INTO triggered_events (user_id, event_id, triggered_at) VALUES (?, ?, ?)",
                 (user_id, event_id, now)
@@ -661,7 +679,7 @@ class GameDatabase:
     def log_game_event(self, user_id: int, event_type: str, event_data: Dict, source: str):
         """记录游戏事件"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """INSERT INTO game_events (user_id, event_type, event_data, source, created_at)
                    VALUES (?, ?, ?, ?, ?)""",
@@ -704,7 +722,7 @@ class GameDatabase:
     def save_memory(self, user_id: int, character_id: str, key: str, value: str, category: str = 'personal'):
         """保存记忆"""
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             conn.execute(
                 """INSERT INTO memories (user_id, character_id, memory_key, memory_value, category, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)
@@ -777,7 +795,7 @@ class GameDatabase:
             更新后的情感值字典
         """
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             
             # 获取当前值
             cursor = conn.execute(
@@ -884,7 +902,7 @@ class GameDatabase:
             return None
         
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             
             # 记录觉醒事件
             cursor = conn.execute(
@@ -983,7 +1001,7 @@ class GameDatabase:
             return {'success': False, 'error': f'世界层级 {layer} 尚未解锁'}
         
         with self.get_connection() as conn:
-            now = datetime.now(KR_TZ).isoformat()
+            now = datetime.now(get_default_tz()).isoformat()
             
             # 更新所有关系的世界层
             conn.execute(
@@ -1013,7 +1031,7 @@ class GameDatabase:
 
     def save_player_position(self, user_id: int, x: int, y: int, direction: str = 'down'):
         """保存玩家位置"""
-        now = datetime.now(KR_TZ).isoformat()
+        now = datetime.now(get_default_tz()).isoformat()
         with self.get_connection() as conn:
             conn.execute("""
                 INSERT INTO player_positions (user_id, x, y, direction, updated_at)
@@ -1079,7 +1097,7 @@ class GameDatabase:
                               title: str, description: str, dialogue: str,
                               emotion_bonus: Dict = None):
         """保存觉醒事件"""
-        now = datetime.now(KR_TZ).isoformat()
+        now = datetime.now(get_default_tz()).isoformat()
         with self.get_connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO awakening_events
@@ -1096,8 +1114,8 @@ class GameDatabase:
 
 
 
-# 全局实例
-db = GameDatabase()
+# 全局实例（向后兼容）
+_db_global: Optional[GameDatabase] = None
 
 
 # ============================================================
@@ -1105,12 +1123,12 @@ db = GameDatabase()
 # ============================================================
 
 def get_db() -> GameDatabase:
-    """获取数据库实例"""
-    return db
+    """获取数据库实例（优先线程本地，其次全局）"""
+    return _get_thread_db()
 
 
 def init_game_db():
     """初始化游戏数据库"""
-    global db
-    db = GameDatabase()
-    return db
+    global _db_global
+    _db_global = GameDatabase()
+    return _db_global

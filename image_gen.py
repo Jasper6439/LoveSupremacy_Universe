@@ -3,9 +3,9 @@
 从 bot.py 提取的图片生成、场景检测、AI分析等函数
 """
 
-import asyncio
 import base64
 import io
+import json
 import logging
 import os
 import random
@@ -26,8 +26,7 @@ from config import (
 )
 from prompts import (
     SELFIE_PROMPTS, SELFIE_CAPTIONS,
-    SCENE_PROMPTS, SCENE_KEYWORDS, SCENE_CAPTIONS,
-    STICKER_PROMPTS, KOREAN_BL_COLOR_PALETTES,
+    SCENE_PROMPTS, SCENE_KEYWORDS, STICKER_PROMPTS,
 )
 
 
@@ -267,7 +266,7 @@ async def analyze_photo_with_ai(photo_url: str) -> dict:
                     json_match = re.search(r'\{[^}]+\}', content)
                     if json_match:
                         return json.loads(json_match.group())
-                except:
+                except Exception:
                     pass
                 # 如果解析失败，根据关键词判断
                 content_lower = content.lower()

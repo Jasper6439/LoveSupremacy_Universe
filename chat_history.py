@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import logging
 import random
 
 from config import (
@@ -56,7 +55,7 @@ def append_bot_message(chat_id: int, content: str):
     try:
         from qdrant_memory import add_memory
         add_memory(chat_id, content, {"role": "assistant"})
-    except:
+    except Exception:
         pass  # 静默失败
 
 

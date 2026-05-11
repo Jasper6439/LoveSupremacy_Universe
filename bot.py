@@ -36,12 +36,11 @@ import json
 import logging
 import random
 import os
-import urllib.parse
 import zipfile
 import io
 import re
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from telegram import Update, BotCommand, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -85,10 +84,10 @@ user_voice_enabled = {}  # {user_id: bool}
 from music_skill import music_skill
 
 # [Skill: Qdrant Cloud 记忆]
-from qdrant_memory import get_memory, add_memory, search_memories
+from qdrant_memory import search_memories
 
 # [Skill: 小说知识库]
-from novel_knowledge import get_knowledge, query_novel, init_novel_knowledge
+from novel_knowledge import query_novel, init_novel_knowledge
 
 # [角色系统] 支持多蒸馏角色动态加载
 from characters import (
@@ -222,7 +221,7 @@ def parse_json_chatlog(data: dict) -> dict:
                     try:
                         from datetime import datetime
                         time_str = datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d %H:%M:%S')
-                    except:
+                    except Exception:
                         time_str = str(ts)
                 else:
                     time_str = str(ts)
@@ -280,7 +279,7 @@ def parse_chatlab_format(data: dict) -> dict:
             try:
                 from datetime import datetime
                 time_str = datetime.fromtimestamp(time_str / 1000 if time_str > 1e10 else time_str).strftime('%Y-%m-%d %H:%M:%S')
-            except:
+            except Exception:
                 time_str = str(time_str)
         
         if content:
@@ -399,16 +398,15 @@ def calculate_chat_stats(messages: list) -> dict:
     # 时间分析（如果时间字段有效）
     hour_distribution = {}
     try:
-        from datetime import datetime
         for msg in messages:
             if msg['time']:
                 try:
                     if len(msg['time']) >= 13:  # 格式: YYYY-MM-DD HH:MM:SS
                         hour = int(msg['time'][11:13])
                         hour_distribution[hour] = hour_distribution.get(hour, 0) + 1
-                except:
+                except Exception:
                     pass
-    except:
+    except Exception:
         pass
     
     return {
@@ -487,7 +485,7 @@ async def analyze_chatlog_with_ai(parsed_log: dict, chat_partner: str = "妈妈"
                 try:
                     # 尝试直接解析
                     analysis = json.loads(content)
-                except:
+                except Exception:
                     # 尝试从文本中提取JSON
                     json_match = re.search(r'\{[\s\S]*\}', content)
                     if json_match:
@@ -514,7 +512,7 @@ def save_chat_analysis(chat_partner: str, analysis_result: dict):
     imported_chats = load_json(CHAT_IMPORT_FILE, {})
     
     imported_chats[chat_partner] = {
-        'imported_at': datetime.now(KR_TZ).isoformat(),
+        'imported_at': datetime.now(get_default_tz()).isoformat(),
         'analysis': analysis_result.get('analysis', {}),
         'message_count': analysis_result.get('message_count', 0),
         'date_range': analysis_result.get('date_range', {}),
@@ -635,7 +633,7 @@ async def web_search(query: str, max_results: int = 3) -> str:
                 return ""
             text = response.text
             results = []
-            links = re.findall(r'<a[^>]*class="result-link"[^>]*href="([^"]*)"', text)
+            re.findall(r'<a[^>]*class="result-link"[^>]*href="([^"]*)"', text)
             snippets = re.findall(r'<td[^>]*class="result-snippet"[^>]*>(.*?)</td>', text, re.DOTALL)
             for i in range(min(max_results, len(snippets))):
                 clean = re.sub(r'<[^>]+>', '', snippets[i]).strip()
@@ -649,7 +647,7 @@ async def web_search(query: str, max_results: int = 3) -> str:
         return ""
 
 async def call_ai(user_message: str, chat_history: list = None, use_memory: bool = True, emotion: str = "") -> str:
-    now = datetime.now(KR_TZ)
+    now = datetime.now(get_default_tz())
     weekdays = ['星期一','星期二','星期三','星期四','星期五','星期六','星期日']
     period = '凌晨' if now.hour < 6 else '上午' if now.hour < 12 else '下午' if now.hour < 18 else '晚上'
     time_info = f"当前时间：{now.strftime('%Y年%m月%d日 %H:%M')}，{period}，{weekdays[now.weekday()]}（韩国时间）"
@@ -840,7 +838,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.get_bot().set_my_commands(commands)
     
     # 自定义键盘按钮（像 BotFather 那样的底部按钮）
-    from telegram import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
     
     keyboard = [
         [KeyboardButton("🎤 语音开关"), KeyboardButton("📷 自拍相册")],
@@ -1247,7 +1244,7 @@ def transcribe_audio_primary(audio_path: str) -> str:
             try:
                 text = recognizer.recognize_google(audio_data, language="ko-KR")
                 full_text.append(text)
-            except:
+            except Exception:
                 full_text.append("[无法识别]")
             
             os.remove(chunk_path)
@@ -1318,7 +1315,7 @@ async def analyze_video_transcript(transcript: str, video_type: str = "剧集") 
                 content = resp.json()['choices'][0]['message']['content']
                 try:
                     analysis = json.loads(content)
-                except:
+                except Exception:
                     jm = re.search(r'\{[\s\S]*\}', content)
                     analysis = json.loads(jm.group()) if jm else {"raw": content}
                 
@@ -1343,11 +1340,11 @@ async def analyze_video_transcript(transcript: str, video_type: str = "剧集") 
                             content = resp2.json()['choices'][0]['message']['content']
                             try:
                                 analysis = json.loads(content)
-                            except:
+                            except Exception:
                                 jm = re.search(r'\{[\s\S]*\}', content)
                                 analysis = json.loads(jm.group()) if jm else {"raw": content}
                             return {'success': True, 'analysis': analysis}
-                    except:
+                    except Exception:
                         continue
                 return {'success': False, 'error': 'API请求频率超限，请稍后再试（429）'}
             else:
@@ -1363,7 +1360,7 @@ def save_video_analysis(video_type: str, analysis_result: dict):
     video_file = os.path.join(DATA_DIR, "video_analysis.json")
     data = load_json(video_file, {})
     data[video_type] = {
-        'analyzed_at': datetime.now(KR_TZ).isoformat(),
+        'analyzed_at': datetime.now(get_default_tz()).isoformat(),
         'analysis': analysis,
     }
     save_json(video_file, data)
@@ -1372,7 +1369,7 @@ def save_video_analysis(video_type: str, analysis_result: dict):
     style = analysis.get('speaking_style', '')
     traits = analysis.get('personality_traits', [])
     catchphrases = analysis.get('catchphrases', [])
-    tone = analysis.get('tone_analysis', '')
+    analysis.get('tone_analysis', '')
     
     if video_type == "采访":
         save_memory_entry(f"演员真实说话风格: {style}")
@@ -1400,7 +1397,7 @@ def get_video_analysis_context() -> str:
     parts = []
     if "采访" in data:
         a = data["采访"].get('analysis', {})
-        parts.append(f"\n【演员真实特点（从采访视频分析）】")
+        parts.append("\n【演员真实特点（从采访视频分析）】")
         parts.append(f"说话风格: {a.get('speaking_style', '')}")
         parts.append(f"性格: {', '.join(a.get('personality_traits', []))}")
         parts.append(f"口头禅: {', '.join(a.get('catchphrases', []))}")
@@ -1408,7 +1405,7 @@ def get_video_analysis_context() -> str:
     
     if "剧集" in data:
         a = data["剧集"].get('analysis', {})
-        parts.append(f"\n【车如云角色细节（从剧集视频分析）】")
+        parts.append("\n【车如云角色细节（从剧集视频分析）】")
         parts.append(f"说话风格: {a.get('speaking_style', '')}")
         parts.append(f"经典台词: {', '.join(a.get('key_dialogues', []))}")
         parts.append(f"情感表达: {a.get('emotional_expression', '')}")
@@ -1487,7 +1484,7 @@ async def handle_video_import(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         # 下载视频
         file = await context.bot.get_file(video.file_id)
-        video_filename = f"video_{datetime.now(KR_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
+        video_filename = f"video_{datetime.now(get_default_tz()).strftime('%Y%m%d_%H%M%S')}.mp4"
         video_path = os.path.join(VIDEO_DIR, video_filename)
         await file.download_to_drive(video_path)
         
@@ -1536,7 +1533,7 @@ async def handle_video_import(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         traits = analysis.get('personality_traits', [])
         if traits:
-            result_text += f"🎭 性格特点：\n"
+            result_text += "🎭 性格特点：\n"
             for t in traits:
                 result_text += f"  • {t}\n"
             result_text += "\n"
@@ -1548,13 +1545,13 @@ async def handle_video_import(update: Update, context: ContextTypes.DEFAULT_TYPE
         if video_type == "剧情":
             key_d = analysis.get('key_dialogues', [])
             if key_d:
-                result_text += f"📝 经典台词：\n"
+                result_text += "📝 经典台词：\n"
                 for d in key_d[:3]:
                     result_text += f"  「{d}」\n"
                 result_text += "\n"
         
         result_text += f"🎭 情感表达：{analysis.get('emotional_expression', '未知')}\n"
-        result_text += f"━━━━━━━━━━━━━━\n...我会记住的。"
+        result_text += "━━━━━━━━━━━━━━\n...我会记住的。"
         
         await update.message.reply_text(result_text)
         
@@ -1783,7 +1780,7 @@ async def learned_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts.append(f"   学长说：{user_said}")
         parts.append(f"   我说：{bot_said}...")
     
-    parts.append(f"\n━━━━━━━━━━━━━━")
+    parts.append("\n━━━━━━━━━━━━━━")
     parts.append(f"...一共记住了 {len(corrections)} 条。")
     parts.append("（低头）...我会努力改的。")
     
@@ -1896,7 +1893,7 @@ async def summarize_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         url_match = re.search(url_pattern, input_text)
         if url_match:
             url = url_match.group()
-            await update.message.reply_text(f"...正在抓取网页内容...")
+            await update.message.reply_text("...正在抓取网页内容...")
             text_to_summarize = await fetch_url_content(url)
             if not text_to_summarize:
                 await update.message.reply_text("...抓取网页失败了。可能是网站不允许访问。")
@@ -1943,7 +1940,7 @@ def check_for_updates() -> dict:
         # 首次运行，记录当前 hash
         version_data = {
             "version": BOT_VERSION,
-            "last_check": datetime.now(KR_TZ).strftime("%Y-%m-%d"),
+            "last_check": datetime.now(get_default_tz()).strftime("%Y-%m-%d"),
             "bot_hash": current_hash,
         }
         save_json(VERSION_FILE, version_data)
@@ -1953,7 +1950,7 @@ def check_for_updates() -> dict:
     saved_version = version_data.get("version", "未知")
 
     # 更新检查时间
-    version_data["last_check"] = datetime.now(KR_TZ).strftime("%Y-%m-%d")
+    version_data["last_check"] = datetime.now(get_default_tz()).strftime("%Y-%m-%d")
     version_data["bot_hash"] = current_hash
     version_data["version"] = BOT_VERSION
     save_json(VERSION_FILE, version_data)
@@ -2010,7 +2007,7 @@ async def check_update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"...没有更新。\n\n"
             f"📋 当前版本：{BOT_VERSION}\n"
-            f"📅 上次检查：{result.get('last_check', datetime.now(KR_TZ).strftime('%Y-%m-%d'))}\n\n"
+            f"📅 上次检查：{result.get('last_check', datetime.now(get_default_tz()).strftime('%Y-%m-%d'))}\n\n"
             f"...一切正常。"
         )
 
@@ -2472,7 +2469,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if imported_history:
             chat_histories[chat_id] = load_chat_history(chat_id)
         
-        parts = [f"...收到了。\n\n"]
+        parts = ["...收到了。\n\n"]
         parts.append(f"🧠 {imported_memories} 条记忆")
         parts.append(f"📸 {imported_photos} 张照片")
         if imported_history:
@@ -2512,7 +2509,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 实际效果会在 handle_message 中处理
             await query.edit_message_reply_markup(reply_markup=None)  # 移除按钮
             # 模拟用户发送选项文本
-            fake_update = type('obj', (object,), {
+            type('obj', (object,), {
                 'effective_chat': type('obj', (object,), {'id': chat_id})(),
                 'effective_user': type('obj', (object,), {'id': chat_id})(),
                 'message': type('obj', (object,), {
@@ -2633,7 +2630,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emotion = detect_emotion(user_text)
     
     # [Skill: self-improving] 更新用户最后活跃时间（用于主动行为）
-    emotion._last_user_active_time[chat_id] = datetime.now(KR_TZ)
+    emotion._last_user_active_time[chat_id] = datetime.now(get_default_tz())
     
     # [Skill: self-improving] 检测用户纠正，从上一条 bot 回复中学习
     history = get_history(chat_id)
@@ -2711,7 +2708,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_text = re.sub(r'\[MEMORY:[^\]]+\]', '', reply_text).strip()
     
     # 保存消息（带时间戳，用于Web端同步）
-    timestamp = datetime.now(KR_TZ).isoformat()
+    timestamp = datetime.now(get_default_tz()).isoformat()
     history.append({"role": "user", "content": user_text, "timestamp": timestamp})
     history.append({"role": "assistant", "content": reply_text, "timestamp": timestamp})
     
@@ -2777,7 +2774,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if song.get('thumbnail'):
                     try:
                         await update.message.reply_photo(photo=song['thumbnail'], caption=music_reply)
-                    except:
+                    except Exception:
                         await update.message.reply_text(music_reply)
                 else:
                     await update.message.reply_text(music_reply)
@@ -2943,7 +2940,7 @@ async def music_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     photo=song['thumbnail'],
                     caption=reply
                 )
-            except:
+            except Exception:
                 # 封面发送失败，只发文字
                 await update.message.reply_text(reply)
         else:
@@ -2992,8 +2989,8 @@ async def novel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("...（查询失败）知识库还没准备好。")
 
 # [Skill: ChromaDB] 记忆搜索
-async def memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """搜索记忆"""
+async def qdrant_memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """搜索Qdrant语义记忆"""
     chat_id = update.effective_chat.id
     if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
         return
@@ -3066,7 +3063,7 @@ async def send_smart_reply(update: Update, text: str):
 
 async def scheduler(app):
     while True:
-        now = datetime.now(KR_TZ)
+        now = datetime.now(get_default_tz())
         
         # [Skill: 纪念日提醒] 每天早上8点检查
         if now.hour == 8 and 0 <= now.minute <= 5:
@@ -3167,7 +3164,7 @@ async def api_chat(request):
         response = await call_ai(user_message, history)
         
         # 保存到共享历史（带时间戳）
-        timestamp = datetime.now(KR_TZ).isoformat()
+        timestamp = datetime.now(get_default_tz()).isoformat()
         history.append({"role": "user", "content": user_message, "timestamp": timestamp})
         history.append({"role": "assistant", "content": response, "timestamp": timestamp})
         save_chat_history(user_id, history)
@@ -3619,7 +3616,7 @@ async def api_analyze_video(request):
             if part.name == 'type':
                 video_type = (await part.text()).strip()
             elif part.name == 'video':
-                filename = part.filename or f"video_{datetime.now(KR_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
+                filename = part.filename or f"video_{datetime.now(get_default_tz()).strftime('%Y%m%d_%H%M%S')}.mp4"
                 video_path = os.path.join(VIDEO_DIR, filename)
                 with open(video_path, 'wb') as f:
                     while True:
@@ -4079,7 +4076,6 @@ async def cors_middleware(request, handler):
 # ============================================================
 # HTTP Bridge for SOLO Sandbox File Transfer
 # ============================================================
-import base64
 
 # 存储待处理的命令和文件
 bridge_pending_commands = []
@@ -4802,7 +4798,7 @@ def main():
                 img = img.convert('RGB')
             img.save(filepath, 'JPEG', quality=95)
             
-            await update.message.reply_text(f"✅ 已添加到车如云的自拍相册！")
+            await update.message.reply_text("✅ 已添加到车如云的自拍相册！")
             logging.info(f"照片已移到自拍相册: {filename}")
         except Exception as e:
             logging.error(f"移动照片失败: {e}")

@@ -9,8 +9,6 @@
 示例:
     python tools/create_character.py --name "李明" --source "恋爱播放列表" --id "liming"
 """
-import os
-import sys
 import json
 import argparse
 from pathlib import Path

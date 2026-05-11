@@ -5,8 +5,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
-import json
 import os
+from datetime import timezone, timedelta
 
 
 @dataclass
@@ -33,6 +33,9 @@ class CharacterConfig:
     is_novel_character: bool = False   # 是否为小说原作角色
     world_role: str = ""               # 在世界观中的角色定位
 
+    # 时区配置（IANA 时区名或 UTC 偏移小时数）
+    timezone: str = "Asia/Seoul"     # 角色所在时区，默认韩国时间
+
     # 视觉配置
     avatar_url: Optional[str] = None # 头像URL
     theme_color: str = "#660874"     # 主题色
@@ -43,6 +46,32 @@ class CharacterConfig:
     def get_data_path(self, filename: str) -> str:
         """获取数据文件路径"""
         return os.path.join(self.data_dir, filename)
+    
+    def get_timezone(self) -> timezone:
+        """获取角色的时区对象"""
+        # 支持 "Asia/Seoul" 格式或 "+9"/"9" 格式
+        tz = self.timezone.strip()
+        if tz.startswith('+') or tz.startswith('-'):
+            hours = int(tz)
+            return timezone(timedelta(hours=hours))
+        try:
+            hours = int(tz)
+            return timezone(timedelta(hours=hours))
+        except ValueError:
+            pass
+        # 常见时区映射（e2-micro 不安装 pytz/zoneinfo，用硬编码）
+        _TZ_MAP = {
+            "Asia/Seoul": 9, "Asia/Tokyo": 9, "Asia/Shanghai": 8,
+            "Asia/Hong_Kong": 8, "Asia/Taipei": 8, "Asia/Singapore": 8,
+            "Asia/Bangkok": 7, "Asia/Jakarta": 7, "Asia/Ho_Chi_Minh": 7,
+            "Asia/Kolkata": 5.5, "Asia/Dubai": 4, "Europe/London": 0,
+            "Europe/Paris": 1, "Europe/Berlin": 1, "Europe/Moscow": 3,
+            "America/New_York": -5, "America/Chicago": -6,
+            "America/Denver": -7, "America/Los_Angeles": -8,
+            "Pacific/Auckland": 12, "Australia/Sydney": 10,
+        }
+        offset = _TZ_MAP.get(tz, 9)  # 默认韩国时间
+        return timezone(timedelta(hours=offset))
     
     @classmethod
     def from_dict(cls, data: dict, id: str, data_dir: str = "") -> 'CharacterConfig':
@@ -62,6 +91,7 @@ class CharacterConfig:
             awakening_conditions=data.get('awakening_conditions'),
             is_novel_character=data.get('is_novel_character', False),
             world_role=data.get('world_role', ''),
+            timezone=data.get('timezone', 'Asia/Seoul'),
             avatar_url=data.get('avatar_url'),
             theme_color=data.get('theme_color', '#660874'),
             data_dir=data_dir,
