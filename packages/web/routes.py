@@ -123,7 +123,10 @@ __all__ = [
     "api_quota_status",
     "api_list_characters",
     "api_switch_character",
+    "api_messages_history",
+    "api_messages_sync",
     "cors_middleware",
+    "register_routes",
 ]
 
 
@@ -1089,6 +1092,94 @@ _load_skills_state()
 load_character_skill_overrides()
 
 
+# ============================================================
+# 消息同步 API（Web <-> Telegram 双向同步）
+# ============================================================
+
+async def api_messages_history(request):
+    """获取聊天历史消息 - 用于Web端加载历史"""
+    try:
+        user_id = validate_session_token(request)
+        if not user_id:
+            user_id = validate_api_token(request)
+        if not user_id:
+            user_id = load_config().get('your_chat_id', 0)
+        if not user_id:
+            user_id = 1
+
+        # 获取limit参数
+        limit = int(request.query.get('limit', 50))
+
+        # 加载聊天历史
+        history = load_chat_history(user_id)
+
+        # 只返回最近的N条消息
+        if len(history) > limit:
+            history = history[-limit:]
+
+        # 格式化返回
+        messages = []
+        for msg in history:
+            messages.append({
+                'role': msg.get('role', 'user'),
+                'content': msg.get('content', ''),
+                'timestamp': msg.get('timestamp', '')
+            })
+
+        return web.json_response({
+            'messages': messages,
+            'total_count': len(messages)
+        })
+    except Exception as e:
+        logging.error(f"[消息历史] 获取失败: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def api_messages_sync(request):
+    """同步新消息 - Telegram新消息推送到Web端"""
+    try:
+        user_id = validate_session_token(request)
+        if not user_id:
+            user_id = validate_api_token(request)
+        if not user_id:
+            user_id = load_config().get('your_chat_id', 0)
+        if not user_id:
+            user_id = 1
+
+        # 获取since参数（从第几条消息开始）
+        since = int(request.query.get('since', 0))
+
+        # 加载聊天历史
+        history = load_chat_history(user_id)
+        total_count = len(history)
+
+        # 只返回新增的消息
+        if since >= total_count:
+            return web.json_response({
+                'messages': [],
+                'total_count': total_count
+            })
+
+        new_messages = history[since:]
+
+        # 格式化返回
+        messages = []
+        for msg in new_messages:
+            messages.append({
+                'role': msg.get('role', 'user'),
+                'content': msg.get('content', ''),
+                'timestamp': msg.get('timestamp', '')
+            })
+
+        return web.json_response({
+            'messages': messages,
+            'total_count': total_count
+        })
+    except Exception as e:
+        logging.error(f"[消息同步] 同步失败: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
 # CORS 中间件 - 允许 Telegram Mini App 跨域访问
 @web.middleware
 async def cors_middleware(request, handler):
@@ -1100,3 +1191,40 @@ async def cors_middleware(request, handler):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
+
+
+def register_routes(app):
+    """Register all web routes"""
+    app.router.add_get('/', serve_index)
+    app.router.add_get('/health', health_check)
+    app.router.add_post('/api/chat', api_chat)
+    app.router.add_get('/api/stats', api_stats)
+    app.router.add_get('/api/messages/history', api_messages_history)
+    app.router.add_get('/api/messages/sync', api_messages_sync)
+    app.router.add_get('/miniapp', serve_miniapp)
+    app.router.add_get('/game', serve_game)
+    app.router.add_post('/api/upload-selfies', api_upload_selfies)
+    app.router.add_get('/api/selfies', api_get_selfies)
+    app.router.add_post('/api/delete-selfie', api_delete_selfie)
+    app.router.add_post('/api/delete-user-photo', api_delete_user_photo)
+    app.router.add_get('/api/user-photos', api_user_photos)
+    app.router.add_get('/uploads/{folder}/{filename}', serve_uploaded_file)
+    app.router.add_post('/api/analyze-chatlog', api_analyze_chatlog)
+    app.router.add_post('/api/analyze-video', api_analyze_video)
+    app.router.add_post('/api/register', api_register)
+    app.router.add_post('/api/login', api_login)
+    app.router.add_get('/api/config', api_get_config)
+    app.router.add_post('/api/config', api_update_config)
+    app.router.add_get('/api/skills', api_skills_list)
+    app.router.add_post('/api/skills/toggle', api_skill_toggle)
+    app.router.add_post('/api/skills/install', api_skill_install)
+    app.router.add_post('/api/skills/uninstall', api_skill_uninstall)
+    app.router.add_get('/api/quota', api_quota_status)
+    app.router.add_get('/api/characters', api_list_characters)
+    app.router.add_post('/api/characters/switch', api_switch_character)
+
+    # Static files
+    app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'static'))
+
+    # CORS middleware
+    app.middlewares.append(cors_middleware)

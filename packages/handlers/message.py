@@ -21,12 +21,28 @@ from emotion import *
 from chat_history import *
 from image_gen import *
 from tts_engine import TTSEngine
-from ai_client import call_ai
+
+# Lazy import for bot.call_ai (the high-level AI function with character/memory/emotion integration)
+def _get_call_ai():
+    from bot import call_ai
+    return call_ai
 from characters import get_current_character
 from music_skill import music_skill
 from novel_knowledge import query_novel
 from qdrant_memory import search_memories
 from packages.commands.extra import _pending_analyze_img, _pending_ocr
+from packages.commands.import_cmds import (
+    pending_chat_imports,
+    handle_chatlog_document,
+)
+from packages.commands.basic import selfie_cmd, reset, memory_cmd, export_cmd
+from packages.commands.skills import sticker_cmd, analyze_cmd, stats_cmd
+from packages.commands.misc import anniversary_cmd, quota_cmd
+
+# Lazy import for summarize_and_save_memory (defined in bot.py, the entry point)
+def _get_summarize_func():
+    from bot import summarize_and_save_memory
+    return summarize_and_save_memory
 
 tts = TTSEngine()
 
@@ -305,7 +321,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(f"你选择了选项 {opt_id}...")
             # 然后触发 AI 回复
             history = get_history(chat_id)
-            reply = await call_ai(f"用户选择了选项 {opt_id}", history)
+            reply = await _get_call_ai()(f"用户选择了选项 {opt_id}", history)
             await query.message.reply_text(reply)
             return
     
@@ -379,7 +395,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await anniversary_cmd(update, context)
             return
         elif cmd_name == "help":
-            await help_cmd(update, context)
+            await update.message.reply_text(
+                "...学长需要帮助吗。\n\n"
+                "可用命令：\n"
+                "/start - 开始对话\n"
+                "/reset - 重置对话\n"
+                "/selfie - 查看自拍\n"
+                "/stats - 统计数据\n"
+                "/memory - 记忆管理\n"
+                "/gemini - Gemini AI\n"
+                "/analyze_img - 分析图片\n"
+                "/ocr - 文档识别\n"
+                "/research - 深度研究\n"
+                "/sticker - 表情包\n"
+                "/tts - 语音模式\n"
+                "/anniversary - 纪念日\n"
+                "/export - 导出数据\n"
+                "/import - 导入数据"
+            )
             return
         elif cmd_name == "reset":
             await reset(update, context)
@@ -449,7 +482,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     update_stats_on_message(chat_id)
     
     # AI回复（带情绪上下文）
-    reply = await call_ai(user_text, history, emotion=emotion)
+    reply = await _get_call_ai()(user_text, history, emotion=emotion)
     
     # v0.3: 解析对话选项
     parsed = parse_dialogue_options(reply)
@@ -506,7 +539,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_count[chat_id] = count
     if count >= 10:
         message_count[chat_id] = 0
-        asyncio.create_task(summarize_and_save_memory(chat_id))
+        asyncio.create_task(_get_summarize_func()(chat_id))
     
     # 发送回复 + 附加内容
     if want_selfie:
@@ -514,7 +547,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(1)
         saved = get_saved_selfies()
         if saved:
-            selfie_caption = await call_ai("学长看到了我的自拍，用一句话害羞地回应，不超过10个字")
+            selfie_caption = await _get_call_ai()("学长看到了我的自拍，用一句话害羞地回应，不超过10个字")
         else:
             selfie_caption = random.choice(SELFIE_CAPTIONS)
         await send_selfie_to_chat(update.get_bot(), chat_id, selfie_caption)
@@ -523,7 +556,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(1)
         scene_url = generate_scene_url(scene)
         if scene_url:
-            caption = await call_ai(f"学长让我给他看{scene}的照片，用一句话回应，不超过15个字")
+            caption = await _get_call_ai()(f"学长让我给他看{scene}的照片，用一句话回应，不超过15个字")
             await update.message.reply_photo(photo=scene_url, caption=caption)
             append_bot_message(chat_id, f"[发送了一张{scene}的照片] {caption}")
     elif want_show:
@@ -532,7 +565,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         random_scene = random.choice(list(SCENE_PROMPTS.keys()))
         scene_url = generate_scene_url(random_scene)
         if scene_url:
-            caption = await call_ai(f"学长让我给他看{random_scene}的照片，用一句话回应，不超过15个字")
+            caption = await _get_call_ai()(f"学长让我给他看{random_scene}的照片，用一句话回应，不超过15个字")
             await update.message.reply_photo(photo=scene_url, caption=caption)
             append_bot_message(chat_id, f"[发送了一张{random_scene}的照片] {caption}")
     elif want_sticker and sticker_mood:
@@ -540,7 +573,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(1)
         sticker_url = generate_sticker_url(sticker_mood)
         if sticker_url:
-            caption = await call_ai(f"用一句话配合'{sticker_mood}'的表情，不超过10个字")
+            caption = await _get_call_ai()(f"用一句话配合'{sticker_mood}'的表情，不超过10个字")
             await update.message.reply_photo(photo=sticker_url, caption=caption)
             append_bot_message(chat_id, f"[发送了一个{sticker_mood}的表情包] {caption}")
     elif want_music and song_name:
@@ -803,7 +836,7 @@ async def novel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if result and len(result) > 10:
             # 让 AI 用车如云的口吻转述
             prompt = f"用户问：{query}\n\n小说中的相关内容：\n{result}\n\n请用车如云的口吻（极简、省略号、外冷内热）简短回答，不超过50个字。"
-            response = await call_ai(prompt)
+            response = await _get_call_ai()(prompt)
             await update.message.reply_text(response)
         else:
             await update.message.reply_text("...小说里好像没有这个。")

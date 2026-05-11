@@ -131,6 +131,9 @@ async def web_search(query: str, max_results: int = 3) -> str:
         return ""
 
 __all__ = [
+    "auto_delete_messages",
+    "call_gemini",
+    "web_search",
     "quota_cmd",
     "quota_reset_cmd",
     "learned_cmd",
