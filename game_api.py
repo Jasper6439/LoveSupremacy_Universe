@@ -62,9 +62,8 @@ async def api_get_farm(request):
         # 获取农场数据
         farm = db.get_farm(user_id)
         if not farm:
-            # 创建农场
-            db.get_or_create_user(user_id, f"user_{user_id}")
-            farm = db.get_farm(user_id)
+            # 自动创建农场
+            farm = db.get_or_create_farm(user_id)
         
         # 更新作物生长状态
         db.update_crop_growth(farm['id'])
