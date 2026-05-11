@@ -26,18 +26,22 @@ async def authenticate_request(request) -> tuple:
     """统一认证逻辑：session token > api token > config fallback
     
     Returns:
-        (user_id, error_response) - 成功时 user_id 有效，失败时 error_response 有效
+        (internal_user_id, error_response) - 成功时返回数据库内部 users.id，失败时 error_response 有效
     """
     from bot import validate_session_token, validate_api_token, load_config
     
-    user_id = validate_session_token(request)
-    if not user_id:
-        user_id = validate_api_token(request)
-    if not user_id:
-        user_id = load_config().get('your_chat_id', 0)
-    if not user_id:
+    telegram_id = validate_session_token(request)
+    if not telegram_id:
+        telegram_id = validate_api_token(request)
+    if not telegram_id:
+        telegram_id = load_config().get('your_chat_id', 0)
+    if not telegram_id:
         return 0, web.json_response({'success': False, 'error': '未登录'})
-    return user_id, None
+    
+    # 将 telegram_id 转换为数据库内部 users.id
+    db = get_db()
+    internal_id = db.get_or_create_user(telegram_id, f"user_{telegram_id}")
+    return internal_id, None
 
 
 # ============================================================
@@ -47,16 +51,11 @@ async def authenticate_request(request) -> tuple:
 async def api_get_farm(request):
     """获取农场数据"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         db = get_db()
         
         # 获取农场数据
@@ -94,14 +93,11 @@ async def api_get_farm(request):
 async def api_plant_crop(request):
     """种植作物"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         x = data.get('x', 0)
         y = data.get('y', 0)
@@ -146,14 +142,11 @@ async def api_plant_crop(request):
 async def api_harvest_crop(request):
     """收获作物"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         x = data.get('x', 0)
         y = data.get('y', 0)
@@ -200,14 +193,11 @@ async def api_harvest_crop(request):
 async def api_sell_crop(request):
     """出售作物"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         crop_type = data.get('crop_type', '')
         quantity = data.get('quantity', 1)
@@ -251,14 +241,11 @@ async def api_sell_crop(request):
 async def api_buy_seed(request):
     """购买种子"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         crop_type = data.get('crop_type', 'tomato')
         quantity = data.get('quantity', 1)
@@ -311,13 +298,9 @@ async def api_buy_seed(request):
 async def api_get_character_location(request):
     """获取角色当前位置"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         # 获取当前角色
         character = get_current_character()
@@ -347,13 +330,9 @@ async def api_get_character_location(request):
 async def api_get_relationship(request):
     """获取玩家与角色的关系"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         if not user_id:
             return web.json_response({'success': False, 'error': '未登录'})
@@ -384,16 +363,11 @@ async def api_get_relationship(request):
 async def api_game_chat(request):
     """游戏内与角色对话 (v0.2 - 使用 ChatEngine)"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         message = data.get('message', '')
         character_id = data.get('character_id', 'chayewoon')
@@ -447,14 +421,10 @@ async def api_game_chat(request):
 async def api_chat_history(request):
     """获取对话历史 (v0.2)"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         from database import get_db
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
         
         character_id = request.query.get('character_id', 'chayewoon')
         limit = int(request.query.get('limit', 50))
@@ -484,13 +454,9 @@ async def api_awakening_events(request):
 async def api_gift_character(request):
     """给角色送礼物"""
     try:
-        from bot import validate_session_token, validate_api_token, get_current_character, call_ai
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         data = await request.json()
         item_type = data.get('item_type', 'crop')
@@ -579,13 +545,9 @@ async def api_gift_character(request):
 async def api_check_heart_events(request):
     """检查可触发的心级事件"""
     try:
-        from bot import validate_session_token, validate_api_token, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         character = get_current_character()
         character_id = character.config.id if character else 'chayewoon'
@@ -629,14 +591,11 @@ async def api_check_heart_events(request):
 async def api_trigger_heart_event(request):
     """触发心级事件"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         event_id = data.get('event_id', '')
         
@@ -699,15 +658,9 @@ async def api_trigger_heart_event(request):
 async def api_get_recipes(request):
     """获取所有料理配方"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
-
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         db = get_db()
         recipes = db.get_recipes()
@@ -733,15 +686,9 @@ async def api_get_recipes(request):
 async def api_cook(request):
     """烹饪料理"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
-
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         data = await request.json()
         recipe_id = data.get('recipe_id', '')
@@ -779,15 +726,9 @@ async def api_cook(request):
 async def api_daily_reward(request):
     """领取每日登录奖励"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
-
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         db = get_db()
         # 确保用户存在
@@ -804,15 +745,9 @@ async def api_daily_reward(request):
 async def api_check_daily(request):
     """检查今日是否已签到"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
-
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         db = get_db()
         # 确保用户存在
@@ -836,14 +771,11 @@ async def api_check_daily(request):
 async def api_get_game_events(request):
     """获取未同步的游戏事件"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         since = request.query.get('since', None)
         
         db = get_db()
@@ -862,14 +794,11 @@ async def api_get_game_events(request):
 async def api_mark_synced(request):
     """标记事件已同步"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         event_ids = data.get('event_ids', [])
         
@@ -890,16 +819,11 @@ async def api_mark_synced(request):
 async def api_get_full_game_state(request):
     """一次性获取全部游戏状态"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config, get_current_character
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         db = get_db()
         
         # 确保用户存在并获取农场
@@ -1040,14 +964,11 @@ async def api_get_full_game_state(request):
 async def api_water_crop(request):
     """浇水"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         x = data.get('x', 0)
         y = data.get('y', 0)
@@ -1073,14 +994,11 @@ async def api_water_crop(request):
 async def api_move_player(request):
     """记录玩家位置"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         x = data.get('x', 0)
         y = data.get('y', 0)
@@ -1099,14 +1017,11 @@ async def api_move_player(request):
 async def api_sync_actions(request):
     """增量同步操作"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         actions = data.get('actions', [])
         
@@ -1156,13 +1071,9 @@ async def api_sync_actions(request):
 async def api_get_emotion_values(request):
     """获取情感值 API"""
     try:
-        from bot import validate_session_token, validate_api_token, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         character = get_current_character()
         character_id = character.config.id if character else 'chayewoon'
@@ -1184,13 +1095,9 @@ async def api_get_emotion_values(request):
 async def api_check_awakening(request):
     """检查觉醒条件 API"""
     try:
-        from bot import validate_session_token, validate_api_token, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         character = get_current_character()
         character_id = character.config.id if character else 'chayewoon'
@@ -1215,13 +1122,9 @@ async def api_check_awakening(request):
 async def api_trigger_awakening(request):
     """触发觉醒 API"""
     try:
-        from bot import validate_session_token, validate_api_token, get_current_character
-        
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
         data = await request.json()
         event_name = data.get('event_name', 'default_awakening')
@@ -1252,14 +1155,11 @@ async def api_trigger_awakening(request):
 async def api_switch_world_layer(request):
     """切换世界层级 API"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         layer = data.get('layer', 'normal')
         
@@ -1288,14 +1188,11 @@ async def api_switch_world_layer(request):
 async def api_get_world_state(request):
     """获取世界状态 API"""
     try:
-        from bot import validate_session_token, validate_api_token
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         db = get_db()
         world_state = db.get_world_layer_state(user_id)
         
@@ -1399,16 +1296,11 @@ def _generate_image_url(prompt: str, width: int = 768, height: int = 1024) -> st
 async def api_generate_selfie(request):
     """生成 AI 自拍 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         prompt = random.choice(SELFIE_PROMPTS)
         url = _generate_image_url(prompt, 768, 1024)
         
@@ -1428,16 +1320,11 @@ async def api_generate_selfie(request):
 async def api_generate_sticker(request):
     """生成表情包 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         mood = data.get('mood', '默认')
         
@@ -1465,16 +1352,11 @@ async def api_generate_sticker(request):
 async def api_generate_scene(request):
     """生成场景图 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         scene = data.get('scene', '天台')
         
@@ -1502,16 +1384,11 @@ async def api_generate_scene(request):
 async def api_tts(request):
     """文本转语音 API"""
     try:
-        from bot import validate_session_token, validate_api_token, load_config
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
         
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            return web.json_response({'success': False, 'error': '未登录'})
-        
+
         data = await request.json()
         text = data.get('text', '')
         
