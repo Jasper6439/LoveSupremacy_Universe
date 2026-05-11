@@ -2630,10 +2630,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass  # 静默记录，不干扰对话
     
     # [Skill: 情绪识别] 检测用户情绪
-    emotion = detect_emotion(user_text)
+    emotion_text = detect_emotion(user_text)
     
     # [Skill: self-improving] 更新用户最后活跃时间（用于主动行为）
-    emotion._last_user_active_time[chat_id] = datetime.now(get_default_tz())
+    import emotion as emotion_module
+    emotion_module._last_user_active_time[chat_id] = datetime.now(get_default_tz())
     
     # [Skill: self-improving] 检测用户纠正，从上一条 bot 回复中学习
     history = get_history(chat_id)

@@ -235,7 +235,9 @@ def _strip_thinking_content(content: str) -> str:
         '当用户表达', '听起来像是', '车如云看到', '可能会有点',
         '直接沉默', '不超过', '结合以上', '考虑到', '分析',
         '我应该', '让我想想', 'Let me think', 'I need to',
-        '我需要按', '按照车如云', '按照.*性格',
+        '我需要按', '按照车如云', '按照', '好的，我', '好的，现在',
+        '好的，用户', '根据之前的示例', '首先，回复', '当学长说',
+        '学长说', '车如云可能', '车如云会', '参考之前的示例',
     ]
     
     has_thinking = any(kw in content for kw in thinking_keywords)
@@ -276,5 +278,40 @@ def _strip_thinking_content(content: str) -> str:
                     q = q.strip()
                     if 2 <= len(q) <= 50 and (q.startswith('...') or '(' in q or '。' in q or '…' in q or '学长' in q):
                         return q
+        
+        # 策略E: 找 "回复" / "说" / "可能" 后面跟着的示例回复
+        reply_patterns = [
+            r'回复[：:]\s*[""]?(.+?)[""]?$',
+            r'可能(?:会)?说[：:]\s*[""]?(.+?)[""]?$',
+            r'比如[：:]\s*[""]?(.+?)[""]?$',
+            r'例如[：:]\s*[""]?(.+?)[""]?$',
+            r'最合适(?:的回复)?[：:]\s*[""]?(.+?)[""]?$',
+        ]
+        for pattern in reply_patterns:
+            matches = re.findall(pattern, content, re.MULTILINE)
+            for match in reversed(matches):
+                match = match.strip().strip('"').strip('"').strip()
+                if 2 <= len(match) <= 60 and ('学长' in match or match.startswith(('...', '（', '…', '('))):
+                    return match
+        
+        # 策略F: 如果内容非常长（>200字符），从最后往前找第一个角色回复风格的段落
+        if len(content) > 200:
+            lines = content.split('\n')
+            candidate = []
+            for line in reversed(lines):
+                stripped = line.strip()
+                if not stripped:
+                    if candidate:
+                        break
+                    continue
+                # 角色回复通常以 ...、（、或简短对话开头
+                if stripped.startswith(('...', '（', '…', '学长', '嗯')):
+                    candidate.insert(0, stripped)
+                    if len('\n'.join(candidate)) > 60:
+                        break
+            if candidate:
+                result = '\n'.join(candidate)
+                if len(result) <= 80:
+                    return result
     
     return content
