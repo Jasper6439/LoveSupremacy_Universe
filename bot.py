@@ -615,7 +615,15 @@ async def post_init(app: Application):
     logging.info("Bot 命令菜单已设置")
 
     asyncio.create_task(scheduler(app))
-    asyncio.create_task(web_server(app))  # 传递 bot 实例用于 webhook 通知
+    
+    # Web 服务器（带错误捕获，避免静默崩溃）
+    async def _safe_web_server():
+        try:
+            await web_server(app)
+        except Exception as e:
+            logging.error(f"[Web Server] 启动失败: {e}", exc_info=True)
+    asyncio.create_task(_safe_web_server())
+    
     # [Skill: proactive-agent] 启动主动行为后台任务
     asyncio.create_task(check_proactive_actions(app))
     # [Skill: auto-updater] 启动时检查更新
