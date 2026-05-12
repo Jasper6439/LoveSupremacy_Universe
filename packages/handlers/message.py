@@ -29,8 +29,6 @@ def _get_call_ai():
     return call_ai
 from characters import get_current_character
 from music_skill import music_skill
-from novel_knowledge import query_novel
-from qdrant_memory import search_memories
 from packages.commands.extra import _pending_analyze_img, _pending_ocr
 from packages.commands.import_cmds import (
     pending_chat_imports,
@@ -56,8 +54,6 @@ __all__ = [
     "send_voice_message",
     "voice_cmd",
     "music_cmd",
-    "novel_cmd",
-    "qdrant_memory_cmd",
     "tts_voice_toggle",
     "tts_status_cmd",
     "send_smart_reply",
@@ -811,73 +807,6 @@ async def music_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"[Music] 错误: {e}")
         await update.message.reply_text("...（搜索失败）网络问题。")
-
-# [Skill: LightRAG] 小说知识查询
-from novel_knowledge import query_novel
-
-async def novel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """查询小说知识库"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-    
-    # 获取查询内容（去掉 /novel 命令）
-    query = update.message.text.replace('/novel', '').strip()
-    if not query:
-        await update.message.reply_text("...想问小说里的什么？（把问题发给我）")
-        return
-    
-    await update.message.chat.send_action("typing")
-    
-    try:
-        # 查询知识库
-        result = await query_novel(query)
-        
-        # 车如云风格的回应
-        if result and len(result) > 10:
-            # 让 AI 用车如云的口吻转述
-            prompt = f"用户问：{query}\n\n小说中的相关内容：\n{result}\n\n请用车如云的口吻（极简、省略号、外冷内热）简短回答，不超过50个字。"
-            response = await _get_call_ai()(prompt)
-            await update.message.reply_text(response)
-        else:
-            await update.message.reply_text("...小说里好像没有这个。")
-            
-    except Exception as e:
-        logging.error(f"[Novel] 查询失败: {e}")
-        await update.message.reply_text("...（查询失败）知识库还没准备好。")
-
-# [Skill: ChromaDB] 记忆搜索
-from qdrant_memory import search_memories
-
-async def qdrant_memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """搜索Qdrant语义记忆"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-    
-    # 获取查询内容
-    query = update.message.text.replace('/memory', '').replace('/记忆', '').strip()
-    if not query:
-        await update.message.reply_text("...想找什么记忆？（比如：/memory 我们聊过跑步吗）")
-        return
-    
-    try:
-        # 搜索记忆
-        memories = search_memories(query, chat_id, n_results=3)
-        
-        if memories:
-            # 找到相关记忆
-            response = "...找到了。\n\n"
-            for i, mem in enumerate(memories[:3]):
-                content = mem.get('content', '')[:100]
-                response += f"• {content}...\n"
-            await update.message.reply_text(response)
-        else:
-            await update.message.reply_text("...不记得有这个。")
-            
-    except Exception as e:
-        logging.error(f"[Memory] 搜索失败: {e}")
-        await update.message.reply_text("...（搜索失败）记忆系统出问题了。")
 
 # [Skill: TTS] 语音模式切换
 async def tts_voice_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
