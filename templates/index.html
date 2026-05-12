@@ -4,34 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>车如云 - 恋爱至上主义区域</title>
+    <link rel="stylesheet" href="/static/miniapp/css/variables.css">
     <style>
         /* ====== 设计令牌 ====== */
         :root {
-            --purple: #660874;
-            --purple-rgb: 102, 8, 116;
-            --purple-light: #8E24AA;
-            --blue: #2a5290;
-            --blue-rgb: 42, 82, 144;
-            --blue-light: #5B8BD4;
-            --bg: #E8E0F0;
-            --card: #F3EDF8;
-            --card-alt: #EDE5F5;
-            --text-primary: #2D1B3D;
-            --text-secondary: #6B5A7D;
-            --text-muted: #9B8AAD;
+            --purple: #7B3FA0;
+            --purple-rgb: 123, 63, 160;
+            --purple-light: #9B5FC0;
+            --bg: #F5F5F7;
+            --card: #FFFFFF;
+            --card-alt: #F9F9FB;
+            --text-primary: #1D1D1F;
+            --text-secondary: #6E6E73;
+            --text-muted: #AEAEB2;
             --white: #FFFFFF;
-            --danger: #E74C3C;
-            --success: #27AE60;
-            --warning: #F39C12;
+            --danger: #FF3B30;
+            --success: #34C759;
+            --warning: #FF9500;
 
-            /* Claymorphism 阴影 */
-            --clay-outset: 8px 8px 16px rgba(102,8,116,0.15), -8px -8px 16px rgba(255,255,255,0.8);
-            --clay-outset-sm: 4px 4px 8px rgba(102,8,116,0.12), -4px -4px 8px rgba(255,255,255,0.7);
-            --clay-outset-lg: 12px 12px 24px rgba(102,8,116,0.18), -12px -12px 24px rgba(255,255,255,0.85);
-            --clay-inset: inset 4px 4px 8px rgba(102,8,116,0.1), inset -4px -4px 8px rgba(255,255,255,0.7);
-            --clay-inset-sm: inset 2px 2px 4px rgba(102,8,116,0.08), inset -2px -2px 4px rgba(255,255,255,0.6);
-            --clay-gradient: linear-gradient(145deg, #F3EDF8, #E8E0F0);
-            --clay-gradient-alt: linear-gradient(145deg, #EDE5F5, #E0D8EC);
+            /* Apple 风格阴影 */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 2px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --shadow-card: 0 2px 12px rgba(0,0,0,0.08);
+            --shadow-float: 0 8px 24px rgba(0,0,0,0.12);
+
+            /* Apple 风格圆角 */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+
+            /* Apple 风格过渡 */
+            --ease-default: cubic-bezier(0.25, 0.1, 0.25, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ====== 暗色模式 ====== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --purple: #BF6FE0;
+                --purple-rgb: 191, 111, 224;
+                --purple-light: #D49AEF;
+                --bg: #000000;
+                --card: #1C1C1E;
+                --card-alt: #2C2C2E;
+                --text-primary: #F5F5F7;
+                --text-secondary: #98989D;
+                --text-muted: #636366;
+                --white: #FFFFFF;
+                --danger: #FF453A;
+                --success: #30D158;
+                --warning: #FF9F0A;
+
+                --shadow-sm: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.3);
+                --shadow-md: 0 2px 12px rgba(0,0,0,0.3);
+                --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+                --shadow-card: 0 2px 12px rgba(0,0,0,0.3);
+                --shadow-float: 0 8px 24px rgba(0,0,0,0.4);
+            }
         }
 
         /* ====== 基础重置 ====== */
@@ -42,11 +73,13 @@
         }
 
         body {
-            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
             background: var(--bg);
             min-height: 100vh;
             color: var(--text-primary);
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         /* ====== 背景装饰 ====== */
@@ -57,7 +90,7 @@
             right: -120px;
             width: 400px;
             height: 400px;
-            background: radial-gradient(circle, rgba(102,8,116,0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(123,63,160,0.06) 0%, transparent 70%);
             border-radius: 50%;
             pointer-events: none;
             z-index: 0;
@@ -70,7 +103,7 @@
             left: -100px;
             width: 350px;
             height: 350px;
-            background: radial-gradient(circle, rgba(42,82,144,0.06) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(123,63,160,0.04) 0%, transparent 70%);
             border-radius: 50%;
             pointer-events: none;
             z-index: 0;
@@ -78,64 +111,90 @@
 
         /* ====== 导航栏 ====== */
         .navbar {
-            background: var(--clay-gradient);
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
             padding: 16px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: var(--clay-outset);
-            border-radius: 0 0 24px 24px;
+            box-shadow: 0 0.5px 0 rgba(0,0,0,0.08);
+            border-radius: 0;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .navbar {
+                background: rgba(28,28,30,0.72);
+                box-shadow: 0 0.5px 0 rgba(255,255,255,0.08);
+            }
+        }
+
         .navbar h1 {
             font-size: 1.4rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .navbar h1 .dot {
-            -webkit-text-fill-color: var(--blue-light);
+            -webkit-text-fill-color: var(--purple-light);
         }
 
         .nav-tabs {
             display: flex;
-            gap: 10px;
+            gap: 6px;
+            background: rgba(123,63,160,0.06);
+            border-radius: var(--radius-md);
+            padding: 3px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .nav-tabs {
+                background: rgba(191,111,224,0.12);
+            }
         }
 
         .nav-tab {
-            padding: 10px 22px;
-            background: var(--clay-gradient);
+            padding: 8px 22px;
+            background: transparent;
             border: none;
             color: var(--text-secondary);
-            border-radius: 16px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 0.95rem;
             font-weight: 500;
-            box-shadow: var(--clay-outset-sm);
-            transition: all 0.25s ease;
+            box-shadow: none;
+            transition: all 0.3s var(--ease-default);
             user-select: none;
         }
 
         .nav-tab:hover {
             color: var(--purple);
-            box-shadow: var(--clay-inset-sm);
+            background: rgba(123,63,160,0.06);
         }
 
         .nav-tab.active {
-            background: linear-gradient(135deg, var(--purple), var(--blue));
-            color: var(--white);
-            box-shadow: 4px 4px 10px rgba(102,8,116,0.3), -2px -2px 6px rgba(255,255,255,0.5);
+            background: var(--white);
+            color: var(--purple);
+            box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .nav-tab.active {
+                background: var(--card);
+                color: var(--purple);
+            }
         }
 
         .nav-tab.active:hover {
-            box-shadow: 2px 2px 6px rgba(102,8,116,0.3), -1px -1px 4px rgba(255,255,255,0.5);
+            box-shadow: var(--shadow-sm);
         }
 
         /* ====== 主容器 ====== */
@@ -157,16 +216,16 @@
         }
 
         .chat-box {
-            background: var(--clay-gradient);
-            border-radius: 24px;
-            box-shadow: var(--clay-outset-lg);
+            background: var(--card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-card);
             overflow: hidden;
             max-width: 800px;
             margin: 0 auto;
         }
 
         .chat-header {
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
             padding: 20px 24px;
             color: var(--white);
             display: flex;
@@ -178,12 +237,12 @@
             width: 52px;
             height: 52px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--purple-light), var(--blue-light));
+            background: rgba(255,255,255,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             flex-shrink: 0;
         }
 
@@ -201,7 +260,7 @@
             height: 500px;
             overflow-y: auto;
             padding: 20px;
-            background: linear-gradient(180deg, var(--card) 0%, var(--bg) 100%);
+            background: var(--bg);
         }
 
         .chat-messages::-webkit-scrollbar {
@@ -213,8 +272,12 @@
         }
 
         .chat-messages::-webkit-scrollbar-thumb {
-            background: rgba(102,8,116,0.2);
+            background: rgba(123,63,160,0.15);
             border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(123,63,160,0.25);
         }
 
         .message {
@@ -233,25 +296,26 @@
 
         .message-bubble {
             max-width: 70%;
-            padding: 14px 20px;
+            padding: 12px 18px;
             border-radius: 20px;
             font-size: 0.95rem;
             line-height: 1.6;
             word-wrap: break-word;
+            transition: transform 0.2s var(--ease-default);
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
             color: var(--white);
             border-bottom-right-radius: 6px;
-            box-shadow: 4px 4px 12px rgba(102,8,116,0.2);
+            box-shadow: 0 2px 8px rgba(123,63,160,0.2);
         }
 
         .message.bot .message-bubble {
-            background: var(--clay-gradient);
+            background: var(--card);
             color: var(--text-primary);
             border-bottom-left-radius: 6px;
-            box-shadow: var(--clay-outset-sm);
+            box-shadow: var(--shadow-sm);
         }
 
         .message-time {
@@ -263,23 +327,30 @@
 
         .chat-input-area {
             padding: 16px 20px;
-            background: var(--clay-gradient);
+            background: var(--card);
             display: flex;
             gap: 12px;
-            border-top: 1px solid rgba(102,8,116,0.06);
+            border-top: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .chat-input-area {
+                border-top: 1px solid rgba(255,255,255,0.06);
+            }
         }
 
         .chat-input {
             flex: 1;
-            padding: 14px 22px;
-            background: var(--clay-gradient-alt);
+            padding: 12px 20px;
+            background: var(--bg);
             border: none;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             font-size: 1rem;
             color: var(--text-primary);
             outline: none;
-            box-shadow: var(--clay-inset);
-            transition: box-shadow 0.3s;
+            box-shadow: none;
+            transition: all 0.3s var(--ease-default);
+            font-family: inherit;
         }
 
         .chat-input::placeholder {
@@ -287,29 +358,38 @@
         }
 
         .chat-input:focus {
-            box-shadow: var(--clay-inset), 0 0 0 2px rgba(102,8,116,0.15);
+            box-shadow: 0 0 0 3px rgba(123,63,160,0.15);
+            background: var(--white);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .chat-input:focus {
+                background: var(--card-alt);
+            }
         }
 
         .send-btn {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            padding: 12px 28px;
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
             border: none;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             color: var(--white);
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 4px 4px 10px rgba(102,8,116,0.25), -2px -2px 6px rgba(255,255,255,0.4);
-            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(123,63,160,0.25);
+            transition: all 0.25s var(--ease-default);
             user-select: none;
+            font-family: inherit;
         }
 
         .send-btn:hover {
-            box-shadow: 6px 6px 14px rgba(102,8,116,0.3), -3px -3px 8px rgba(255,255,255,0.5);
+            box-shadow: 0 4px 16px rgba(123,63,160,0.35);
+            transform: translateY(-1px);
         }
 
         .send-btn:active {
-            box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2), inset -2px -2px 4px rgba(255,255,255,0.1);
+            box-shadow: 0 1px 4px rgba(123,63,160,0.2);
             transform: scale(0.97);
         }
 
@@ -323,7 +403,7 @@
             display: inline-block;
             width: 10px;
             height: 10px;
-            background: linear-gradient(135deg, var(--purple-light), var(--blue-light));
+            background: var(--purple-light);
             border-radius: 50%;
             margin: 0 3px;
             animation: typing 1.4s infinite;
@@ -354,21 +434,21 @@
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
+            gap: 16px;
             margin-bottom: 24px;
         }
 
         .stat-card {
-            background: var(--clay-gradient);
-            border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: var(--clay-outset);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+            transition: transform 0.3s var(--ease-default), box-shadow 0.3s var(--ease-default);
         }
 
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--clay-outset-lg);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-float);
         }
 
         .stat-card h3 {
@@ -376,14 +456,14 @@
             color: var(--text-muted);
             margin-bottom: 12px;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             font-weight: 600;
         }
 
         .stat-card .value {
             font-size: 2.4rem;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -398,7 +478,7 @@
 
         /* 亲密度卡片 */
         .intimacy-card {
-            background: linear-gradient(135deg, var(--purple), var(--blue)) !important;
+            background: linear-gradient(135deg, var(--purple), var(--purple-light)) !important;
             color: var(--white);
         }
 
@@ -418,27 +498,27 @@
         }
 
         .intimacy-bar {
-            height: 10px;
+            height: 8px;
             background: rgba(255,255,255,0.2);
-            border-radius: 5px;
+            border-radius: 4px;
             margin-top: 16px;
             overflow: hidden;
-            box-shadow: var(--clay-inset-sm);
+            box-shadow: none;
         }
 
         .intimacy-fill {
             height: 100%;
             background: linear-gradient(90deg, #FFD700, #FFA500);
-            border-radius: 5px;
-            transition: width 1s ease;
+            border-radius: 4px;
+            transition: width 1s var(--ease-default);
         }
 
         /* 情绪分布 */
         .emotion-chart {
-            background: var(--clay-gradient);
-            border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: var(--clay-outset);
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
             margin-bottom: 24px;
         }
 
@@ -448,7 +528,13 @@
             color: var(--text-primary);
             margin-bottom: 20px;
             padding-bottom: 12px;
-            border-bottom: 2px solid rgba(102,8,116,0.08);
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .emotion-chart h3 {
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+            }
         }
 
         .emotion-bar {
@@ -471,18 +557,18 @@
 
         .emotion-progress {
             flex: 1;
-            height: 24px;
-            background: var(--clay-gradient-alt);
-            border-radius: 12px;
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
             overflow: hidden;
             margin: 0 14px;
-            box-shadow: var(--clay-inset-sm);
+            box-shadow: none;
         }
 
         .emotion-fill {
             height: 100%;
-            border-radius: 12px;
-            transition: width 1s ease;
+            border-radius: 4px;
+            transition: width 1s var(--ease-default);
         }
 
         .emotion-count {
@@ -495,10 +581,10 @@
 
         /* 分析报告 */
         .analysis-section {
-            background: var(--clay-gradient);
-            border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: var(--clay-outset);
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
             margin-bottom: 24px;
         }
 
@@ -508,7 +594,13 @@
             color: var(--text-primary);
             margin-bottom: 20px;
             padding-bottom: 12px;
-            border-bottom: 2px solid rgba(102,8,116,0.08);
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .analysis-section h3 {
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+            }
         }
 
         .analysis-item {
@@ -516,7 +608,13 @@
             justify-content: space-between;
             align-items: center;
             padding: 14px 0;
-            border-bottom: 1px solid rgba(102,8,116,0.06);
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .analysis-item {
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+            }
         }
 
         .analysis-item:last-child {
@@ -536,11 +634,17 @@
 
         /* 建议卡片 */
         .advice-card {
-            background: linear-gradient(145deg, rgba(142,36,170,0.08), rgba(91,139,212,0.08));
-            border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: var(--clay-outset);
+            background: rgba(123,63,160,0.04);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
             margin-bottom: 24px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .advice-card {
+                background: rgba(191,111,224,0.08);
+            }
         }
 
         .advice-card h3 {
@@ -549,12 +653,18 @@
             color: var(--text-primary);
             margin-bottom: 18px;
             padding-bottom: 12px;
-            border-bottom: 2px solid rgba(102,8,116,0.08);
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .advice-card h3 {
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+            }
         }
 
         .advice-item {
             padding: 12px 0;
-            border-bottom: 1px dashed rgba(102,8,116,0.1);
+            border-bottom: 1px dashed rgba(123,63,160,0.1);
             color: var(--text-secondary);
             line-height: 1.6;
             font-size: 0.95rem;
@@ -573,24 +683,24 @@
         }
 
         .footer a {
-            color: var(--purple-light);
+            color: var(--purple);
             text-decoration: none;
             font-weight: 500;
-            transition: color 0.2s;
+            transition: color 0.25s var(--ease-default);
         }
 
         .footer a:hover {
-            color: var(--purple);
+            color: var(--purple-light);
             text-decoration: underline;
         }
 
         .footer .divider {
             width: 60px;
             height: 3px;
-            background: linear-gradient(90deg, var(--purple-light), var(--blue-light));
+            background: linear-gradient(90deg, var(--purple-light), var(--purple));
             border-radius: 2px;
             margin: 12px auto;
-            opacity: 0.4;
+            opacity: 0.3;
         }
 
         /* ====== 响应式 ====== */
@@ -599,7 +709,6 @@
                 flex-direction: column;
                 gap: 14px;
                 padding: 14px 16px;
-                border-radius: 0 0 20px 20px;
             }
 
             .navbar h1 {
@@ -650,12 +759,12 @@
 
             .dashboard-grid {
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 14px;
+                gap: 12px;
             }
 
             .stat-card {
                 padding: 20px 16px;
-                border-radius: 20px;
+                border-radius: var(--radius-md);
             }
 
             .stat-card .value {
@@ -666,7 +775,7 @@
             .analysis-section,
             .advice-card {
                 padding: 20px 16px;
-                border-radius: 20px;
+                border-radius: var(--radius-md);
             }
 
             .emotion-label {
@@ -833,7 +942,7 @@
         // 消息同步相关变量
         let lastMessageCount = 0;
         let syncInterval = null;
-        
+
         async function sendMessage() {
             const input = document.getElementById('message-input');
             const message = input.value.trim();
@@ -864,7 +973,7 @@
                 if (replyText) {
                     addMessage(replyText, 'bot');
                 }
-                
+
                 // 更新消息计数
                 lastMessageCount += 2;
             } catch (error) {
@@ -873,13 +982,13 @@
                 addMessage('...（沉默了一会儿）连接出了点问题。', 'bot');
             }
         }
-        
+
         // 从服务器同步新消息（Telegram -> Web）
         async function syncMessages() {
             try {
                 const response = await fetch('/api/messages/sync?since=' + lastMessageCount);
                 const data = await response.json();
-                
+
                 if (data.messages && data.messages.length > 0) {
                     data.messages.forEach(msg => {
                         addMessage(msg.content, msg.role === 'user' ? 'user' : 'bot');
@@ -890,13 +999,13 @@
                 console.log('消息同步失败:', error);
             }
         }
-        
+
         // 加载历史消息
         async function loadChatHistory() {
             try {
                 const response = await fetch('/api/messages/history?limit=50');
                 const data = await response.json();
-                
+
                 if (data.messages && data.messages.length > 0) {
                     const container = document.getElementById('chat-messages');
                     container.innerHTML = '';
@@ -909,13 +1018,13 @@
                 console.log('加载历史消息失败:', error);
             }
         }
-        
+
         // 开始消息同步（每3秒检查一次）
         function startMessageSync() {
             if (syncInterval) clearInterval(syncInterval);
             syncInterval = setInterval(syncMessages, 3000);
         }
-        
+
         // 停止消息同步
         function stopMessageSync() {
             if (syncInterval) {
