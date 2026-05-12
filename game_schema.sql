@@ -131,7 +131,8 @@ CREATE TABLE IF NOT EXISTS crop_types (
     seasons TEXT,                     -- JSON array: ["spring", "summer"]
     gift_preference TEXT,             -- 角色喜好: chayewoon:love, chayewoon:like
     emoji TEXT DEFAULT '🌱',
-    description TEXT
+    description TEXT,
+    level_required INTEGER DEFAULT 1    -- 种植所需农场等级
 );
 
 -- 玩家背包表
@@ -270,6 +271,27 @@ INSERT OR IGNORE INTO crop_types (id, name, name_ko, growth_time, sell_price, se
 ('potato', '土豆', '감자', 120, 30, 10, '["spring", "autumn"]', '🥔', '朴实的土豆'),
 ('carrot', '胡萝卜', '당근', 150, 35, 15, '["spring", "autumn"]', '🥕', '脆甜的胡萝卜'),
 ('cabbage', '白菜', '배추', 180, 40, 15, '["autumn", "winter"]', '🥬', '新鲜的白菜');
+
+-- v1.4.10 新增作物 - 进阶系统
+-- 快速作物 (1-30分钟) - 新手友好
+('sunflower', '向日葵', '해바라기', 5, 15, 5, '["spring", "summer"]', '🌻', '阳光的向日葵', 1),
+('wheat', '小麦', '밀', 10, 20, 8, '["autumn"]', '🌾', '金黄的小麦', 1),
+('radish', '萝卜', '무', 20, 25, 10, '["spring", "autumn"]', '🫚', '脆甜的萝卜', 1),
+
+-- 中等作物 (1-4小时)
+('rice', '水稻', '쌀', 60, 60, 25, '["summer"]', '🍚', '饱满的水稻', 2),
+('onion', '洋葱', '양파', 90, 70, 30, '["spring", "winter"]', '🧅', '辛辣的洋葱', 2),
+('eggplant', '茄子', '가지', 120, 90, 40, '["summer"]', '🍆', '紫色的茄子', 3),
+('pepper', '辣椒', '고추', 150, 100, 45, '["summer", "autumn"]', '🌶️', '火辣的辣椒', 3),
+
+-- 长时间作物 (4-12小时)
+('broccoli', '西兰花', '브로콜리', 240, 150, 60, '["autumn", "winter"]', '🥦', '营养的西兰花', 4),
+('cauliflower', '花椰菜', '콜리플라워', 360, 180, 70, '["winter"]', '🥬', '洁白的花椰菜', 5),
+('artichoke', '朝鲜蓟', '아티초크', 480, 250, 100, '["spring"]', '🫒', '珍贵的朝鲜蓟', 6),
+
+-- 特殊作物 (12-24小时) - 高回报
+('ginseng', '人参', '인삼', 720, 500, 200, '["autumn"]', '🌿', '灵验的人参', 7),
+('golden_strawberry', '金草莓', '황금딸기', 1440, 1000, 400, '["summer"]', '🍓', '传说中的金草莓', 8);
 
 -- 料理类型定义表
 CREATE TABLE IF NOT EXISTS recipe_types (

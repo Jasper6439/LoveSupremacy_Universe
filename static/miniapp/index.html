@@ -320,6 +320,7 @@
             <span id="scene-label" style="font-size: 0.7rem; color: var(--text-muted); margin-left: 8px;">🌾 阳光农场</span>
             <button class="btn-small" onclick="refreshFarm()" style="margin-left: auto; padding: 4px 12px; font-size: 0.8rem;">刷新</button>
         </div>
+        <button class="btn-bulk-harvest" id="btn-bulk-harvest" style="display:none;" onclick="FarmPage.bulkHarvest()">🌾 一键收获</button>
         <div class="farm-grid-wrapper" id="farm-scene">
             <div id="farm-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; position: relative; z-index: 2;">
                 <!-- 农场格子将由 JS 生成 -->

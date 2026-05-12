@@ -113,6 +113,17 @@
         if (!grid) return;
         grid.innerHTML = '';
 
+        // 检查是否有可收获的作物
+        var hasHarvestable = farmData && farmData.crops && farmData.crops.some(function (c) { return c.is_harvestable; });
+        var bulkBtn = document.getElementById('btn-bulk-harvest');
+        if (bulkBtn) {
+            if (hasHarvestable) {
+                bulkBtn.style.display = 'block';
+            } else {
+                bulkBtn.style.display = 'none';
+            }
+        }
+
         for (var y = 0; y < 4; y++) {
             for (var x = 0; x < 6; x++) {
                 var tile = document.createElement('div');
@@ -129,27 +140,46 @@
                 var crop = findCrop(x, y);
                 if (crop) {
                     var cropInfo = getCropInfo(crop.crop_type);
-                    var emoji = cropInfo ? cropInfo.emoji : '\uD83C\uDF31';
-                    var stage = crop.growth_stage || 0;
+                    var progress = crop.progress || 0;
+                    var isReady = crop.is_harvestable;
 
-                    tile.classList.add('tile-has-crop');
-                    tile.classList.add('tile-crop-stage-' + stage);
+                    tile.className = 'farm-tile tile-has-crop' + (isReady ? ' tile-ready' : '');
 
-                    var stageEmojis = {
-                        0: '\u00B7',
-                        1: '\uD83C\uDF31',
-                        2: '\uD83C\uDF3F',
-                        3: emoji
-                    };
+                    var stageEmojis = ['\u00B7', '\uD83C\uDF31', '\uD83C\uDF3F', cropInfo ? cropInfo.emoji : '\uD83C\uDF3E'];
+                    var stage = isReady ? 3 : (progress >= 0.66 ? 2 : (progress >= 0.33 ? 1 : 0));
 
-                    tile.textContent = stageEmojis[stage] || emoji;
+                    var html = '<div class="crop-emoji">' + stageEmojis[stage] + '</div>';
 
-                    if (crop.is_harvestable) {
-                        tile.classList.add('tile-ready');
-                        tile.textContent = emoji;
+                    if (!isReady) {
+                        // 进度条
+                        var pct = Math.min(progress * 100, 100).toFixed(0);
+                        html += '<div class="crop-progress-bar"><div class="crop-progress-fill" style="width:' + pct + '%"></div></div>';
+
+                        // 剩余时间
+                        var growthTime = cropInfo ? cropInfo.growth_time : 180;
+                        var remaining = Math.max(0, growthTime - (growthTime * progress));
+                        var mins = Math.floor(remaining);
+                        if (mins >= 60) {
+                            html += '<div class="crop-time">' + Math.floor(mins / 60) + 'h' + (mins % 60) + 'm</div>';
+                        } else {
+                            html += '<div class="crop-time">' + mins + 'm</div>';
+                        }
+                    } else {
+                        html += '<div class="crop-ready-label">\u53EF\u6536!</div>';
                     }
+
+                    // 浇水等级指示器
+                    var waterLevel = crop.water_level || 0;
+                    if (waterLevel > 0 && !isReady) {
+                        html += '<div class="crop-water">';
+                        for (var w = 0; w < waterLevel; w++) html += '\uD83D\uDCA7';
+                        html += '</div>';
+                    }
+
+                    tile.innerHTML = html;
                 } else {
-                    tile.classList.add('tile-empty');
+                    tile.className = 'farm-tile tile-empty';
+                    tile.innerHTML = '<div class="tile-soil"></div>';
                 }
 
                 grid.appendChild(tile);
@@ -206,11 +236,35 @@
     function harvestCrop(x, y) {
         window.API.farm.harvest(x, y).then(function (data) {
             if (data.success) {
-                window.Toast.show('\u6536\u83B7 ' + (data.emoji || '') + ' ' + (data.crop_name || ''), 'success');
+                var msg = '\u6536\u83B7 ' + (data.emoji || '') + ' ' + (data.crop_name || '');
+                if (data.rewards && data.rewards.length > 0) {
+                    msg += ' ' + data.rewards.map(function (r) { return r.message; }).join(' ');
+                }
+                window.Toast.show(msg, 'success');
                 loadFarm();
             } else {
                 window.Toast.show(data.error || '\u6536\u83B7\u5931\u8D25', 'error');
             }
+        });
+    }
+
+    // ===== Bulk Harvest =====
+    function bulkHarvest() {
+        window.API.farm.bulkHarvest().then(function (data) {
+            if (data.error) {
+                window.Toast.show(data.error, 'error');
+            } else if (data.success && data.harvested && data.harvested.length > 0) {
+                var msg = '\u6536\u83B7\u4E86 ' + data.count + ' \u4E2A\u4F5C\u7269!';
+                if (data.rewards && data.rewards.length > 0) {
+                    msg += ' ' + data.rewards.map(function (r) { return r.message; }).join(' ');
+                }
+                window.Toast.show(msg, 'success');
+                loadFarm();
+            } else {
+                window.Toast.show('\u6CA1\u6709\u53EF\u6536\u83B7\u7684\u4F5C\u7269', 'info');
+            }
+        }).catch(function () {
+            window.Toast.show('\u6536\u83B7\u5931\u8D25', 'error');
         });
     }
 
@@ -679,6 +733,7 @@
         updateGameHUD: updateGameHUD,
         sendGameChat: sendGameChat,
         claimDaily: claimDaily,
-        closeEventModal: closeEventModal
+        closeEventModal: closeEventModal,
+        bulkHarvest: bulkHarvest
     };
 })();

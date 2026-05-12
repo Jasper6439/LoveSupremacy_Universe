@@ -1,6 +1,7 @@
 # 农场 API
 
 import logging
+import random
 from aiohttp import web
 from database import get_db
 from game_api.auth import authenticate_request
@@ -125,19 +126,33 @@ async def api_harvest_crop(request):
             # 添加到背包
             db.add_item(user_id, 'crop', crop_type, 1)
 
+            # 获取作物信息
+            crop_info = db.get_crop_type(crop_type)
+
+            # 概率奖励
+            rewards = []
+            if crop_info:
+                # 15% 概率返还1颗种子
+                if random.random() < 0.15:
+                    db.add_item(user_id, 'seed', crop_type, 1)
+                    rewards.append({'type': 'seed_return', 'crop': crop_type, 'message': f'获得 1 颗{crop_info["name"]}种子!'})
+
+                # 5% 概率双倍收获
+                if random.random() < 0.05:
+                    db.add_item(user_id, 'crop', crop_type, 1)
+                    rewards.append({'type': 'double_harvest', 'crop': crop_type, 'message': '🎉 双倍收获!'})
+
             # 记录事件
             db.log_game_event(user_id, 'harvest', {
                 'x': x, 'y': y, 'crop_type': crop_type
             }, 'web')
 
-            # 获取作物信息
-            crop_info = db.get_crop_type(crop_type)
-
             return web.json_response({
                 'success': True,
                 'crop_type': crop_type,
                 'crop_name': crop_info['name'] if crop_info else crop_type,
-                'emoji': crop_info['emoji'] if crop_info else '🌱'
+                'emoji': crop_info['emoji'] if crop_info else '🌱',
+                'rewards': rewards
             })
         else:
             return web.json_response({
@@ -147,6 +162,66 @@ async def api_harvest_crop(request):
 
     except Exception as e:
         logger.error(f"[Game API] 收获失败: {e}")
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def api_bulk_harvest(request):
+    """一键收获所有成熟作物"""
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+
+        db = get_db()
+
+        farm = db.get_farm(user_id)
+        if not farm:
+            return web.json_response({'success': False, 'error': '没有农场'})
+
+        # 先更新生长状态
+        db.update_crop_growth(farm['id'])
+
+        # 获取所有作物
+        crops = db.get_crops(farm['id'])
+        harvested = []
+        rewards = []
+
+        for crop in crops:
+            if crop.get('is_harvestable'):
+                result = db.harvest_crop(farm['id'], crop['tile_x'], crop['tile_y'])
+                if result:
+                    db.add_item(user_id, 'crop', result, 1)
+                    crop_info = db.get_crop_type(result)
+                    harvested.append({
+                        'type': result,
+                        'emoji': crop_info['emoji'] if crop_info else '🌾',
+                        'name': crop_info['name'] if crop_info else result
+                    })
+
+                    # 概率奖励
+                    if crop_info:
+                        # 15% 概率返还1颗种子
+                        if random.random() < 0.15:
+                            db.add_item(user_id, 'seed', result, 1)
+                            rewards.append({'type': 'seed_return', 'crop': result, 'message': f'获得 1 颗{crop_info["name"]}种子!'})
+
+                        # 5% 概率双倍收获
+                        if random.random() < 0.05:
+                            db.add_item(user_id, 'crop', result, 1)
+                            rewards.append({'type': 'double_harvest', 'crop': result, 'message': '🎉 双倍收获!'})
+
+        if harvested:
+            db.log_game_event(user_id, 'harvest', {'crops': [h['type'] for h in harvested]}, 'web')
+
+        return web.json_response({
+            'success': True,
+            'harvested': harvested,
+            'count': len(harvested),
+            'rewards': rewards
+        })
+
+    except Exception as e:
+        logger.error(f"[Game API] 批量收获失败: {e}")
         return web.json_response({'success': False, 'error': str(e)})
 
 

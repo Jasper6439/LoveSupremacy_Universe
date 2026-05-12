@@ -428,6 +428,81 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Farm Progress Bar */
+.crop-progress-bar {
+    height: 3px;
+    background: var(--gray-200);
+    border-radius: 2px;
+    margin-top: 2px;
+    overflow: hidden;
+}
+.crop-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Crop Time Display */
+.crop-time {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    text-align: center;
+    margin-top: 1px;
+}
+
+/* Crop Ready Animation */
+.tile-ready .crop-emoji {
+    animation: crop-pulse 1.5s ease-in-out infinite;
+}
+@keyframes crop-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+.crop-ready-label {
+    font-size: 8px;
+    color: #22c55e;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Water Level */
+.crop-water {
+    font-size: 7px;
+    text-align: center;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+/* Bulk Harvest Button */
+.btn-bulk-harvest {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 0 16px 12px;
+    padding: 10px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+    transition: all 0.2s;
+}
+.btn-bulk-harvest:active {
+    transform: scale(0.97);
+}
+
+/* Tile Soil */
+.tile-soil {
+    width: 100%;
+    height: 100%;
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
 /* ==========================================================================
    Page: Gallery (#page-gallery)
    ========================================================================== */

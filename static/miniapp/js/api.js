@@ -145,6 +145,9 @@
                 return request('POST', '/api/game/buy-seed', {
                     body: { crop_type: type, quantity: qty || 1 }
                 });
+            },
+            bulkHarvest: function () {
+                return request('POST', '/api/game/bulk-harvest');
             }
         },
 

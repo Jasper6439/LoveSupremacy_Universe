@@ -6,6 +6,7 @@ from game_api.auth import authenticate_request
 from game_api.farm_routes import (
     api_get_farm, api_plant_crop, api_harvest_crop,
     api_sell_crop, api_buy_seed, api_water_crop, api_move_player,
+    api_bulk_harvest,
 )
 from game_api.character_routes import (
     api_get_character_location, api_get_relationship,
@@ -44,6 +45,7 @@ def register_game_routes(app):
     app.router.add_post("/api/game/harvest", api_harvest_crop)
     app.router.add_post("/api/game/sell", api_sell_crop)
     app.router.add_post("/api/game/buy-seed", api_buy_seed)
+    app.router.add_post("/api/game/bulk-harvest", api_bulk_harvest)
 
     # 角色互动
     app.router.add_get("/api/game/character/location", api_get_character_location)

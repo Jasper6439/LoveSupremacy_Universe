@@ -106,7 +106,7 @@ class FarmMixin:
 
             # 获取所有作物
             cursor = conn.execute(
-                "SELECT id, crop_type, planted_at, growth_stage FROM crops WHERE farm_id = ? AND is_harvestable = 0",
+                "SELECT id, crop_type, planted_at, growth_stage, water_level FROM crops WHERE farm_id = ? AND is_harvestable = 0",
                 (farm_id,)
             )
             crops = cursor.fetchall()
@@ -116,8 +116,10 @@ class FarmMixin:
                 elapsed_minutes = (now - planted).total_seconds() / 60
                 growth_time = growth_times.get(crop['crop_type'], 180)
 
-                # 计算生长阶段
-                progress = elapsed_minutes / growth_time
+                # 浇水等级减少生长时间（每级=15%减少，最多3级=45%）
+                water_bonus = 1.0 - (min(crop.get('water_level', 0) or 0, 3) * 0.15)
+                effective_growth_time = growth_time * water_bonus
+                progress = elapsed_minutes / effective_growth_time if effective_growth_time > 0 else 1.0
                 if progress >= 1.0:
                     new_stage = 3  # 成熟
                     is_harvestable = 1
