@@ -7,6 +7,7 @@
 
     // ===== API Base URL Detection =====
     var API_BASE = '__API_BASE__';
+    if (API_BASE.indexOf('__') === 0) API_BASE = '';  // Web端使用相对路径
 
     // ===== Auth Token =====
     function getToken() {

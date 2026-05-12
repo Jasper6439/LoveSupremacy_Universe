@@ -1242,17 +1242,17 @@
                 <span class="nav-item-icon">&#127806;</span>
                 <span class="nav-item-label">农场</span>
             </div>
-            <div class="nav-item" data-page="game" onclick="navigateTo('game')">
-                <span class="nav-item-icon">&#127918;</span>
-                <span class="nav-item-label">游戏</span>
-            </div>
-            <div class="nav-item" data-page="gallery" onclick="navigateTo('gallery')">
-                <span class="nav-item-icon">&#128247;</span>
-                <span class="nav-item-label">相册</span>
+            <div class="nav-item" data-page="media" onclick="navigateTo('media')">
+                <span class="nav-item-icon">&#127916;</span>
+                <span class="nav-item-label">多媒体</span>
             </div>
             <div class="nav-item" data-page="quota" onclick="navigateTo('quota')">
                 <span class="nav-item-icon">&#128202;</span>
                 <span class="nav-item-label">监控</span>
+            </div>
+            <div class="nav-item" onclick="showUploadModal()">
+                <span class="nav-item-icon">&#128228;</span>
+                <span class="nav-item-label">上传</span>
             </div>
             <div class="nav-item" data-page="settings" onclick="navigateTo('settings')">
                 <span class="nav-item-icon">&#9881;&#65039;</span>
@@ -1296,7 +1296,7 @@
                     <span class="section-title-text">数据概览</span>
                 </div>
                 <div class="stats-grid" id="home-stats">
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('messages')">
                         <div class="stat-icon">&#128172;</div>
                         <div class="stat-value" id="stat-messages">--</div>
                         <div class="stat-label">总消息数</div>
@@ -1306,63 +1306,25 @@
                         <div class="stat-value" id="stat-days">--</div>
                         <div class="stat-label">聊天天数</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('selfies')">
                         <div class="stat-icon">&#128248;</div>
                         <div class="stat-value" id="stat-selfies">--</div>
                         <div class="stat-label">自拍照片</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('intimacy')">
                         <div class="stat-icon">&#10084;&#65039;</div>
                         <div class="stat-value" id="stat-intimacy">--</div>
                         <div class="stat-label">亲密度</div>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="section-title">
-                    <span class="section-title-text">快捷操作</span>
-                </div>
-                <div class="quick-actions">
-                    <div class="quick-action-btn" onclick="navigateTo('chat')">
-                        <div class="quick-action-icon purple">&#128172;</div>
-                        <span class="quick-action-label">开始聊天</span>
+                <!-- Stat Detail Modal -->
+                <div id="stat-detail-modal" style="display:none; margin-top:var(--space-4); background:var(--card-bg); border-radius:var(--radius-lg); padding:var(--space-4); box-shadow:var(--shadow-sm);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-3);">
+                        <div class="section-title" style="margin-bottom:0;"><span class="section-title-text" id="stat-detail-title">详情</span></div>
+                        <button onclick="document.getElementById('stat-detail-modal').style.display='none'" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);">&times;</button>
                     </div>
-                    <div class="quick-action-btn" onclick="navigateTo('farm')">
-                        <div class="quick-action-icon green">&#127806;</div>
-                        <span class="quick-action-label">我的农场</span>
-                    </div>
-                    <div class="quick-action-btn" onclick="navigateTo('gallery')">
-                        <div class="quick-action-icon blue">&#128247;</div>
-                        <span class="quick-action-label">查看相册</span>
-                    </div>
-                    <div class="quick-action-btn" onclick="navigateTo('quota')">
-                        <div class="quick-action-icon orange">&#128202;</div>
-                        <span class="quick-action-label">额度监控</span>
-                    </div>
-                </div>
-
-                <!-- Upload Section -->
-                <div class="card">
-                    <div class="card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                        上传自拍
-                    </div>
-                    <div class="upload-zone" id="upload-area" onclick="document.getElementById('home-file-input').click()">
-                        <div class="upload-zone-icon">
-                            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                        </div>
-                        <div class="upload-zone-text">点击选择照片</div>
-                        <div class="upload-zone-hint">支持 JPG、PNG、GIF、WEBP</div>
-                    </div>
-                    <input type="file" id="home-file-input" accept="image/*" multiple style="display:none;">
-                    <div class="preview-section" id="home-preview-section">
-                        <div class="preview-grid" id="home-preview-grid"></div>
-                        <button class="btn-primary" style="margin-top: var(--space-3);" onclick="uploadPhotos()">上传照片</button>
-                    </div>
-                    <div class="loading-overlay" id="home-upload-loading">
-                        <div class="loading-spinner"></div>
-                        <div class="loading-text">上传中...</div>
-                    </div>
+                    <div id="stat-detail-content" style="font-size:var(--font-size-sm); color:var(--text-secondary);">加载中...</div>
                 </div>
             </div>
 
@@ -1394,6 +1356,14 @@
 
             <!-- ===== Page: Farm ===== -->
             <div class="page page-farm" id="page-farm">
+                <!-- Tab Switch: 数据页 / 游戏页 -->
+                <div style="display:flex; gap:0; margin-bottom:var(--space-3); background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:3px;">
+                    <button id="farm-tab-data" class="btn-secondary" style="flex:1; border-radius:var(--radius-md); border:none; padding:8px; font-size:var(--font-size-sm); cursor:pointer; background:var(--purple); color:#fff;" onclick="switchFarmTab('data')">📊 数据</button>
+                    <button id="farm-tab-game" class="btn-secondary" style="flex:1; border-radius:var(--radius-md); border:none; padding:8px; font-size:var(--font-size-sm); cursor:pointer; background:transparent; color:var(--text-secondary);" onclick="switchFarmTab('game')">🎮 游戏</button>
+                </div>
+
+                <!-- Data View -->
+                <div id="farm-data-view">
                 <!-- Farm Status -->
                 <div class="farm-status-bar">
                     <div class="farm-stat">
@@ -1461,22 +1431,38 @@
                         <button id="daily-btn" class="btn-primary" onclick="claimDaily()" style="width: 100%;">&#127873; 点击签到</button>
                     </div>
                 </div>
+                </div><!-- /farm-data-view -->
+
+                <!-- Game View -->
+                <div id="farm-game-view" style="display:none;">
+                    <div class="game-container" style="width:100%;flex:1;overflow:hidden;background:#000;border-radius:var(--radius-lg);margin-bottom:var(--space-3);">
+                        <canvas id="game-canvas" class="game-canvas" style="display:block;width:100%;height:100%;"></canvas>
+                    </div>
+                </div>
             </div>
 
-            <!-- ===== Page: Game ===== -->
+            <!-- ===== Page: Game (kept for redirect) ===== -->
             <div class="page page-game" id="page-game">
                 <div class="game-container">
                     <canvas id="game-canvas" class="game-canvas"></canvas>
                 </div>
             </div>
 
-            <!-- ===== Page: Gallery ===== -->
-            <div class="page page-gallery" id="page-gallery">
+            <!-- ===== Page: Media (照片+视频+聊天记录) ===== -->
+            <div class="page page-media" id="page-media">
                 <div class="gallery-toolbar">
                     <div class="section-title" style="margin-bottom: 0;">
-                        <span class="section-title-text">照片相册</span>
+                        <span class="section-title-text">多媒体</span>
                     </div>
-                    <span class="gallery-count" id="gallery-count">0 张照片</span>
+                    <span class="gallery-count" id="gallery-count">0 项</span>
+                </div>
+
+                <!-- Media Filter Tabs -->
+                <div style="display:flex; gap:var(--space-2); margin-bottom:var(--space-3);">
+                    <button class="media-filter-btn active" data-filter="all" onclick="filterMedia('all')" style="padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--border-color);background:var(--purple);color:#fff;font-size:var(--font-size-sm);cursor:pointer;">全部</button>
+                    <button class="media-filter-btn" data-filter="photo" onclick="filterMedia('photo')" style="padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);font-size:var(--font-size-sm);cursor:pointer;">📷 照片</button>
+                    <button class="media-filter-btn" data-filter="video" onclick="filterMedia('video')" style="padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);font-size:var(--font-size-sm);cursor:pointer;">🎬 视频</button>
+                    <button class="media-filter-btn" data-filter="chatlog" onclick="filterMedia('chatlog')" style="padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);font-size:var(--font-size-sm);cursor:pointer;">💬 聊天记录</button>
                 </div>
 
                 <div class="loading-overlay" id="gallery-loading">
@@ -1486,9 +1472,9 @@
 
                 <div class="photo-grid" id="gallery-grid">
                     <div class="empty-state">
-                        <div class="empty-state-illustration">&#128247;</div>
-                        <div class="empty-state-title">还没有照片</div>
-                        <div class="empty-state-description">上传你的第一张照片吧</div>
+                        <div class="empty-state-illustration">&#127916;</div>
+                        <div class="empty-state-title">还没有内容</div>
+                        <div class="empty-state-description">通过侧边栏上传按钮添加照片、视频或聊天记录</div>
                     </div>
                 </div>
 
@@ -1498,6 +1484,9 @@
                     <img id="lightbox-image" src="" alt="Preview">
                 </div>
             </div>
+
+            <!-- ===== Page: Gallery (redirect to media) ===== -->
+            <div class="page page-gallery" id="page-gallery" style="display:none;"></div>
 
             <!-- ===== Page: Quota ===== -->
             <div class="page page-quota" id="page-quota">
@@ -1594,25 +1583,6 @@
                     <div class="profile-id" id="settings-userid">--</div>
                 </div>
 
-                <!-- General -->
-                <div class="settings-group">
-                    <div class="settings-group-title">通用</div>
-                    <div class="settings-list">
-                        <div class="settings-item" onclick="navigateTo('quota')">
-                            <span class="settings-icon">&#128202;</span>
-                            <span class="settings-label">额度监控</span>
-                            <span class="settings-value">查看详情</span>
-                            <span class="settings-chevron">&#8250;</span>
-                        </div>
-                        <div class="settings-item" onclick="navigateTo('farm')">
-                            <span class="settings-icon">&#127806;</span>
-                            <span class="settings-label">农场设置</span>
-                            <span class="settings-value">管理</span>
-                            <span class="settings-chevron">&#8250;</span>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Admin Config (hidden by default) -->
                 <div class="settings-group" id="admin-config-group" style="display: none;">
                     <div class="settings-group-title">管理员配置</div>
@@ -1664,27 +1634,6 @@
                     </div>
                 </div>
 
-                <!-- Telegram Link -->
-                <div class="settings-group">
-                    <div class="settings-group-title">Telegram 关联</div>
-                    <div class="settings-list">
-                        <div class="settings-item" style="flex-direction: column; align-items: stretch; cursor: default;">
-                            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
-                                <span class="settings-icon">&#128172;</span>
-                                <span class="settings-label">关联 Telegram</span>
-                                <span class="settings-value" id="telegram-status-text">检查中...</span>
-                            </div>
-                            <div style="display: flex; gap: var(--space-2);">
-                                <input type="number" class="form-input" id="telegram-id-input" placeholder="输入 Telegram ID" style="flex: 1;">
-                                <button class="btn-primary" id="link-telegram-btn" onclick="linkTelegram()">关联</button>
-                            </div>
-                            <div class="form-hint" style="margin-top: var(--space-1);">
-                                向 <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> 发送任意消息获取你的 ID
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- About -->
                 <div class="settings-group">
                     <div class="settings-group-title">关于</div>
@@ -1694,10 +1643,10 @@
                             <span class="settings-label">版本</span>
                             <span class="settings-value">__APP_VERSION__</span>
                         </div>
-                        <div class="settings-item" style="cursor: default;">
+                        <div class="settings-item" id="quote-item" style="cursor: default;">
                             <span class="settings-icon">&#128214;</span>
-                            <span class="settings-label">__APP_NAME__</span>
-                            <span class="settings-value">恋爱至上主义区域</span>
+                            <span class="settings-label">名言</span>
+                            <span class="settings-value" id="quote-text" style="font-size:var(--font-size-xs);max-width:180px;text-align:right;line-height:1.4;">加载中...</span>
                         </div>
                     </div>
                 </div>
@@ -1764,7 +1713,8 @@ const PAGE_TITLES = {
     chat: '聊天',
     farm: '农场',
     game: '游戏',
-    gallery: '相册',
+    gallery: '多媒体',
+    media: '多媒体',
     quota: '监控',
     settings: '设置'
 };
@@ -1967,6 +1917,10 @@ async function loadHomeStats() {
    Navigation
    ================================================================ */
 function navigateTo(pageName) {
+    // Redirects
+    if (pageName === 'gallery') pageName = 'media';
+    if (pageName === 'game') pageName = 'farm';
+
     currentPage = pageName;
 
     // Update sidebar active state
@@ -2011,6 +1965,15 @@ function navigateTo(pageName) {
 
     if (pageName === 'settings') {
         if (window.SettingsPage && window.SettingsPage.onPageEnter) window.SettingsPage.onPageEnter();
+        // Load admin status and random quote
+        fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${authToken}` } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.is_admin) {
+                    document.getElementById('admin-config-group').style.display = 'block';
+                }
+            }).catch(() => {});
+        loadRandomQuote();
     }
 
     if (pageName === 'skills') {
@@ -2314,42 +2277,158 @@ async function saveConfig() {
     }
 }
 
-async function linkTelegram() {
-    const telegramId = document.getElementById('telegram-id-input').value.trim();
-    if (!telegramId) return;
-    try {
-        const response = await fetch('/api/user/link-telegram', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ telegram_id: telegramId })
-        });
-        if (response.ok) {
-            document.getElementById('telegram-status-text').textContent = '已关联';
-            if (typeof showToast === 'function') showToast('关联成功', 'success');
-        } else {
-            if (typeof showToast === 'function') showToast('关联失败', 'error');
+/* ================================================================
+   Farm Tab Switch
+   ================================================================ */
+function switchFarmTab(tab) {
+    const dataView = document.getElementById('farm-data-view');
+    const gameView = document.getElementById('farm-game-view');
+    const tabData = document.getElementById('farm-tab-data');
+    const tabGame = document.getElementById('farm-tab-game');
+    if (tab === 'game') {
+        if (dataView) dataView.style.display = 'none';
+        if (gameView) gameView.style.display = 'block';
+        if (tabGame) { tabGame.style.background = 'var(--purple)'; tabGame.style.color = '#fff'; }
+        if (tabData) { tabData.style.background = 'transparent'; tabData.style.color = 'var(--text-secondary)'; }
+        // Init game
+        if (typeof initGame === 'function') {
+            setTimeout(() => initGame('game-canvas'), 100);
         }
-    } catch (e) {
-        if (typeof showToast === 'function') showToast('网络错误', 'error');
+    } else {
+        if (dataView) dataView.style.display = 'block';
+        if (gameView) gameView.style.display = 'none';
+        if (tabData) { tabData.style.background = 'var(--purple)'; tabData.style.color = '#fff'; }
+        if (tabGame) { tabGame.style.background = 'transparent'; tabGame.style.color = 'var(--text-secondary)'; }
     }
 }
 
-async function loadSettings() {
+/* ================================================================
+   Upload Modal
+   ================================================================ */
+function showUploadModal() {
+    closeSidebar();
+    const type = prompt('请选择上传类型：\n1 - 照片\n2 - 视频\n3 - 微信聊天记录\n\n请输入数字：');
+    if (!type) return;
+    if (type === '1') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = (e) => uploadFiles(e.target.files, 'photo');
+        input.click();
+    } else if (type === '2') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'video/*';
+        input.onchange = (e) => uploadFiles(e.target.files, 'video');
+        input.click();
+    } else if (type === '3') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.txt,.csv,.json';
+        input.onchange = (e) => uploadFiles(e.target.files, 'chatlog');
+        input.click();
+    }
+}
+
+async function uploadFiles(files, type) {
+    if (!files || !files.length) return;
+    if (typeof showToast === 'function') showToast('上传中...', 'info');
     try {
-        const response = await fetch('/api/user/profile', {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.is_admin) {
-                document.getElementById('admin-config-group').style.display = 'block';
-            }
-            if (data.telegram_id) {
-                document.getElementById('telegram-status-text').textContent = '已关联';
-            }
+        if (type === 'photo') {
+            const photos = await Promise.all(Array.from(files).map(f => new Promise((r, j) => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.onerror = j; rd.readAsDataURL(f); })));
+            const resp = await fetch('/api/upload-selfies', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` }, body: JSON.stringify({ photos }) });
+            if (resp.ok) { if (typeof showToast === 'function') showToast('照片上传成功', 'success'); }
+            else { if (typeof showToast === 'function') showToast('上传失败', 'error'); }
+        } else if (type === 'video') {
+            const formData = new FormData();
+            formData.append('video', files[0]);
+            const resp = await fetch('/api/analyze-video', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
+            if (resp.ok) { if (typeof showToast === 'function') showToast('视频上传成功', 'success'); }
+            else { if (typeof showToast === 'function') showToast('上传失败', 'error'); }
+        } else if (type === 'chatlog') {
+            const text = await files[0].text();
+            const resp = await fetch('/api/analyze-chatlog', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` }, body: JSON.stringify({ content: text, partner: '对方' }) });
+            if (resp.ok) { if (typeof showToast === 'function') showToast('聊天记录分析成功', 'success'); }
+            else { if (typeof showToast === 'function') showToast('上传失败', 'error'); }
         }
+        loadHomeStats();
     } catch (e) {
-        console.log('Failed to load settings');
+        if (typeof showToast === 'function') showToast('上传出错: ' + e.message, 'error');
+    }
+}
+
+/* ================================================================
+   Stat Detail
+   ================================================================ */
+function showStatDetail(type) {
+    const modal = document.getElementById('stat-detail-modal');
+    const title = document.getElementById('stat-detail-title');
+    const content = document.getElementById('stat-detail-content');
+    if (!modal) return;
+    modal.style.display = 'block';
+    const titles = { messages: '💬 消息详情', selfies: '📷 照片详情', intimacy: '❤️ 亲密度详情' };
+    title.textContent = titles[type] || '详情';
+    content.textContent = '加载中...';
+    fetch('/api/stats', { headers: { 'Authorization': `Bearer ${authToken}` } })
+        .then(r => r.json())
+        .then(data => {
+            if (type === 'messages') {
+                content.innerHTML = `<div style="line-height:2">总消息: <b>${data.total_messages || 0}</b><br>今日: <b>${data.today_count || 0}</b><br>聊天天数: <b>${data.total_days || 0}</b><br>平均每日: <b>${data.avg_daily || '--'}</b><br>你的平均长度: <b>${data.user_avg_len || '--'}</b><br>主动发起: <b>${data.user_initiative || '--'}</b></div>`;
+            } else if (type === 'selfies') {
+                content.innerHTML = `<div style="line-height:2">自拍照片: <b>${data.selfie_count || 0}</b><br>用户照片: <b>${data.user_photo_count || 0}</b></div>`;
+            } else if (type === 'intimacy') {
+                content.innerHTML = `<div style="line-height:2">亲密度: <b>${data.intimacy_score || 0}</b><br>等级: <b>${data.intimacy_level || '--'}</b><br>关心次数: <b>${data.caring_count || 0}</b><br>吃醋次数: <b>${data.jealous_count || 0}</b><br>温暖次数: <b>${data.warm_count || 0}</b></div>`;
+            }
+        })
+        .catch(() => { content.textContent = '加载失败'; });
+}
+
+/* ================================================================
+   Media Filter
+   ================================================================ */
+function filterMedia(type) {
+    document.querySelectorAll('.media-filter-btn').forEach(btn => {
+        if (btn.dataset.filter === type) {
+            btn.style.background = 'var(--purple)';
+            btn.style.color = '#fff';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-secondary)';
+        }
+    });
+    // Filter gallery items by data-type attribute if present
+    document.querySelectorAll('#gallery-grid .photo-item, #gallery-grid > div').forEach(item => {
+        if (type === 'all') { item.style.display = ''; }
+        else { item.style.display = (item.dataset && item.dataset.type === type) ? '' : 'none'; }
+    });
+}
+
+/* ================================================================
+   Random Quote (恋爱至上主义区域名言)
+   ================================================================ */
+const QUOTES = [
+    '"不是因为喜欢才靠近，而是靠近了才喜欢。"',
+    '"你是我最不想承认的秘密。"',
+    '"如果喜欢有等级，那我对你的喜欢一定是最高级。"',
+    '"世界上最远的距离，是我在你面前你却不知道我喜欢你。"',
+    '"有些话，说出来就输了。但不说出来，更输。"',
+    '"你以为你在忍耐，其实你只是在等待。"',
+    '"喜欢一个人，连沉默都是告白。"',
+    '"我假装不在乎，其实心里已经翻江倒海。"',
+    '"不是因为寂寞才想你，是因为想你才寂寞。"',
+    '"如果心动有声音，那一定很吵。"',
+    '"你笑的时候，世界都亮了。但你不知道。"',
+    '"最可怕的不是不喜欢，而是曾经喜欢过。"',
+    '"有些距离，不是用脚步丈量的。"',
+    '"你是我写过最好的情书，也是最难的阅读理解。"',
+    '"如果喜欢是100分，我给你101分，多一分是骄傲。"'
+];
+
+function loadRandomQuote() {
+    const el = document.getElementById('quote-text');
+    if (el) {
+        el.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     }
 }
 
