@@ -127,7 +127,6 @@ from packages.web.routes import register_routes
 # ============================================================
 
 from packages.bridge.routes import register_bridge_routes
-from packages.bridge.vm_bridge import setup_bridge_routes
 
 # ============================================================
 # Package imports - Video import
@@ -363,7 +362,7 @@ async def scheduler(app):
 # Web Server
 # ============================================================
 
-async def web_server(bot_app=None):
+async def web_server():
     app = web.Application()
     register_routes(app)
     register_bridge_routes(app)
@@ -371,211 +370,6 @@ async def web_server(bot_app=None):
     # Game API routes
     from game_api import register_game_routes
     register_game_routes(app)
-    # HTTP Bridge for SOLO sandbox file transfer
-    setup_bridge_routes(app)
-    
-    # 存储 bot 实例引用，用于 webhook 通知
-    if bot_app:
-        app['bot_instance'] = bot_app
-
-    # GitHub Webhook 自动部署
-    GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
-    
-    # 用于 Telegram 通知的 bot 实例引用
-    _notify_bot = None
-
-    async def github_webhook(request):
-        """接收 GitHub push 事件，自动部署"""
-        try:
-            import hmac
-            import hashlib
-
-            # 验证签名（如果配置了 secret）
-            if GITHUB_WEBHOOK_SECRET:
-                signature = request.headers.get('X-Hub-Signature-256', '')
-                body = await request.read()
-                expected = 'sha256=' + hmac.new(
-                    GITHUB_WEBHOOK_SECRET.encode(), body, hashlib.sha256
-                ).hexdigest()
-                if not hmac.compare_digest(signature, expected):
-                    logging.warning("[Webhook] Invalid signature")
-                    return web.json_response({'error': 'Invalid signature'}, status=403)
-            else:
-                body = await request.read()
-
-            data = json.loads(body)
-            event = request.headers.get('X-GitHub-Event', '')
-
-            # 只处理 push 事件
-            if event != 'push':
-                return web.json_response({'status': 'ignored', 'event': event})
-
-            repo = data.get('repository', {}).get('full_name', '')
-            ref = data.get('ref', '')
-            commits = data.get('commits', [])
-
-            logging.info(f"[Webhook] GitHub push: {repo} {ref} ({len(commits)} commits)")
-
-            # 异步执行部署（不阻塞 webhook 响应）
-            asyncio.create_task(_auto_deploy(repo, ref, commits, request.app))
-
-            return web.json_response({'status': 'deploying', 'repo': repo, 'commits': len(commits)})
-
-        except json.JSONDecodeError as e:
-            logging.error(f"[Webhook] JSON decode error: {e}")
-            return web.json_response({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            logging.error(f"[Webhook] Error: {e}")
-            return web.json_response({'error': str(e)}, status=500)
-
-    async def _auto_deploy(repo, ref, commits, app):
-        """后台执行自动部署"""
-        try:
-            import subprocess
-            
-            # 获取 bot 实例用于发送通知
-            bot_instance = app.get('bot_instance')
-            
-            async def notify_admin(message):
-                """发送 Telegram 通知给管理员"""
-                if bot_instance and YOUR_CHAT_ID:
-                    try:
-                        await bot_instance.bot.send_message(chat_id=YOUR_CHAT_ID, text=message)
-                    except Exception as e:
-                        logging.error(f"[Webhook] 发送通知失败: {e}")
-
-            # 只部署 master 分支
-            if ref != 'refs/heads/master':
-                logging.info(f"[Webhook] Skipping non-master push: {ref}")
-                return
-
-            logging.info(f"[Webhook] Starting auto-deploy...")
-            await notify_admin(f"🔄 开始自动部署...\n仓库: {repo}\n分支: {ref}\n提交数: {len(commits)}")
-
-            # 获取项目目录 - 修复：使用工作目录
-            project_dir = os.getcwd()
-            
-            # 检查是否在 Docker 容器内
-            in_docker = os.path.exists('/.dockerenv')
-            
-            if in_docker:
-                # 容器内：使用挂载的 .git 目录
-                git_dir = '/app/.git'
-                if os.path.exists(git_dir):
-                    # 使用 --git-dir 参数指定 git 目录
-                    git_cmd = ['git', '--git-dir=' + git_dir, '--work-tree=' + project_dir]
-                else:
-                    logging.error(f"[Webhook] .git 目录不存在: {git_dir}")
-                    await notify_admin(f"❌ 部署失败: .git 目录不存在\n请确保 docker-compose.yml 中挂载了 .git 目录")
-                    return
-            else:
-                git_cmd = ['git']
-
-            # git fetch + reset（比 pull 更可靠）
-            logging.info("[Webhook] 执行 git fetch...")
-            result = subprocess.run(
-                git_cmd + ['fetch', 'origin', 'master'],
-                cwd=project_dir, capture_output=True, text=True, timeout=60
-            )
-            
-            if result.returncode != 0:
-                logging.warning(f"[Webhook] git fetch warning: {result.stderr}")
-            
-            # git reset --hard origin/master（强制同步）
-            logging.info("[Webhook] 执行 git reset --hard...")
-            result = subprocess.run(
-                git_cmd + ['reset', '--hard', 'origin/master'],
-                cwd=project_dir, capture_output=True, text=True, timeout=60
-            )
-            logging.info(f"[Webhook] git reset: {result.stdout.strip()}")
-            
-            if result.returncode != 0:
-                logging.error(f"[Webhook] git reset failed: {result.stderr}")
-                await notify_admin(f"❌ Git 同步失败:\n```\n{result.stderr[:500]}\n```")
-                return
-
-            # 检查部署环境
-            compose_file = os.path.join(project_dir, 'docker-compose.yml')
-            
-            # 检查是否有 systemd 服务
-            systemd_service = 'nxsiran-bot.service'
-            has_systemd = subprocess.run(
-                ['systemctl', 'is-active', '--quiet', systemd_service],
-                capture_output=True
-            ).returncode == 0
-            
-            if in_docker:
-                # 在容器内：发送信号请求宿主机重建容器
-                restart_flag = os.path.join(DATA_DIR, '.needs_restart')
-                with open(restart_flag, 'w') as f:
-                    f.write(datetime.now().isoformat())
-                logging.info("[Webhook] 创建重启标记文件")
-                await notify_admin(
-                    f"✅ 代码已更新！\n\n"
-                    f"🔄 宿主机 watcher 将自动重建容器（约30秒）。\n"
-                    f"如未自动重启，请手动执行：\n"
-                    f"```bash\ndocker compose up -d --build\n```"
-                )
-            elif has_systemd:
-                # 使用 systemd 重启服务（需要 sudo）
-                logging.info("[Webhook] Restarting systemd service...")
-                result = subprocess.run(
-                    ['sudo', 'systemctl', 'restart', systemd_service],
-                    capture_output=True, text=True, timeout=60
-                )
-                if result.returncode == 0:
-                    logging.info("[Webhook] Systemd service restarted successfully")
-                    await notify_admin(f"✅ 部署完成！服务已通过 systemd 重启。")
-                else:
-                    logging.error(f"[Webhook] Systemd restart failed: {result.stderr}")
-                    await notify_admin(f"⚠️ 代码已更新，但 systemd 重启失败：\n```\n{result.stderr[:500]}\n```")
-            elif os.path.exists(compose_file):
-                # 在宿主机：直接重启 Docker
-                logging.info("[Webhook] Restarting Docker containers...")
-                result = subprocess.run(
-                    ['docker', 'compose', 'down'],
-                    cwd=project_dir, capture_output=True, text=True, timeout=60
-                )
-                result = subprocess.run(
-                    ['docker', 'compose', 'up', '-d', '--build'],
-                    cwd=project_dir, capture_output=True, text=True, timeout=300
-                )
-                logging.info(f"[Webhook] Docker restart: {result.stdout.strip()}")
-                await notify_admin(f"✅ 部署完成！容器已重启。")
-
-            logging.info(f"[Webhook] Deploy complete!")
-
-        except subprocess.TimeoutExpired:
-            logging.error("[Webhook] Deploy timeout")
-            if bot_instance and YOUR_CHAT_ID:
-                try:
-                    await bot_instance.bot.send_message(chat_id=YOUR_CHAT_ID, text="❌ 部署超时")
-                except:
-                    pass
-        except Exception as e:
-            logging.error(f"[Webhook] Deploy failed: {e}")
-            if bot_instance and YOUR_CHAT_ID:
-                try:
-                    await bot_instance.bot.send_message(chat_id=YOUR_CHAT_ID, text=f"❌ 部署失败:\n```\n{str(e)}\n```")
-                except:
-                    pass
-
-    # 注册 webhook 路由
-    app.router.add_post('/webhook/github', github_webhook)
-    
-    # 添加 webhook 健康检查端点
-    async def webhook_health(request):
-        """Webhook 健康检查"""
-        return web.json_response({
-            'status': 'ok',
-            'endpoint': '/webhook/github',
-            'method': 'POST',
-            'secret_configured': bool(GITHUB_WEBHOOK_SECRET)
-        })
-    app.router.add_get('/webhook/health', webhook_health)
-    
-    logging.info("[Webhook] GitHub auto-deploy route registered: POST /webhook/github")
-    logging.info("[Webhook] Health check available: GET /webhook/health")
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -619,7 +413,7 @@ async def post_init(app: Application):
     # Web 服务器（带错误捕获，避免静默崩溃）
     async def _safe_web_server():
         try:
-            await web_server(app)
+            await web_server()
         except Exception as e:
             logging.error(f"[Web Server] 启动失败: {e}", exc_info=True)
     asyncio.create_task(_safe_web_server())
