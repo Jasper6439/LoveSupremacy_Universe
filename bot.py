@@ -112,8 +112,8 @@ from packages.commands.import_cmds import import_chat_cmd, list_imported_cmd
 
 from packages.handlers.message import (
     handle_photo, handle_document, button_callback, handle_message,
-    send_active_message, voice_cmd, music_cmd,
-    novel_cmd, tts_voice_toggle, tts_status_cmd, qdrant_memory_cmd,
+    send_active_message, voice_cmd, voice_sample_cmd, voice_train_cmd, voice_status_cmd,
+    music_cmd, novel_cmd, tts_voice_toggle, tts_status_cmd, qdrant_memory_cmd,
 )
 
 # ============================================================
@@ -765,6 +765,9 @@ def main():
 
     # Voice/Music/Novel commands
     app.add_handler(CommandHandler("voice", voice_cmd))
+    app.add_handler(CommandHandler("voicesample", voice_sample_cmd))  # [Skill: TTS v1.4.7.2] 上传声音语料
+    app.add_handler(CommandHandler("voicetrain", voice_train_cmd))    # [Skill: TTS v1.4.7.2] 训练声音模型
+    app.add_handler(CommandHandler("voicestatus", voice_status_cmd))  # [Skill: TTS v1.4.7.2] 查看训练状态
     app.add_handler(CommandHandler("music", music_cmd))
     app.add_handler(CommandHandler("novel", novel_cmd))
 

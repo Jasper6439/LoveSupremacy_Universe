@@ -55,6 +55,9 @@ __all__ = [
     "send_active_message",
     "send_voice_message",
     "voice_cmd",
+    "voice_sample_cmd",
+    "voice_train_cmd",
+    "voice_status_cmd",
     "music_cmd",
     "novel_cmd",
     "qdrant_memory_cmd",
@@ -356,10 +359,46 @@ message_count = {}
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+
+    # [Skill: TTS v1.4.7.2] 处理语音语料上传
+    if chat_id in _pending_voice_samples and update.message.voice:
+        await update.message.chat.send_action("typing")
+        try:
+            # 下载语音文件
+            voice = update.message.voice
+            file = await context.bot.get_file(voice.file_id)
+
+            # 创建临时文件
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+                tmp_path = tmp.name
+
+            await file.download_to_drive(tmp_path)
+
+            # 上传语料
+            result = await upload_voice_sample(tmp_path, "chayewoon")
+
+            # 清理临时文件
+            import os
+            os.unlink(tmp_path)
+
+            if result.get('success'):
+                await update.message.reply_text(f"...收到了。{result.get('message', '')}")
+            else:
+                await update.message.reply_text(f"...保存失败。{result.get('error', '')}")
+
+        except Exception as e:
+            logging.error(f"处理语音语料失败: {e}")
+            await update.message.reply_text("...处理语音出错了。")
+
+        # 清除等待状态
+        _pending_voice_samples.pop(chat_id, None)
+        return
+
     user_text = update.message.text
     if not user_text:
         return
-    
+
     # 处理键盘按钮文字，转发到对应命令
     button_commands = {
         "🎤 语音开关": "tts",
@@ -662,64 +701,260 @@ async def send_active_message(app, msg):
     except Exception as e:
         logging.error(f"发送主动消息失败: {e}")
 
-async def send_voice_message(app, chat_id: int, text: str):
-    """使用TTS生成语音消息发送给用户 - v1.4.7.1 修复：使用 Edge TTS"""
+# ============================================================
+# [Skill: TTS] 声音克隆系统 - v1.4.7.2
+# 支持上传语料训练角色专属声音
+# ============================================================
+
+# 角色声音配置
+VOICE_CONFIG = {
+    "chayewoon": {
+        "name": "车如云",
+        "gender": "male",
+        "language": "ko",
+        # Edge TTS 韩语男声
+        "edge_voice": "ko-KR-InJoonNeural",
+        # 声音克隆模型路径（训练后生成）
+        "sovits_model": None,  # 训练后填充: data/voices/chayewoon/model.pth
+        "sovits_config": None,  # 训练后填充: data/voices/chayewoon/config.json
+        # 语料目录
+        "audio_samples_dir": "data/voices/chayewoon/samples",
+        "min_samples": 10,  # 最少需要10条语料开始训练
+        "trained": False,
+    }
+}
+
+# 全局TTS模式: "edge" | "sovits" | "fish"
+TTS_MODE = "edge"
+
+
+def get_character_voice_config(character_id: str = "chayewoon"):
+    """获取角色声音配置"""
+    return VOICE_CONFIG.get(character_id, VOICE_CONFIG["chayewoon"])
+
+
+def check_sovits_available(character_id: str = "chayewoon") -> bool:
+    """检查是否可以使用SoVITS声音克隆"""
+    config = get_character_voice_config(character_id)
+    if config.get("sovits_model") and os.path.exists(config["sovits_model"]):
+        if config.get("sovits_config") and os.path.exists(config["sovits_config"]):
+            return True
+    return False
+
+
+async def send_voice_message(app, chat_id: int, text: str, character_id: str = "chayewoon"):
+    """使用TTS生成语音消息发送给用户 - v1.4.7.2 支持声音克隆"""
     try:
-        # 尝试使用 edge-tts（更可靠）
-        try:
-            import edge_tts
-            import tempfile
-            import os
+        config = get_character_voice_config(character_id)
 
-            # 使用韩语女声
-            voice = "ko-KR-SunHiNeural"
-            communicate = edge_tts.Communicate(text, voice)
+        # 优先使用声音克隆（如果已训练）
+        if TTS_MODE == "sovits" and check_sovits_available(character_id):
+            return await _send_sovits_voice(app, chat_id, text, config)
 
-            # 创建临时文件
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                tmp_path = tmp.name
-
-            await communicate.save(tmp_path)
-
-            # 发送语音
-            with open(tmp_path, "rb") as f:
-                await app.bot.send_voice(chat_id=chat_id, voice=f)
-
-            # 清理临时文件
-            os.unlink(tmp_path)
-            return True
-
-        except ImportError:
-            logging.warning("edge-tts 未安装，尝试使用 gTTS")
-        except Exception as e:
-            logging.warning(f"Edge TTS 失败: {e}")
-
-        # 备选：使用 gTTS
-        try:
-            from gtts import gTTS
-            import tempfile
-            import os
-
-            tts = gTTS(text=text, lang='ko', slow=False)
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                tmp_path = tmp.name
-
-            tts.save(tmp_path)
-
-            with open(tmp_path, "rb") as f:
-                await app.bot.send_voice(chat_id=chat_id, voice=f)
-
-            os.unlink(tmp_path)
-            return True
-
-        except ImportError:
-            logging.error("gTTS 也未安装，无法生成语音")
-        except Exception as e:
-            logging.error(f"gTTS 失败: {e}")
+        # 默认使用 Edge TTS（韩语男声）
+        return await _send_edge_tts_voice(app, chat_id, text, config)
 
     except Exception as e:
         logging.error(f"TTS语音生成失败: {e}")
     return False
+
+
+async def _send_edge_tts_voice(app, chat_id: int, text: str, config: dict):
+    """使用 Edge TTS 生成语音（韩语男声）"""
+    try:
+        import edge_tts
+        import tempfile
+        import os
+
+        voice = config.get("edge_voice", "ko-KR-InJoonNeural")
+        communicate = edge_tts.Communicate(text, voice)
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        await communicate.save(tmp_path)
+
+        with open(tmp_path, "rb") as f:
+            await app.bot.send_voice(chat_id=chat_id, voice=f)
+
+        os.unlink(tmp_path)
+        return True
+
+    except Exception as e:
+        logging.warning(f"Edge TTS 失败: {e}")
+        return False
+
+
+async def _send_sovits_voice(app, chat_id: int, text: str, config: dict):
+    """使用 GPT-SoVITS 生成角色声音"""
+    try:
+        # 调用 SoVITS API
+        import httpx
+
+        sovits_url = os.environ.get("SOVITS_API_URL", "http://localhost:9880")
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{sovits_url}/tts",
+                json={
+                    "text": text,
+                    "text_language": "ko",
+                    "refer_wav_path": config.get("sovits_model"),
+                    "prompt_text": "",
+                    "prompt_language": "ko",
+                }
+            )
+
+            if resp.status_code == 200:
+                voice_buf = io.BytesIO(resp.content)
+                voice_buf.name = "voice.wav"
+                await app.bot.send_voice(chat_id=chat_id, voice=voice_buf)
+                return True
+
+    except Exception as e:
+        logging.warning(f"SoVITS TTS 失败，回退到 Edge TTS: {e}")
+        return await _send_edge_tts_voice(app, chat_id, text, config)
+
+
+# ============================================================
+# [Skill: TTS] 声音语料管理
+# ============================================================
+
+import aiohttp
+
+VM_BRIDGE_URL = os.environ.get("VM_BRIDGE_URL", "http://35.212.153.179:8080")
+
+
+async def upload_voice_sample(audio_file_path: str, character_id: str = "chayewoon") -> dict:
+    """上传声音语料到训练服务器
+
+    通过 VM Bridge 发送到训练服务器进行预处理
+    """
+    try:
+        config = get_character_voice_config(character_id)
+        samples_dir = config["audio_samples_dir"]
+
+        # 确保目录存在
+        os.makedirs(samples_dir, exist_ok=True)
+
+        # 生成唯一文件名
+        import uuid
+        sample_id = str(uuid.uuid4())[:8]
+        target_path = os.path.join(samples_dir, f"{sample_id}.wav")
+
+        # 复制文件到语料目录
+        import shutil
+        shutil.copy2(audio_file_path, target_path)
+
+        # 可选：通过 bridge 发送到训练服务器
+        try:
+            async with aiohttp.ClientSession() as session:
+                data = aiohttp.FormData()
+                data.add_field('file', open(target_path, 'rb'), filename=f"{sample_id}.wav")
+                data.add_field('character_id', character_id)
+
+                async with session.post(f"{VM_BRIDGE_URL}/upload_sample", data=data, timeout=30) as resp:
+                    if resp.status == 200:
+                        result = await resp.json()
+                        return {
+                            "success": True,
+                            "sample_id": sample_id,
+                            "message": f"语料已上传，当前共 {len(os.listdir(samples_dir))} 条",
+                            "bridge_result": result
+                        }
+        except Exception as e:
+            logging.warning(f"Bridge上传失败（本地已保存）: {e}")
+
+        return {
+            "success": True,
+            "sample_id": sample_id,
+            "message": f"语料已保存到本地，当前共 {len(os.listdir(samples_dir))} 条",
+            "local_only": True
+        }
+
+    except Exception as e:
+        logging.error(f"上传语料失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_voice_samples_status(character_id: str = "chayewoon") -> dict:
+    """获取声音语料状态"""
+    try:
+        config = get_character_voice_config(character_id)
+        samples_dir = config["audio_samples_dir"]
+
+        if not os.path.exists(samples_dir):
+            return {
+                "character": config["name"],
+                "samples_count": 0,
+                "min_required": config["min_samples"],
+                "ready_to_train": False,
+                "trained": config.get("trained", False)
+            }
+
+        samples = [f for f in os.listdir(samples_dir) if f.endswith(('.wav', '.mp3', '.ogg'))]
+
+        return {
+            "character": config["name"],
+            "samples_count": len(samples),
+            "min_required": config["min_samples"],
+            "ready_to_train": len(samples) >= config["min_samples"],
+            "trained": config.get("trained", False),
+            "samples": samples[:5]  # 只显示前5个
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def start_voice_training(character_id: str = "chayewoon") -> dict:
+    """启动声音克隆训练
+
+    通过 VM Bridge 发送训练命令到训练服务器
+    """
+    try:
+        config = get_character_voice_config(character_id)
+        samples_dir = config["audio_samples_dir"]
+
+        # 检查语料数量
+        if not os.path.exists(samples_dir):
+            return {"success": False, "error": "还没有上传任何语料"}
+
+        samples = [f for f in os.listdir(samples_dir) if f.endswith(('.wav', '.mp3', '.ogg'))]
+        if len(samples) < config["min_samples"]:
+            return {
+                "success": False,
+                "error": f"语料不足，需要至少 {config['min_samples']} 条，当前只有 {len(samples)} 条"
+            }
+
+        # 通过 bridge 发送训练命令
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{VM_BRIDGE_URL}/start_training",
+                    json={
+                        "character_id": character_id,
+                        "samples_dir": samples_dir,
+                        "language": "ko"
+                    },
+                    timeout=10
+                ) as resp:
+                    result = await resp.json()
+                    return {
+                        "success": True,
+                        "message": "训练任务已启动",
+                        "training_id": result.get("training_id"),
+                        "estimated_time": "约30分钟"
+                    }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"无法连接到训练服务器: {e}",
+                "note": "请确保训练服务器已启动"
+            }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # ============================================================
 # 消息自动删除装饰器
@@ -798,6 +1033,102 @@ async def voice_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(translations.get(text, text))
     else:
         await update.message.reply_text("...（沉默）语音发不出去。")
+
+
+# ============================================================
+# [Skill: TTS v1.4.7.2] 声音语料上传与训练命令
+# ============================================================
+
+# 记录等待上传语料的用户
+_pending_voice_samples = {}  # {chat_id: True}
+
+
+async def voice_sample_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/voicesample - 上传声音语料用于训练角色声音
+
+    使用方式:
+    1. 发送 /voicesample
+    2. 发送语音消息（10-30秒最佳）
+    3. 系统自动保存并上传到训练服务器
+    """
+    chat_id = update.effective_chat.id
+    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
+        return
+
+    # 检查当前语料状态
+    status = await get_voice_samples_status("chayewoon")
+
+    msg = "🎙️ **声音语料上传**\n\n"
+    msg += f"当前已收集: {status.get('samples_count', 0)} 条语料\n"
+    msg += f"最少需要: {status.get('min_required', 10)} 条\n"
+    msg += f"训练状态: {'✅ 已训练' if status.get('trained') else '⏳ 未训练'}\n\n"
+
+    if status.get('ready_to_train'):
+        msg += "✅ 语料充足，可以使用 /voicetrain 开始训练\n\n"
+
+    msg += "请直接发送语音消息（10-30秒），我会保存为训练语料。"
+
+    _pending_voice_samples[chat_id] = True
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
+
+async def voice_train_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/voicetrain - 启动声音克隆训练
+
+    需要至少10条语料才能开始训练
+    训练时间约30分钟
+    """
+    chat_id = update.effective_chat.id
+    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
+        return
+
+    await update.message.chat.send_action("typing")
+
+    # 先检查语料状态
+    status = await get_voice_samples_status("chayewoon")
+
+    if not status.get('ready_to_train'):
+        await update.message.reply_text(
+            f"...语料不够。需要 {status.get('min_required')} 条，"
+            f"现在只有 {status.get('samples_count')} 条。"
+            f"先用 /voicesample 上传更多。"
+        )
+        return
+
+    # 启动训练
+    result = await start_voice_training("chayewoon")
+
+    if result.get('success'):
+        await update.message.reply_text(
+            f"🎙️ **训练已启动**\n\n"
+            f"训练ID: `{result.get('training_id', 'N/A')}`\n"
+            f"预计时间: {result.get('estimated_time', '约30分钟')}\n\n"
+            f"训练完成后，车如云的声音会更像他本人。",
+            parse_mode="Markdown"
+        )
+    else:
+        error = result.get('error', '未知错误')
+        await update.message.reply_text(f"...训练启动失败。{error}")
+
+
+async def voice_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/voicestatus - 查看声音训练状态"""
+    chat_id = update.effective_chat.id
+    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
+        return
+
+    status = await get_voice_samples_status("chayewoon")
+
+    msg = "🎙️ **声音训练状态**\n\n"
+    msg += f"角色: {status.get('character', '车如云')}\n"
+    msg += f"语料数量: {status.get('samples_count', 0)} / {status.get('min_required', 10)}\n"
+    msg += f"可训练: {'✅' if status.get('ready_to_train') else '❌'}\n"
+    msg += f"训练状态: {'✅ 已完成' if status.get('trained') else '⏳ 未训练'}\n"
+
+    if status.get('samples'):
+        msg += f"\n最近语料: {', '.join(status['samples'])}"
+
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 # [Skill: Music] 音乐搜索与评价
