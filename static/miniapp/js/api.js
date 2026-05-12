@@ -284,6 +284,23 @@
             }
         },
 
+        telegram: {
+            getChatHistory: function (limit) {
+                return request('GET', '/api/messages/history?limit=' + (limit || 50));
+            },
+            syncMessages: function (since) {
+                return request('GET', '/api/messages/sync?since=' + (since || 0));
+            },
+            link: function (telegramId) {
+                return request('POST', '/api/telegram/link', {
+                    body: { telegram_id: telegramId }
+                });
+            },
+            getLinked: function () {
+                return request('GET', '/api/telegram/link');
+            }
+        },
+
         video: {
             analyze: function (formData) {
                 return request('POST', '/api/analyze-video', {

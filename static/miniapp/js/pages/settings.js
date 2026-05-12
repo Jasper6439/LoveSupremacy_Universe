@@ -11,6 +11,7 @@
     function init() {
         setupConfigForm();
         setupLogoutButton();
+        setupTelegramLink();
     }
 
     /**
@@ -19,6 +20,7 @@
     function onPageEnter() {
         loadConfig();
         loadCharacters();
+        loadTelegramLinkStatus();
     }
 
     // ===== Load Config =====
@@ -174,11 +176,62 @@
         });
     }
 
+    // ===== Telegram Linking =====
+    function loadTelegramLinkStatus() {
+        var statusEl = document.getElementById('telegram-status-text');
+        if (!statusEl) return;
+
+        window.API.telegram.getLinked().then(function (data) {
+            if (data.linked) {
+                statusEl.innerHTML = '<span style="color:#4CAF50;">&#10004; 已关联 (ID: ' + data.telegram_id + ')</span>';
+            } else {
+                statusEl.innerHTML = '<span style="color:#FF9800;">&#10006; 未关联</span>';
+            }
+        }).catch(function () {
+            statusEl.innerHTML = '<span style="color:#F44336;">&#10006; 检查失败</span>';
+        });
+    }
+
+    function setupTelegramLink() {
+        var linkBtn = document.getElementById('link-telegram-btn');
+        if (!linkBtn) return;
+
+        linkBtn.addEventListener('click', function () {
+            var input = document.getElementById('telegram-id-input');
+            if (!input) return;
+
+            var telegramId = parseInt(input.value, 10);
+            if (!telegramId || isNaN(telegramId)) {
+                window.Toast.show('请输入有效的 Telegram ID', 'error');
+                return;
+            }
+
+            linkBtn.disabled = true;
+            linkBtn.textContent = '关联中...';
+
+            window.API.telegram.link(telegramId).then(function (data) {
+                if (data.success) {
+                    window.Toast.show('关联成功！', 'success');
+                    input.value = '';
+                    loadTelegramLinkStatus();
+                } else {
+                    window.Toast.show(data.error || '关联失败', 'error');
+                }
+            }).catch(function () {
+                window.Toast.show('网络错误', 'error');
+            }).finally(function () {
+                linkBtn.disabled = false;
+                linkBtn.textContent = '关联';
+            });
+        });
+    }
+
     // ===== Export =====
     window.SettingsPage = {
         init: init,
         onPageEnter: onPageEnter,
         loadConfig: loadConfig,
-        loadCharacters: loadCharacters
+        loadCharacters: loadCharacters,
+        loadTelegramLinkStatus: loadTelegramLinkStatus
     };
 })();

@@ -645,6 +645,22 @@
             <button class="btn-secondary" onclick="logoutAdmin()">退出登录</button>
         </div>
         </div><!-- end admin-config-area -->
+
+        <!-- Telegram 关联区域 -->
+        <div class="settings-item" id="telegram-link-area" style="margin-top:16px;">
+            <div class="settings-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Telegram 关联
+            </div>
+            <div class="telegram-link-status" id="telegram-status-text">检查中...</div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <input type="number" class="form-input" id="telegram-id-input" placeholder="输入 Telegram ID" style="flex:1;">
+                <button class="btn-primary" id="link-telegram-btn" style="padding:8px 16px;">关联</button>
+            </div>
+            <p class="desc-text" style="font-size:0.75rem;margin-top:6px;">
+                在 Telegram 中向 <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> 发送任意消息获取你的 ID
+            </p>
+        </div>
     </div>
 
     <!-- 角色选择 -->

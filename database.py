@@ -176,6 +176,13 @@ class GameDatabase:
             cursor = conn.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def get_user_by_id(self, user_id: int) -> Optional[Dict]:
+        """通过数据库用户 ID 获取用户"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
     
     # ============================================================
     # 料理系统

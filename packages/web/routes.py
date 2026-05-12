@@ -29,6 +29,8 @@ from characters import (
     set_current_character,
     list_characters,
 )
+from database import get_db
+from game_api import authenticate_request
 
 # AI client - use the same alias as bot.py
 from ai_client import call_ai as call_ai
@@ -1099,36 +1101,38 @@ load_character_skill_overrides()
 async def api_messages_history(request):
     """获取聊天历史消息 - 用于Web端加载历史"""
     try:
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            user_id = 1
-
-        # 获取limit参数
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+        
+        # 从数据库获取用户关联的 telegram_id
+        db = get_db()
+        user = db.get_user_by_id(user_id)
+        if not user or not user.get('telegram_id'):
+            return web.json_response({
+                'messages': [],
+                'total_count': 0,
+                'linked': False,
+                'error': '请先在设置中关联 Telegram 账号'
+            })
+        
+        telegram_id = user['telegram_id']
         limit = int(request.query.get('limit', 50))
-
-        # 加载聊天历史
-        history = load_chat_history(user_id)
-
-        # 只返回最近的N条消息
+        history = load_chat_history(telegram_id)
+        
         if len(history) > limit:
             history = history[-limit:]
-
-        # 格式化返回
-        messages = []
-        for msg in history:
-            messages.append({
-                'role': msg.get('role', 'user'),
-                'content': msg.get('content', ''),
-                'timestamp': msg.get('timestamp', '')
-            })
-
+        
+        messages = [{
+            'role': msg.get('role', 'user'),
+            'content': msg.get('content', ''),
+            'timestamp': msg.get('timestamp', '')
+        } for msg in history]
+        
         return web.json_response({
             'messages': messages,
-            'total_count': len(messages)
+            'total_count': len(messages),
+            'linked': True
         })
     except Exception as e:
         logging.error(f"[消息历史] 获取失败: {e}")
@@ -1136,47 +1140,100 @@ async def api_messages_history(request):
 
 
 async def api_messages_sync(request):
-    """同步新消息 - Telegram新消息推送到Web端"""
+    """同步新消息 - Web端拉取新消息"""
     try:
-        user_id = validate_session_token(request)
-        if not user_id:
-            user_id = validate_api_token(request)
-        if not user_id:
-            user_id = load_config().get('your_chat_id', 0)
-        if not user_id:
-            user_id = 1
-
-        # 获取since参数（从第几条消息开始）
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+        
+        db = get_db()
+        user = db.get_user_by_id(user_id)
+        if not user or not user.get('telegram_id'):
+            return web.json_response({
+                'messages': [],
+                'total_count': 0,
+                'linked': False
+            })
+        
+        telegram_id = user['telegram_id']
         since = int(request.query.get('since', 0))
-
-        # 加载聊天历史
-        history = load_chat_history(user_id)
+        history = load_chat_history(telegram_id)
         total_count = len(history)
-
-        # 只返回新增的消息
+        
         if since >= total_count:
             return web.json_response({
                 'messages': [],
-                'total_count': total_count
+                'total_count': total_count,
+                'linked': True
             })
-
+        
         new_messages = history[since:]
-
-        # 格式化返回
-        messages = []
-        for msg in new_messages:
-            messages.append({
-                'role': msg.get('role', 'user'),
-                'content': msg.get('content', ''),
-                'timestamp': msg.get('timestamp', '')
-            })
-
+        messages = [{
+            'role': msg.get('role', 'user'),
+            'content': msg.get('content', ''),
+            'timestamp': msg.get('timestamp', '')
+        } for msg in new_messages]
+        
         return web.json_response({
             'messages': messages,
-            'total_count': total_count
+            'total_count': total_count,
+            'linked': True
         })
     except Exception as e:
         logging.error(f"[消息同步] 同步失败: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def api_link_telegram(request):
+    """关联 Telegram 账号 - 设置用户的 telegram_id"""
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+        
+        data = await request.json()
+        telegram_id = data.get('telegram_id')
+        
+        if not telegram_id:
+            return web.json_response({'error': 'telegram_id 不能为空'}, status=400)
+        
+        try:
+            telegram_id = int(telegram_id)
+        except (ValueError, TypeError):
+            return web.json_response({'error': 'telegram_id 必须是数字'}, status=400)
+        
+        db = get_db()
+        with db.get_connection() as conn:
+            conn.execute(
+                "UPDATE users SET telegram_id = ? WHERE id = ?",
+                (telegram_id, user_id)
+            )
+        
+        return web.json_response({
+            'success': True,
+            'telegram_id': telegram_id,
+            'message': f'已关联 Telegram ID: {telegram_id}'
+        })
+    except Exception as e:
+        logging.error(f"[关联Telegram] 失败: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def api_get_linked_telegram(request):
+    """获取已关联的 Telegram ID"""
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+        
+        db = get_db()
+        user = db.get_user_by_id(user_id)
+        
+        return web.json_response({
+            'telegram_id': user.get('telegram_id') if user else None,
+            'linked': user and bool(user.get('telegram_id'))
+        })
+    except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
 
@@ -1201,6 +1258,8 @@ def register_routes(app):
     app.router.add_get('/api/stats', api_stats)
     app.router.add_get('/api/messages/history', api_messages_history)
     app.router.add_get('/api/messages/sync', api_messages_sync)
+    app.router.add_post('/api/telegram/link', api_link_telegram)
+    app.router.add_get('/api/telegram/link', api_get_linked_telegram)
     app.router.add_get('/miniapp', serve_miniapp)
     app.router.add_get('/game', serve_game)
     app.router.add_post('/api/upload-selfies', api_upload_selfies)
