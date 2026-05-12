@@ -231,7 +231,34 @@
         init: init,
         onPageEnter: onPageEnter,
         loadConfig: loadConfig,
+        saveConfig: saveConfig,
         loadCharacters: loadCharacters,
-        loadTelegramLinkStatus: loadTelegramLinkStatus
+        loadTelegramLinkStatus: loadTelegramLinkStatus,
+        linkTelegram: function() {
+            var linkBtn = document.getElementById('link-telegram-btn');
+            var input = document.getElementById('telegram-id-input');
+            if (!linkBtn || !input) return;
+            var telegramId = parseInt(input.value, 10);
+            if (!telegramId || isNaN(telegramId)) {
+                window.Toast.show('请输入有效的 Telegram ID', 'error');
+                return;
+            }
+            linkBtn.disabled = true;
+            linkBtn.textContent = '关联中...';
+            window.API.telegram.link(telegramId).then(function (data) {
+                if (data.success) {
+                    window.Toast.show('关联成功！', 'success');
+                    input.value = '';
+                    loadTelegramLinkStatus();
+                } else {
+                    window.Toast.show(data.error || '关联失败', 'error');
+                }
+            }).catch(function () {
+                window.Toast.show('网络错误', 'error');
+            }).finally(function () {
+                linkBtn.disabled = false;
+                linkBtn.textContent = '关联';
+            });
+        }
     };
 })();

@@ -1978,20 +1978,59 @@ function navigateTo(pageName) {
     }
 
     if (pageName === 'quota') {
-        if (typeof loadQuota === 'function') loadQuota();
+        if (window.QuotaPage && window.QuotaPage.onPageEnter) window.QuotaPage.onPageEnter();
     }
 
     if (pageName === 'gallery') {
-        if (typeof loadGallery === 'function') loadGallery();
+        if (window.GalleryPage && window.GalleryPage.onPageEnter) window.GalleryPage.onPageEnter();
     }
 
     if (pageName === 'farm') {
-        if (typeof refreshFarm === 'function') refreshFarm();
+        if (window.FarmPage && window.FarmPage.onPageEnter) window.FarmPage.onPageEnter();
     }
 
     if (pageName === 'settings') {
-        if (typeof loadSettings === 'function') loadSettings();
+        if (window.SettingsPage && window.SettingsPage.onPageEnter) window.SettingsPage.onPageEnter();
     }
+
+    if (pageName === 'skills') {
+        if (window.SkillsPage && window.SkillsPage.onPageEnter) window.SkillsPage.onPageEnter();
+    }
+
+    if (pageName === 'game') {
+        // Initialize game canvas
+        if (typeof initGame === 'function') {
+            setTimeout(() => initGame('game-canvas'), 100);
+        }
+    }
+}
+
+/* ================================================================
+   Global Function Proxies (for onclick handlers)
+   ================================================================ */
+function refreshFarm() {
+    if (window.FarmPage && window.FarmPage.refreshFarm) window.FarmPage.refreshFarm();
+}
+
+function sendGameChat() {
+    if (window.FarmPage && window.FarmPage.sendGameChat) window.FarmPage.sendGameChat();
+    else if (window.FarmPage) console.log('FarmPage.sendGameChat not available');
+}
+
+function claimDaily() {
+    if (window.FarmPage && window.FarmPage.claimDaily) window.FarmPage.claimDaily();
+}
+
+function loadQuota() {
+    if (window.QuotaPage && window.QuotaPage.loadQuota) window.QuotaPage.loadQuota();
+}
+
+function saveConfig() {
+    if (window.SettingsPage && window.SettingsPage.saveConfig) window.SettingsPage.saveConfig();
+}
+
+function linkTelegram() {
+    if (window.SettingsPage && window.SettingsPage.linkTelegram) window.SettingsPage.linkTelegram();
 }
 
 /* ================================================================
@@ -2176,23 +2215,44 @@ async function uploadPhotos() {
     const loading = document.getElementById('home-upload-loading');
     loading.classList.add('active');
     try {
-        const formData = new FormData();
-        Array.from(fileInput.files).forEach(f => formData.append('photos', f));
-        const response = await fetch('/api/photos/upload', {
+        // Convert files to base64
+        const photos = await Promise.all(
+            Array.from(fileInput.files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            })
+        );
+
+        const response = await fetch('/api/upload-selfies', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}` },
-            body: formData
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ photos })
         });
         if (response.ok) {
-            if (typeof showToast === 'function') showToast('上传成功', 'success');
+            const data = await response.json();
+            if (data.success) {
+                if (typeof showToast === 'function') showToast('上传成功', 'success');
+            } else {
+                if (typeof showToast === 'function') showToast(data.error || '上传失败', 'error');
+            }
             document.getElementById('home-preview-section').classList.remove('active');
             document.getElementById('home-preview-grid').innerHTML = '';
             fileInput.value = '';
             loadHomeStats();
+        } else if (response.status === 401) {
+            logout();
         } else {
             if (typeof showToast === 'function') showToast('上传失败', 'error');
         }
     } catch (e) {
+        console.error('Upload error:', e);
         if (typeof showToast === 'function') showToast('网络错误', 'error');
     } finally {
         loading.classList.remove('active');

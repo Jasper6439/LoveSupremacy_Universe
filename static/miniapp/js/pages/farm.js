@@ -657,6 +657,8 @@
         onPageLeave: onPageLeave,
         loadFarm: loadFarm,
         refreshFarm: refreshFarm,
+        sendGameChat: sendGameChat,
+        claimDaily: claimDaily,
         closeEventModal: closeEventModal
     };
 })();
