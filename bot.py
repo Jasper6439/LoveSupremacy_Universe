@@ -491,12 +491,18 @@ async def web_server(bot_app=None):
                 await notify_admin(f"❌ Git 同步失败:\n```\n{result.stderr[:500]}\n```")
                 return
 
-            # 检查是否有 docker-compose
+            # 检查部署环境
             compose_file = os.path.join(project_dir, 'docker-compose.yml')
+            
+            # 检查是否有 systemd 服务
+            systemd_service = 'nxsiran-bot.service'
+            has_systemd = subprocess.run(
+                ['systemctl', 'is-active', '--quiet', systemd_service],
+                capture_output=True
+            ).returncode == 0
             
             if in_docker:
                 # 在容器内：发送信号请求宿主机重启容器
-                # 方法1：通过文件标记请求重启
                 restart_flag = os.path.join(DATA_DIR, '.needs_restart')
                 with open(restart_flag, 'w') as f:
                     f.write(datetime.now().isoformat())
@@ -507,6 +513,19 @@ async def web_server(bot_app=None):
                     f"```bash\ndocker compose restart\n```\n\n"
                     f"或者在宿主机设置自动重启监控。"
                 )
+            elif has_systemd:
+                # 使用 systemd 重启服务
+                logging.info("[Webhook] Restarting systemd service...")
+                result = subprocess.run(
+                    ['systemctl', 'restart', systemd_service],
+                    capture_output=True, text=True, timeout=60
+                )
+                if result.returncode == 0:
+                    logging.info("[Webhook] Systemd service restarted successfully")
+                    await notify_admin(f"✅ 部署完成！服务已通过 systemd 重启。")
+                else:
+                    logging.error(f"[Webhook] Systemd restart failed: {result.stderr}")
+                    await notify_admin(f"⚠️ 代码已更新，但 systemd 重启失败：\n```\n{result.stderr[:500]}\n```")
             elif os.path.exists(compose_file):
                 # 在宿主机：直接重启 Docker
                 logging.info("[Webhook] Restarting Docker containers...")
