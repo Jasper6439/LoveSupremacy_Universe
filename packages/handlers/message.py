@@ -663,26 +663,60 @@ async def send_active_message(app, msg):
         logging.error(f"发送主动消息失败: {e}")
 
 async def send_voice_message(app, chat_id: int, text: str):
-    """使用TTS生成语音消息发送给用户"""
+    """使用TTS生成语音消息发送给用户 - v1.4.7.1 修复：使用 Edge TTS"""
     try:
-        import httpx
-        # 使用免费的TTS API
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # 使用 Google Translate TTS（免费）
-            tts_url = "http://translate.google.com/translate_tts"
-            params = {
-                "ie": "UTF-8",
-                "q": text[:200],  # 限制长度
-                "tl": "ko",  # 韩语
-                "client": "tw-ob",
-            }
-            resp = await client.get(tts_url, params=params,
-                                     headers={"User-Agent": "Mozilla/5.0"})
-            if resp.status_code == 200 and len(resp.content) > 1000:
-                voice_buf = io.BytesIO(resp.content)
-                voice_buf.name = "voice.ogg"
-                await app.bot.send_voice(chat_id=chat_id, voice=voice_buf)
-                return True
+        # 尝试使用 edge-tts（更可靠）
+        try:
+            import edge_tts
+            import tempfile
+            import os
+
+            # 使用韩语女声
+            voice = "ko-KR-SunHiNeural"
+            communicate = edge_tts.Communicate(text, voice)
+
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                tmp_path = tmp.name
+
+            await communicate.save(tmp_path)
+
+            # 发送语音
+            with open(tmp_path, "rb") as f:
+                await app.bot.send_voice(chat_id=chat_id, voice=f)
+
+            # 清理临时文件
+            os.unlink(tmp_path)
+            return True
+
+        except ImportError:
+            logging.warning("edge-tts 未安装，尝试使用 gTTS")
+        except Exception as e:
+            logging.warning(f"Edge TTS 失败: {e}")
+
+        # 备选：使用 gTTS
+        try:
+            from gtts import gTTS
+            import tempfile
+            import os
+
+            tts = gTTS(text=text, lang='ko', slow=False)
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                tmp_path = tmp.name
+
+            tts.save(tmp_path)
+
+            with open(tmp_path, "rb") as f:
+                await app.bot.send_voice(chat_id=chat_id, voice=f)
+
+            os.unlink(tmp_path)
+            return True
+
+        except ImportError:
+            logging.error("gTTS 也未安装，无法生成语音")
+        except Exception as e:
+            logging.error(f"gTTS 失败: {e}")
+
     except Exception as e:
         logging.error(f"TTS语音生成失败: {e}")
     return False
