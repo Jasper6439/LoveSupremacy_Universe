@@ -1,9 +1,9 @@
 """
-车如云 Telegram Bot - Wispbyte 部署版 v1.3.1
+车如云 Telegram Bot - Wispbyte 部署版
 =============================================
 Slim entry point - all command/handler logic extracted to packages/.
 
-v1.3.1 功能：
+功能：
   [webhook] GitHub Webhook 自动部署（systemd 重启）
   [ssh] SSH 密钥永久认证
   [bridge] VM Bridge 命令桥接
@@ -711,8 +711,9 @@ def main():
         print("❌ 请设置TELEGRAM_TOKEN环境变量")
         return
 
-    print("🚀 车如云 Telegram Bot v1.3.1 启动中...")
-    print("📋 v1.3.1: Webhook 自动部署 + systemd 服务管理")
+    from config import BOT_VERSION, APP_NAME
+    print(f"🚀 {APP_NAME} Telegram Bot v{BOT_VERSION} 启动中...")
+    print(f"📋 v{BOT_VERSION}: Webhook 自动部署 + systemd 服务管理")
 
     memory_count = len(load_json(get_user_memory_file(YOUR_CHAT_ID or 1), []))
     print(f"🧠 已加载 {memory_count} 条长期记忆")

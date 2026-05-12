@@ -133,17 +133,23 @@ __all__ = [
 
 
 async def health_check(request):
-    return web.Response(text="🟢 车如云在线 v1.4.1")
+    from config import BOT_VERSION, APP_NAME
+    return web.Response(text=f"🟢 {APP_NAME}在线 v{BOT_VERSION}")
 
 
 async def serve_index(request):
     """提供Web界面HTML"""
     try:
+        from config import BOT_VERSION, APP_NAME, APP_NAME_EN
         # Use workspace root for template paths
         workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         template_path = os.path.join(workspace_root, 'templates', 'index.html')
         with open(template_path, 'r', encoding='utf-8') as f:
             html = f.read()
+        # 注入动态版本号和项目名称
+        html = html.replace('__APP_VERSION__', BOT_VERSION)
+        html = html.replace('__APP_NAME__', APP_NAME)
+        html = html.replace('__APP_NAME_EN__', APP_NAME_EN)
         return web.Response(text=html, content_type='text/html')
     except FileNotFoundError:
         return web.Response(text="Web界面文件未找到", status=404)
@@ -170,8 +176,12 @@ async def api_chat(request):
         # 使用共享的聊天记录
         history = load_chat_history(user_id)
 
-        # 调用 AI（call_ai 内部已使用角色系统提示词）
-        response = await call_ai(user_message, history)
+        # 调用 AI
+        response = await call_ai(
+            system_prompt="你是车如云，一个傲娇但内心温柔的角色。用简洁自然的中文回复。",
+            user_message=user_message,
+            chat_history=history
+        )
 
         # 保存到共享历史（带时间戳）
         timestamp = datetime.now(get_default_tz()).isoformat()
@@ -1046,34 +1056,32 @@ load_character_skill_overrides()
 async def api_messages_history(request):
     """获取聊天历史消息 - 用于Web端加载历史"""
     try:
-        user_id, err = await authenticate_request(request)
-        if err:
-            return err
-        
-        # 从数据库获取用户关联的 telegram_id
-        db = get_db()
-        user = db.get_user_by_id(user_id)
-        if not user or not user.get('telegram_id'):
+        # 直接使用 session token 获取 chat_id（与 api_chat 一致）
+        user_id = validate_session_token(request)
+        if not user_id:
+            user_id = validate_api_token(request)
+        if not user_id:
+            user_id = load_config().get('your_chat_id', 0)
+        if not user_id:
             return web.json_response({
                 'messages': [],
                 'total_count': 0,
                 'linked': False,
-                'error': '请先在设置中关联 Telegram 账号'
+                'error': '未登录'
             })
-        
-        telegram_id = user['telegram_id']
+
         limit = int(request.query.get('limit', 50))
-        history = load_chat_history(telegram_id)
-        
+        history = load_chat_history(user_id)
+
         if len(history) > limit:
             history = history[-limit:]
-        
+
         messages = [{
             'role': msg.get('role', 'user'),
             'content': msg.get('content', ''),
             'timestamp': msg.get('timestamp', '')
         } for msg in history]
-        
+
         return web.json_response({
             'messages': messages,
             'total_count': len(messages),
@@ -1087,38 +1095,32 @@ async def api_messages_history(request):
 async def api_messages_sync(request):
     """同步新消息 - Web端拉取新消息"""
     try:
-        user_id, err = await authenticate_request(request)
-        if err:
-            return err
-        
-        db = get_db()
-        user = db.get_user_by_id(user_id)
-        if not user or not user.get('telegram_id'):
-            return web.json_response({
-                'messages': [],
-                'total_count': 0,
-                'linked': False
-            })
-        
-        telegram_id = user['telegram_id']
+        user_id = validate_session_token(request)
+        if not user_id:
+            user_id = validate_api_token(request)
+        if not user_id:
+            user_id = load_config().get('your_chat_id', 0)
+        if not user_id:
+            return web.json_response({'messages': [], 'total_count': 0, 'linked': False})
+
         since = int(request.query.get('since', 0))
-        history = load_chat_history(telegram_id)
+        history = load_chat_history(user_id)
         total_count = len(history)
-        
+
         if since >= total_count:
             return web.json_response({
                 'messages': [],
                 'total_count': total_count,
                 'linked': True
             })
-        
+
         new_messages = history[since:]
         messages = [{
             'role': msg.get('role', 'user'),
             'content': msg.get('content', ''),
             'timestamp': msg.get('timestamp', '')
         } for msg in new_messages]
-        
+
         return web.json_response({
             'messages': messages,
             'total_count': total_count,
