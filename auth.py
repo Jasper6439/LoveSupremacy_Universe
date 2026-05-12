@@ -247,6 +247,9 @@ def validate_user(username, password):
     users[user_key] = user_data
     _save_users_dict(users)
 
+    # 添加 chat_id 到返回数据（chat_id 是字典的 key）
+    user_data["chat_id"] = user_key
+
     return True, user_data
 
 
