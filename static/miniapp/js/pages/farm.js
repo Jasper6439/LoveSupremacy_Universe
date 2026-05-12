@@ -650,6 +650,25 @@
         });
     }
 
+    // ===== Game HUD Update =====
+    function updateGameHUD() {
+        if (!window.Auth || !window.Auth.isLoggedIn) return;
+
+        window.API.farm.get().then(function (data) {
+            if (data.success && data.farm) {
+                var goldEl = document.getElementById('game-gold');
+                if (goldEl) goldEl.textContent = data.farm.money || 0;
+            }
+        }).catch(function () { /* ignore */ });
+
+        window.API.character.location().then(function (data) {
+            if (data.success && data.relationship) {
+                var heartsEl = document.getElementById('game-hearts');
+                if (heartsEl) heartsEl.textContent = data.relationship.hearts || 0;
+            }
+        }).catch(function () { /* ignore */ });
+    }
+
     // ===== Export =====
     window.FarmPage = {
         init: init,
@@ -657,6 +676,7 @@
         onPageLeave: onPageLeave,
         loadFarm: loadFarm,
         refreshFarm: refreshFarm,
+        updateGameHUD: updateGameHUD,
         sendGameChat: sendGameChat,
         claimDaily: claimDaily,
         closeEventModal: closeEventModal

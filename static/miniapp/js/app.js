@@ -293,7 +293,8 @@
             if (window.QuotaPage) window.QuotaPage.onPageEnter();
         });
         onPageEnter('game', function () {
-            if (typeof initGameIfNeeded === 'function') initGameIfNeeded();
+            if (window.FarmPage) window.FarmPage.updateGameHUD();
+            if (typeof initGame === 'function') initGame('game-canvas');
         });
         onPageEnter('chat', function () {
             if (window.PageChat) window.PageChat.onPageEnter();

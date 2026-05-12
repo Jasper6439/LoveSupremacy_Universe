@@ -1304,6 +1304,8 @@
                     <div class="welcome-message">你的智能助手，管理照片、分析聊天记录和视频</div>
                 </div>
 
+                <div id="home-quote" style="text-align:center;padding:12px 20px;font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.6;"></div>
+
                 <!-- Stats Grid with Character Selector -->
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-2);">
                     <div class="section-title" style="margin-bottom:0;"><span class="section-title-text">数据概览</span></div>
@@ -1317,15 +1319,15 @@
                         <div class="stat-value" id="stat-messages">--</div>
                         <div class="stat-label">总消息数</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor:pointer" onclick="showChatDaysModal()">
                         <div class="stat-icon">&#128197;</div>
                         <div class="stat-value" id="stat-days">--</div>
                         <div class="stat-label">聊天天数</div>
                     </div>
                     <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('selfies')">
-                        <div class="stat-icon">&#128248;</div>
+                        <div class="stat-icon">&#127916;</div>
                         <div class="stat-value" id="stat-selfies">--</div>
-                        <div class="stat-label">自拍照片</div>
+                        <div class="stat-label">多媒体数据</div>
                     </div>
                     <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('intimacy')">
                         <div class="stat-icon">&#10084;&#65039;</div>
@@ -1521,7 +1523,7 @@
                 </div>
 
                 <!-- Lightbox -->
-                <div class="lightbox" id="gallery-lightbox">
+                <div class="lightbox" id="gallery-lightbox" style="display:none;">
                     <button class="lightbox-close" onclick="closeLightbox()">&#10005;</button>
                     <img id="lightbox-image" src="" alt="Preview">
                 </div>
@@ -1620,7 +1622,8 @@
             <div class="page page-settings" id="page-settings">
                 <!-- Profile -->
                 <div class="settings-profile">
-                    <div class="avatar avatar-xl">&#9729;</div>
+                    <div class="avatar avatar-xl" id="settings-avatar" style="cursor:pointer;overflow:hidden;">&#9729;</div>
+                    <input type="file" id="avatar-upload-input" accept="image/*" style="display:none">
                     <div class="profile-name" id="settings-username">--</div>
                     <div class="profile-id" id="settings-userid">--</div>
                 </div>
@@ -1687,11 +1690,6 @@
                             <span class="settings-icon">&#8505;&#65039;</span>
                             <span class="settings-label">版本</span>
                             <span class="settings-value">__APP_VERSION__</span>
-                        </div>
-                        <div class="settings-item" id="quote-item" style="cursor: default;">
-                            <span class="settings-icon">&#128214;</span>
-                            <span class="settings-label">名言</span>
-                            <span class="settings-value" id="quote-text" style="font-size:var(--font-size-xs);max-width:180px;text-align:right;line-height:1.4;">加载中...</span>
                         </div>
                     </div>
                 </div>
@@ -1802,6 +1800,7 @@ function showApp() {
     document.getElementById('app-shell').classList.add('active');
     loadUserProfile();
     loadHomeStats();
+    showHomeQuote();
 }
 
 function switchLoginTab(el, mode) {
@@ -2062,12 +2061,36 @@ async function loadHomeStats() {
             const data = await response.json();
             document.getElementById('stat-messages').textContent = data.total_messages || 0;
             document.getElementById('stat-days').textContent = data.total_days || 0;
-            document.getElementById('stat-selfies').textContent = data.selfie_count || 0;
+            var mediaTotal = (data.selfie_count || 0) + (data.user_photo_count || 0);
+            document.getElementById('stat-selfies').textContent = mediaTotal;
             document.getElementById('stat-intimacy').textContent = data.intimacy_score || 0;
         }
     } catch (e) {
         console.log('Failed to load home stats');
     }
+}
+
+/* ================================================================
+   Home Quote
+   ================================================================ */
+var homeQuotes = [
+    '恋爱是两个人的事，但喜欢是一个人的事。',
+    '世界上最远的距离，不是生与死，而是我就站在你面前，你却不知道我爱你。',
+    '如果你认识从前的我，也许你会原谅现在的我。',
+    '人生若只如初见，何事秋风悲画扇。',
+    '我行过许多地方的桥，看过许多次数的云，喝过许多种类的酒，却只爱过一个正当最好年龄的人。',
+    '于千万人之中遇见你所要遇见的人，于千万年之中，时间的无涯的荒野里，没有早一步，也没有晚一步。',
+    '草在结它的种子，风在摇它的叶子。我们站着，不说话，就十分美好。',
+    '从前的日色变得慢，车、马、邮件都慢，一生只够爱一个人。',
+    '我明白你会来，所以我等。',
+    '你是一树一树的花开，是燕在梁间呢喃。你是爱，是暖，是希望，你是人间的四月天。'
+];
+
+function showHomeQuote() {
+    var el = document.getElementById('home-quote');
+    if (!el) return;
+    var q = homeQuotes[Math.floor(Math.random() * homeQuotes.length)];
+    el.textContent = '「' + q + '」';
 }
 
 /* ================================================================
@@ -2127,11 +2150,58 @@ function navigateTo(pageName) {
         fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${authToken}` } })
             .then(r => r.json())
             .then(data => {
-                if (data.is_admin && data.username === 'Ulysses') {
+                if (data.is_admin) {
                     document.getElementById('admin-config-group').style.display = 'block';
                 }
-            }).catch(() => {});
-        loadRandomQuote();
+
+                // Avatar upload
+                var avatarEl = document.getElementById('settings-avatar');
+                var avatarInput = document.getElementById('avatar-upload-input');
+                if (avatarEl && avatarInput) {
+                    avatarEl.addEventListener('click', function() { avatarInput.click(); });
+                    avatarInput.addEventListener('change', function(e) {
+                        var file = e.target.files[0];
+                        if (!file) return;
+                        var reader = new FileReader();
+                        reader.onload = function(ev) {
+                            localStorage.setItem('user_avatar', ev.target.result);
+                            avatarEl.style.backgroundImage = 'url(' + ev.target.result + ')';
+                            avatarEl.style.backgroundSize = 'cover';
+                            avatarEl.style.backgroundPosition = 'center';
+                            avatarEl.innerHTML = '';
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                    var saved = localStorage.getItem('user_avatar');
+                    if (saved) {
+                        avatarEl.style.backgroundImage = 'url(' + saved + ')';
+                        avatarEl.style.backgroundSize = 'cover';
+                        avatarEl.style.backgroundPosition = 'center';
+                        avatarEl.innerHTML = '';
+                    }
+                }
+
+                // Load character bindings
+                var bindingsList = document.getElementById('character-bindings-list');
+                if (bindingsList) {
+                    var bindings = data.character_bindings || {};
+                    var keys = Object.keys(bindings);
+
+                    if (keys.length === 0) {
+                        bindingsList.innerHTML = '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">暂无角色绑定</span></div>';
+                    } else {
+                        bindingsList.innerHTML = keys.map(function(charName) {
+                            var chatId = bindings[charName];
+                            return '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">' + charName + '</span><span class="settings-value">ID: ' + chatId + '</span></div>';
+                        }).join('');
+                    }
+                }
+            }).catch(function() {
+                var bindingsList = document.getElementById('character-bindings-list');
+                if (bindingsList) {
+                    bindingsList.innerHTML = '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">加载失败</span></div>';
+                }
+            });
     }
 
     if (pageName === 'skills') {
@@ -2576,6 +2646,54 @@ async function loadGalleryItems() {
 }
 
 /* ================================================================
+   Chat Days Calendar Modal
+   ================================================================ */
+function showChatDaysModal() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = now.getMonth();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var firstDay = new Date(year, month, 1).getDay();
+    var today = now.getDate();
+
+    var monthNames = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
+    var html = '<div style="margin-top:var(--space-4);background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:var(--shadow-sm);">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">';
+    html += '<div class="section-title" style="margin-bottom:0;"><span class="section-title-text">📅 ' + monthNames[month] + ' ' + year + '</span></div>';
+    html += '<button onclick="this.closest(\'div\').parentElement.remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);">&times;</button>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;">';
+
+    ['日','一','二','三','四','五','六'].forEach(function(d) {
+        html += '<div style="font-size:12px;color:var(--text-tertiary);padding:8px 0;font-weight:500;">' + d + '</div>';
+    });
+
+    for (var i = 0; i < firstDay; i++) {
+        html += '<div></div>';
+    }
+
+    for (var d = 1; d <= daysInMonth; d++) {
+        var isToday = d === today;
+        var style = 'aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;';
+        if (isToday) {
+            style += 'background:var(--purple);color:#fff;font-weight:600;';
+        } else {
+            style += 'color:var(--text-primary);';
+        }
+        html += '<div style="' + style + '">' + d + '</div>';
+    }
+
+    html += '</div></div>';
+
+    // Insert after stats grid
+    var statsGrid = document.getElementById('home-stats');
+    if (statsGrid) {
+        statsGrid.insertAdjacentHTML('afterend', html);
+    }
+}
+
+/* ================================================================
    Stat Detail
    ================================================================ */
 function showStatDetail(type) {
@@ -2619,34 +2737,6 @@ function filterMedia(type) {
         if (type === 'all') { item.style.display = ''; }
         else { item.style.display = (item.dataset && item.dataset.type === type) ? '' : 'none'; }
     });
-}
-
-/* ================================================================
-   Random Quote (恋爱至上主义区域名言)
-   ================================================================ */
-const QUOTES = [
-    '"不是因为喜欢才靠近，而是靠近了才喜欢。"',
-    '"你是我最不想承认的秘密。"',
-    '"如果喜欢有等级，那我对你的喜欢一定是最高级。"',
-    '"世界上最远的距离，是我在你面前你却不知道我喜欢你。"',
-    '"有些话，说出来就输了。但不说出来，更输。"',
-    '"你以为你在忍耐，其实你只是在等待。"',
-    '"喜欢一个人，连沉默都是告白。"',
-    '"我假装不在乎，其实心里已经翻江倒海。"',
-    '"不是因为寂寞才想你，是因为想你才寂寞。"',
-    '"如果心动有声音，那一定很吵。"',
-    '"你笑的时候，世界都亮了。但你不知道。"',
-    '"最可怕的不是不喜欢，而是曾经喜欢过。"',
-    '"有些距离，不是用脚步丈量的。"',
-    '"你是我写过最好的情书，也是最难的阅读理解。"',
-    '"如果喜欢是100分，我给你101分，多一分是骄傲。"'
-];
-
-function loadRandomQuote() {
-    const el = document.getElementById('quote-text');
-    if (el) {
-        el.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    }
 }
 
 /* ================================================================
