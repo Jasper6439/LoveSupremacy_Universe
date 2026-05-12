@@ -458,8 +458,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await reset(update, context)
             return
     elif user_text == "📱 Mini App":
-        # 发送 Mini App 链接
-        miniapp_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')}/miniapp" if os.environ.get('RENDER_EXTERNAL_HOSTNAME') else f"http://localhost:{PORT}/miniapp"
+        # 发送 Mini App 链接 - v1.4.8: 优先使用 public_url 配置（支持 Cloudflare HTTPS）
+        config = load_config()
+        public_url = config.get('public_url', '').rstrip('/')
+        if public_url:
+            miniapp_url = f"{public_url}/miniapp"
+        elif os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+            miniapp_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/miniapp"
+        else:
+            miniapp_url = f"http://localhost:{PORT}/miniapp"
         await update.message.reply_text(f"📱 点击打开 Mini App\n\n{miniapp_url}")
         return
     

@@ -505,16 +505,16 @@ async def web_server(bot_app=None):
             ).returncode == 0
             
             if in_docker:
-                # 在容器内：发送信号请求宿主机重启容器
+                # 在容器内：发送信号请求宿主机重建容器
                 restart_flag = os.path.join(DATA_DIR, '.needs_restart')
                 with open(restart_flag, 'w') as f:
                     f.write(datetime.now().isoformat())
                 logging.info("[Webhook] 创建重启标记文件")
                 await notify_admin(
                     f"✅ 代码已更新！\n\n"
-                    f"⚠️ 需要手动重启容器以应用更新：\n"
-                    f"```bash\ndocker compose restart\n```\n\n"
-                    f"或者在宿主机设置自动重启监控。"
+                    f"🔄 宿主机 watcher 将自动重建容器（约30秒）。\n"
+                    f"如未自动重启，请手动执行：\n"
+                    f"```bash\ndocker compose up -d --build\n```"
                 )
             elif has_systemd:
                 # 使用 systemd 重启服务（需要 sudo）
