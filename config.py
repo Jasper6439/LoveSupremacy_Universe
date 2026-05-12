@@ -94,7 +94,7 @@ SEMANTIC_MEMORY_FILE = os.path.join(DATA_DIR, "semantic_memory.json")
 
 # [Skill: auto-updater] 版本信息文件
 VERSION_FILE = os.path.join(DATA_DIR, "version.json")
-BOT_VERSION = "1.4.6"
+BOT_VERSION = "1.4.5.1"
 APP_NAME = "恋爱至上主义区域"
 APP_NAME_EN = "Love Supremacy Zone"
 
@@ -106,26 +106,22 @@ os.makedirs(VIDEO_DIR, exist_ok=True)
 SKILLS_STATE_FILE = os.path.join(DATA_DIR, "skills_state.json")
 
 # Skills 注册表：记录所有已集成的 skills
-# v1.4.6 精简版 - 移除死代码，保留核心功能
 SKILLS_REGISTRY = {
-    # 核心AI功能
-    "gemini": {"name": "Gemini AI", "desc": "Google Gemini API集成，用于复杂任务和fallback", "enabled": True, "category": "核心AI"},
-    "vision-sandbox": {"name": "图片分析", "desc": "Gemini Vision图片深度分析", "enabled": True, "category": "核心AI"},
-    "deepread-ocr": {"name": "文档OCR", "desc": "图片文字提取和识别", "enabled": True, "category": "核心AI"},
-    "gemini-deep-research": {"name": "深度研究", "desc": "复杂主题深度研究和报告生成", "enabled": True, "category": "核心AI"},
-    
-    # 消息与搜索
-    "relay-for-telegram": {"name": "消息历史", "desc": "Telegram消息历史搜索和聊天列表", "enabled": True, "category": "消息"},
-    
-    # 记忆系统
-    "semantic-memory": {"name": "语义记忆", "desc": "长期记忆提取和存储", "enabled": True, "category": "记忆"},
-    
-    # 工具
-    "claw-summarize-pro": {"name": "智能摘要", "desc": "文本、URL、回复消息摘要生成", "enabled": True, "category": "工具"},
-    "tts": {"name": "语音合成", "desc": "韩语语音消息生成", "enabled": True, "category": "工具"},
-    
-    # 运维
-    "auto-updater": {"name": "版本检查", "desc": "启动时检查版本更新", "enabled": True, "category": "运维"},
+    "humanize-ai-text": {"name": "AI文本人性化", "desc": "让回复更像真人，去除机械感", "enabled": True, "category": "对话优化"},
+    "self-improving": {"name": "自我改进", "desc": "从用户纠正中学习", "enabled": True, "category": "学习"},
+    "proactive-agent": {"name": "主动行为", "desc": "主动发起对话", "enabled": True, "category": "行为"},
+    "semantic-memory": {"name": "语义记忆", "desc": "长期语义记忆系统", "enabled": True, "category": "记忆"},
+    "claw-summarize-pro": {"name": "摘要生成", "desc": "文本/URL摘要", "enabled": True, "category": "工具"},
+    "auto-updater": {"name": "自动更新", "desc": "代码变更检测", "enabled": True, "category": "运维"},
+    "agent-orchestration": {"name": "Prompt架构", "desc": "5层Prompt工程", "enabled": True, "category": "核心"},
+    "gemini": {"name": "Gemini API", "desc": "Google Gemini集成", "enabled": True, "category": "AI"},
+    "vision-sandbox": {"name": "图片分析", "desc": "Gemini图片深度分析", "enabled": True, "category": "AI"},
+    "deepread-ocr": {"name": "文档OCR", "desc": "文档文字识别", "enabled": True, "category": "工具"},
+    "gemini-deep-research": {"name": "深度研究", "desc": "复杂研究任务", "enabled": True, "category": "工具"},
+    "relay-for-telegram": {"name": "消息历史", "desc": "Telegram消息搜索", "enabled": True, "category": "工具"},
+    "tts": {"name": "语音合成", "desc": "TTS语音回复(Edge/SoVITS/Fish)", "enabled": True, "category": "工具"},
+    "chromadb-memory": {"name": "Qdrant记忆", "desc": "Qdrant Cloud向量记忆(语义搜索)", "enabled": True, "category": "记忆"},
+    "lightrag": {"name": "知识库", "desc": "原作小说知识查询", "enabled": True, "category": "知识"},
 }
 
 # 每角色技能禁用列表: {character_id: {skill_id: True}}

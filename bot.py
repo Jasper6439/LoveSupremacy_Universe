@@ -72,6 +72,9 @@ from stats import *
 from image_gen import *
 from chat_history import *
 
+# [Skill: 小说知识库]
+from novel_knowledge import init_novel_knowledge
+
 # [角色系统] 支持多蒸馏角色动态加载
 from characters import (
     load_characters_from_dir,
@@ -111,7 +114,7 @@ from packages.commands.import_cmds import import_chat_cmd, list_imported_cmd
 from packages.handlers.message import (
     handle_photo, handle_document, button_callback, handle_message,
     send_active_message, voice_cmd, music_cmd,
-    tts_voice_toggle, tts_status_cmd,
+    novel_cmd, tts_voice_toggle, tts_status_cmd,
 )
 
 # ============================================================
@@ -764,6 +767,7 @@ def main():
     # Voice/Music/Novel commands
     app.add_handler(CommandHandler("voice", voice_cmd))
     app.add_handler(CommandHandler("music", music_cmd))
+    app.add_handler(CommandHandler("novel", novel_cmd))
 
     # Memory commands
     app.add_handler(CommandHandler("learned", learned_cmd))
@@ -848,6 +852,30 @@ def main():
     count = get_selfie_count()
     print(f"📸 已加载 {count} 张自拍照片")
     print(f"🤖 AI模型: {AI_MODEL}")
+
+    # [Skill: LightRAG] 后台加载小说知识库
+    def _init_knowledge_thread():
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(init_knowledge())
+        except Exception as e:
+            print(f"⚠️ 小说知识库初始化错误: {e}")
+        finally:
+            loop.close()
+
+    async def init_knowledge():
+        try:
+            print("📚 正在加载小说知识库...")
+            success = await init_novel_knowledge()
+            if success:
+                print("✅ 小说知识库加载完成")
+            else:
+                print("⚠️ 小说知识库加载失败")
+        except Exception as e:
+            print(f"⚠️ 小说知识库初始化错误: {e}")
+
+    threading.Thread(target=_init_knowledge_thread, daemon=True).start()
 
     print("✅ 车如云已上线！")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
