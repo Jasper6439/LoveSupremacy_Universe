@@ -145,22 +145,6 @@
         if (authTitle) authTitle.textContent = '\u7528\u6237\u6CE8\u518C';
     }
 
-    // ===== Getters =====
-    Object.defineProperties(this, {
-        isLoggedIn: {
-            get: function () { return _isLoggedIn; },
-            configurable: true
-        },
-        isAdmin: {
-            get: function () { return _isAdmin; },
-            configurable: true
-        },
-        username: {
-            get: function () { return _username; },
-            configurable: true
-        }
-    });
-
     // ===== Export =====
     window.Auth = {
         login: login,
