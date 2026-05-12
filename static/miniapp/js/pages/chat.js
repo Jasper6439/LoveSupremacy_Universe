@@ -105,40 +105,119 @@
         var message = inputField.value.trim();
         if (!message) return;
 
-        // Add to UI immediately (optimistic)
+        // Add to UI immediately (optimistic) with sending status
         appendMessage({
             role: 'user',
             content: message,
             timestamp: new Date().toISOString()
-        });
+        }, 'sending');
 
         inputField.value = '';
         scrollToBottom();
 
+        // Show typing indicator
+        showTypingIndicator();
+
         // Send to server
         window.API.telegram.sendMessage(message).then(function(data) {
             if (data.error) {
+                hideTypingIndicator();
                 showError(data.error);
-            } else {
-                // Trigger sync to get bot reply
-                setTimeout(syncNewMessages, 500);
+            } else if (data.pending_reply) {
+                // AI is thinking, start polling for reply
+                pollForReply();
             }
         }).catch(function() {
+            hideTypingIndicator();
             showError('发送失败');
         });
     }
 
-    function appendMessage(msg) {
+    function showTypingIndicator() {
+        if (!messageList) return;
+
+        var indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'chat-message message-bot';
+        indicator.innerHTML =
+            '<div class="message-bubble typing-bubble">' +
+            '  <span class="typing-dot"></span>' +
+            '  <span class="typing-dot"></span>' +
+            '  <span class="typing-dot"></span>' +
+            '</div>';
+        messageList.appendChild(indicator);
+        scrollToBottom();
+    }
+
+    function hideTypingIndicator() {
+        var indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.remove();
+    }
+
+    function pollForReply() {
+        // Poll every 2 seconds for up to 30 seconds
+        var attempts = 0;
+        var maxAttempts = 15;
+
+        var pollInterval = setInterval(function() {
+            attempts++;
+
+            window.API.telegram.syncMessages(lastMessageCount).then(function(data) {
+                if (data.messages && data.messages.length > 0) {
+                    // Check if last message is from bot
+                    var lastMsg = data.messages[data.messages.length - 1];
+                    if (lastMsg.role === 'assistant' || lastMsg.role === 'bot') {
+                        hideTypingIndicator();
+                        data.messages.forEach(function(msg) {
+                            appendMessage(msg);
+                        });
+                        lastMessageCount = data.total_count;
+                        clearInterval(pollInterval);
+                        return;
+                    }
+                }
+
+                if (attempts >= maxAttempts) {
+                    hideTypingIndicator();
+                    clearInterval(pollInterval);
+                    appendMessage({
+                        role: 'bot',
+                        content: '车如云正在思考，请稍后再试...',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }).catch(function() {
+                // Silent fail, continue polling
+            });
+        }, 2000);
+    }
+
+    function appendMessage(msg, status) {
         if (!messageList) return;
 
         var isUser = msg.role === 'user';
         var time = formatTime(msg.timestamp);
+        var statusIcon = '';
+
+        if (isUser && status) {
+            var icons = {
+                'sending': '⏳',
+                'sent': '✓',
+                'delivered': '✓✓',
+                'failed': '❌'
+            };
+            statusIcon = '<span class="message-status">' + (icons[status] || '') + '</span>';
+        }
+
         var div = document.createElement('div');
         div.className = 'chat-message ' + (isUser ? 'message-user' : 'message-bot');
         div.innerHTML =
             '<div class="message-bubble">' +
             '  <div class="message-content">' + escapeHtml(msg.content) + '</div>' +
-            '  <div class="message-time">' + time + '</div>' +
+            '  <div class="message-meta">' +
+            '    <span class="message-time">' + time + '</span>' +
+            statusIcon +
+            '  </div>' +
             '</div>';
         messageList.appendChild(div);
         scrollToBottom();
@@ -156,7 +235,8 @@
     }
 
     function startSync() {
-        syncInterval = setInterval(syncNewMessages, 3000);
+        // Fast sync (2 seconds) when on chat page
+        syncInterval = setInterval(syncNewMessages, 2000);
     }
 
     function stopSync() {

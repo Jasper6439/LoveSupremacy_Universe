@@ -1624,22 +1624,121 @@ async def api_send_message(request):
         
         telegram_id = user['telegram_id']
         
-        # Save message to chat history
+        # Save user message to chat history
         from chat_history import append_message
         append_message(telegram_id, 'user', message)
-        
-        # Trigger bot to generate reply (async)
-        # This will be handled by the bot's message handler
-        # For now, just acknowledge receipt
-        
+
+        # Trigger AI reply asynchronously (don't wait for it)
+        asyncio.create_task(generate_ai_reply(telegram_id, message))
+
         return web.json_response({
             'success': True,
-            'message': '消息已发送',
-            'timestamp': datetime.now().isoformat()
+            'message': '消息已发送，AI 正在思考...',
+            'timestamp': datetime.now().isoformat(),
+            'pending_reply': True
         })
     except Exception as e:
         logging.error(f"[发送消息] 失败: {e}")
         return web.json_response({'error': str(e)}, status=500)
+
+
+async def generate_ai_reply(telegram_id: int, user_message: str):
+    """生成 AI 回复并保存到聊天记录"""
+    try:
+        from ai_client import call_ai
+        from chat_history import load_chat_history, append_bot_message
+        from bot import get_current_character
+
+        # Load recent chat history for context
+        history = load_chat_history(telegram_id)
+        recent_history = history[-10:] if len(history) > 10 else history
+
+        # Build messages for AI
+        messages = []
+        for msg in recent_history:
+            role = 'user' if msg.get('role') == 'user' else 'assistant'
+            messages.append({'role': role, 'content': msg.get('content', '')})
+
+        # Add current user message
+        messages.append({'role': 'user', 'content': user_message})
+
+        # Get character info
+        char = get_current_character()
+        char_name = char.config.name if char and hasattr(char, 'config') else '车如云'
+
+        # Build system prompt
+        system_prompt = build_web_chat_system_prompt(char)
+
+        # Call AI
+        response = await call_ai(
+            messages=messages,
+            system_prompt=system_prompt,
+            temperature=0.85,
+            max_tokens=300
+        )
+
+        if response and not response.startswith('ERROR'):
+            append_bot_message(telegram_id, response)
+            await push_to_telegram(telegram_id, response)
+            logging.info(f"[AI回复] 已生成并保存到用户 {telegram_id}")
+        else:
+            fallback = f"{char_name}正在思考..."
+            append_bot_message(telegram_id, fallback)
+            await push_to_telegram(telegram_id, fallback)
+
+    except Exception as e:
+        logging.error(f"[AI回复] 生成失败: {e}")
+
+
+def build_web_chat_system_prompt(char):
+    """构建 Web 聊天的系统提示词"""
+    char_name = char.config.name if char and hasattr(char, 'config') else '车如云'
+    char_personality = char.config.personality if char and hasattr(char, 'config') else ''
+
+    prompt = f"""你是{char_name}，正在通过 Web 聊天界面与用户对话。
+
+角色设定：
+{char_personality}
+
+当前场景：
+- 用户正在使用网页版 Mini App 与你聊天
+- 保持角色性格，用第一人称回复
+- 回复要简洁自然，适合聊天界面
+- 可以适当使用表情符号增加亲和力
+
+回复要求：
+- 长度控制在 100-200 字
+- 语气要符合角色性格
+- 不要暴露你是 AI"""
+
+    return prompt
+
+
+async def push_to_telegram(telegram_id: int, message: str):
+    """将 AI 回复推送到 Telegram"""
+    try:
+        from config import TELEGRAM_TOKEN
+        import aiohttp
+
+        if not TELEGRAM_TOKEN:
+            logging.warning("[推送Telegram] TELEGRAM_TOKEN 未设置")
+            return
+
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json={
+                'chat_id': telegram_id,
+                'text': message,
+                'parse_mode': 'HTML'
+            }) as resp:
+                if resp.status != 200:
+                    logging.error(f"[推送Telegram] 失败: {await resp.text()}")
+                else:
+                    logging.info(f"[推送Telegram] 成功发送到 {telegram_id}")
+
+    except Exception as e:
+        logging.error(f"[推送Telegram] 错误: {e}")
 
 
 # CORS 中间件 - 允许 Telegram Mini App 跨域访问
