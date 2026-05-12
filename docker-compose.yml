@@ -10,8 +10,8 @@ services:
     volumes:
       - ./data:/opt/NxSiran/data
       - ./knowledge:/app/knowledge
-      # Webhook 自动部署：挂载 .git 目录用于 git pull
-      - ./.git:/app/.git:ro
+      # Webhook 自动部署：挂载 .git 目录用于 git pull（需要读写权限）
+      - ./.git:/app/.git
       # Docker socket 用于容器重启（可选，如果宿主机有 docker）
       # - /var/run/docker.sock:/var/run/docker.sock
     env_file:

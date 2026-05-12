@@ -261,6 +261,7 @@
         if (window.HomePage) window.HomePage.init();
         if (window.FarmPage) window.FarmPage.init();
         if (window.GalleryPage) window.GalleryPage.init();
+        if (window.VoicePage) window.VoicePage.init();
         if (window.SettingsPage) window.SettingsPage.init();
         if (window.SkillsPage) window.SkillsPage.init();
         if (window.QuotaPage) window.QuotaPage.init();
@@ -278,6 +279,9 @@
         });
         onPageEnter('gallery', function () {
             if (window.GalleryPage) window.GalleryPage.onPageEnter();
+        });
+        onPageEnter('voice', function () {
+            if (window.VoicePage) window.VoicePage.onPageEnter();
         });
         onPageEnter('settings', function () {
             if (window.SettingsPage) window.SettingsPage.onPageEnter();
