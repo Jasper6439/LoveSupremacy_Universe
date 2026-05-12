@@ -776,6 +776,33 @@ async def api_login(request):
         return web.json_response({'success': False, 'error': str(e)})
 
 
+async def api_user_profile(request):
+    """获取当前用户信息 - 用于验证 token"""
+    try:
+        user_id = validate_session_token(request)
+        if not user_id:
+            return web.json_response({'success': False, 'error': '未登录'}, status=401)
+
+        # 从请求头获取 token
+        auth = request.headers.get('Authorization', '')
+        token = auth[7:] if auth.startswith('Bearer ') else ''
+
+        # 获取用户名
+        from auth import get_username_by_token, is_admin_user
+        username = get_username_by_token(token) or ''
+        is_admin = is_admin_user(request)
+
+        return web.json_response({
+            'success': True,
+            'user_id': user_id,
+            'username': username,
+            'is_admin': is_admin
+        })
+    except Exception as e:
+        logging.error(f"[API用户资料] 错误: {e}")
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+
 async def api_get_config(request):
     """Mini App获取配置API"""
     try:
@@ -1327,6 +1354,7 @@ def register_routes(app):
     app.router.add_get('/api/quota', api_quota_status)
     app.router.add_get('/api/characters', api_list_characters)
     app.router.add_post('/api/characters/switch', api_switch_character)
+    app.router.add_get('/api/user/profile', api_user_profile)
 
     # Static files
     app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'static'))

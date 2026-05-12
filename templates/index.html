@@ -109,6 +109,229 @@
             z-index: 0;
         }
 
+        /* ====== 登录界面 ====== */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .login-container.hidden {
+            display: none;
+        }
+
+        .login-card {
+            background: var(--card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            padding: 40px 32px;
+            width: 100%;
+            max-width: 400px;
+            animation: slideUp 0.4s var(--ease-spring);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .login-header .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .login-tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(123,63,160,0.06);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .login-tabs {
+                background: rgba(191,111,224,0.12);
+            }
+        }
+
+        .login-tab {
+            flex: 1;
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s var(--ease-default);
+            user-select: none;
+            font-family: inherit;
+        }
+
+        .login-tab:hover {
+            color: var(--purple);
+        }
+
+        .login-tab.active {
+            background: var(--white);
+            color: var(--purple);
+            box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .login-tab.active {
+                background: var(--card-alt);
+            }
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        .form-input {
+            padding: 14px 18px;
+            background: var(--bg);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s var(--ease-default);
+            font-family: inherit;
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-input:focus {
+            box-shadow: 0 0 0 3px rgba(123,63,160,0.15);
+            background: var(--white);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .form-input:focus {
+                background: var(--card-alt);
+            }
+        }
+
+        .login-btn {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--purple), var(--purple-light));
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(123,63,160,0.3);
+            transition: all 0.25s var(--ease-default);
+            user-select: none;
+            font-family: inherit;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover {
+            box-shadow: 0 6px 20px rgba(123,63,160,0.4);
+            transform: translateY(-1px);
+        }
+
+        .login-btn:active {
+            box-shadow: 0 2px 8px rgba(123,63,160,0.2);
+            transform: scale(0.98);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            padding: 12px 16px;
+            background: rgba(255,59,48,0.08);
+            border-radius: var(--radius-md);
+            color: var(--danger);
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+            animation: shake 0.4s var(--ease-default);
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* ====== 主应用界面 ====== */
+        .app-container {
+            display: none;
+        }
+
+        .app-container.active {
+            display: block;
+        }
+
         /* ====== 导航栏 ====== */
         .navbar {
             background: rgba(255,255,255,0.72);
@@ -195,6 +418,24 @@
 
         .nav-tab.active:hover {
             box-shadow: var(--shadow-sm);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid rgba(123,63,160,0.3);
+            border-radius: var(--radius-md);
+            color: var(--purple);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s var(--ease-default);
+            margin-left: 12px;
+            font-family: inherit;
+        }
+
+        .logout-btn:hover {
+            background: rgba(123,63,160,0.08);
         }
 
         /* ====== 主容器 ====== */
@@ -705,6 +946,14 @@
 
         /* ====== 响应式 ====== */
         @media (max-width: 768px) {
+            .login-card {
+                padding: 32px 24px;
+            }
+
+            .login-header h1 {
+                font-size: 1.4rem;
+            }
+
             .navbar {
                 flex-direction: column;
                 gap: 14px;
@@ -725,6 +974,15 @@
                 text-align: center;
                 padding: 10px 14px;
                 font-size: 0.9rem;
+            }
+
+            .logout-btn {
+                position: absolute;
+                top: 14px;
+                right: 16px;
+                margin-left: 0;
+                padding: 6px 12px;
+                font-size: 0.8rem;
             }
 
             .container {
@@ -801,119 +1059,299 @@
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <h1>车如云 <span class="dot">/ 恋爱至上主义区域</span></h1>
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="showTab('chat')">聊天</button>
-            <button class="nav-tab" onclick="showTab('dashboard')">仪表盘</button>
-        </div>
-    </nav>
-
-    <div class="container">
-        <!-- 聊天界面 -->
-        <div id="chat-tab" class="chat-container active">
-            <div class="chat-box">
-                <div class="chat-header">
-                    <div class="chat-avatar">&#9729;</div>
-                    <div class="chat-header-info">
-                        <h2>车如云</h2>
-                        <p id="status-text">在线</p>
-                    </div>
-                </div>
-                <div class="chat-messages" id="chat-messages">
-                    <div class="message bot">
-                        <div class="message-bubble">...又是你。（低头，不看你）...好吧，既然你来了。直接说话就行。</div>
-                        <div class="message-time">刚刚</div>
-                    </div>
-                </div>
-                <div class="typing-indicator" id="typing">
-                    <span></span><span></span><span></span>
-                </div>
-                <div class="chat-input-area">
-                    <input type="text" class="chat-input" id="message-input" placeholder="输入消息..." onkeypress="handleKeyPress(event)">
-                    <button class="send-btn" onclick="sendMessage()">发送</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 仪表盘 -->
-        <div id="dashboard-tab" class="dashboard-container">
-            <div class="dashboard-grid">
-                <div class="stat-card">
-                    <h3>总消息数</h3>
-                    <div class="value" id="total-messages">--</div>
-                    <div class="subtitle">条消息</div>
-                </div>
-                <div class="stat-card">
-                    <h3>聊天天数</h3>
-                    <div class="value" id="total-days">--</div>
-                    <div class="subtitle">天</div>
-                </div>
-                <div class="stat-card">
-                    <h3>今日消息</h3>
-                    <div class="value" id="today-messages">--</div>
-                    <div class="subtitle">条</div>
-                </div>
-                <div class="stat-card intimacy-card">
-                    <h3>亲密度</h3>
-                    <div class="value" id="intimacy-score">--</div>
-                    <div class="subtitle" id="intimacy-level">--</div>
-                    <div class="intimacy-bar">
-                        <div class="intimacy-fill" id="intimacy-bar" style="width: 0%"></div>
-                    </div>
-                </div>
+    <!-- 登录界面 -->
+    <div id="login-container" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>恋爱至上主义区域</h1>
+                <div class="subtitle">LOVE SUPREMACY ZONE</div>
             </div>
 
-            <div class="dashboard-grid">
-                <div class="stat-card">
-                    <h3>关心表达</h3>
-                    <div class="value" id="caring-count">--</div>
-                    <div class="subtitle">次</div>
-                </div>
-                <div class="stat-card">
-                    <h3>吃醋次数</h3>
-                    <div class="value" id="jealous-count">--</div>
-                    <div class="subtitle">次</div>
-                </div>
-                <div class="stat-card">
-                    <h3>温暖表达</h3>
-                    <div class="value" id="warm-count">--</div>
-                    <div class="subtitle">次</div>
-                </div>
-                <div class="stat-card">
-                    <h3>记忆条数</h3>
-                    <div class="value" id="memory-count">--</div>
-                    <div class="subtitle">条</div>
-                </div>
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="switchLoginTab('login')">登录</button>
+                <button class="login-tab" onclick="switchLoginTab('register')">注册</button>
             </div>
 
-            <div class="emotion-chart">
-                <h3>情绪分布</h3>
-                <div id="emotion-bars"></div>
-            </div>
+            <form class="login-form" id="login-form" onsubmit="handleAuth(event)">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" class="form-input" placeholder="请输入用户名" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" class="form-input" placeholder="请输入密码" required autocomplete="current-password">
+                </div>
+                <div class="error-message" id="error-message"></div>
+                <button type="submit" class="login-btn" id="login-btn">登录</button>
+            </form>
 
-            <div class="analysis-section">
-                <h3>对话风格分析</h3>
-                <div id="analysis-items"></div>
-            </div>
-
-            <div class="advice-card">
-                <h3>关系建议</h3>
-                <div id="advice-items"></div>
+            <div class="login-footer">
+                车如云 &copy; 2025
             </div>
         </div>
     </div>
 
-    <!-- 页脚 -->
-    <footer class="footer">
-        <div class="divider"></div>
-        <p><a href="/terms" target="_blank">服务条款</a> &nbsp;|&nbsp; <a href="/privacy" target="_blank">隐私政策</a></p>
-        <p style="margin-top: 8px; opacity: 0.6;">车如云 &copy; 2025</p>
-    </footer>
+    <!-- 主应用界面 -->
+    <div id="app-container" class="app-container">
+        <nav class="navbar">
+            <h1>车如云 <span class="dot">/ 恋爱至上主义区域</span></h1>
+            <div style="display: flex; align-items: center;">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="showTab('chat')">聊天</button>
+                    <button class="nav-tab" onclick="showTab('dashboard')">仪表盘</button>
+                </div>
+                <button class="logout-btn" onclick="logout()">退出</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- 聊天界面 -->
+            <div id="chat-tab" class="chat-container active">
+                <div class="chat-box">
+                    <div class="chat-header">
+                        <div class="chat-avatar">&#9729;</div>
+                        <div class="chat-header-info">
+                            <h2>车如云</h2>
+                            <p id="status-text">在线</p>
+                        </div>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message bot">
+                            <div class="message-bubble">...又是你。（低头，不看你）...好吧，既然你来了。直接说话就行。</div>
+                            <div class="message-time">刚刚</div>
+                        </div>
+                    </div>
+                    <div class="typing-indicator" id="typing">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" class="chat-input" id="message-input" placeholder="输入消息..." onkeypress="handleKeyPress(event)">
+                        <button class="send-btn" onclick="sendMessage()">发送</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 仪表盘 -->
+            <div id="dashboard-tab" class="dashboard-container">
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3>总消息数</h3>
+                        <div class="value" id="total-messages">--</div>
+                        <div class="subtitle">条消息</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>聊天天数</h3>
+                        <div class="value" id="total-days">--</div>
+                        <div class="subtitle">天</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>今日消息</h3>
+                        <div class="value" id="today-messages">--</div>
+                        <div class="subtitle">条</div>
+                    </div>
+                    <div class="stat-card intimacy-card">
+                        <h3>亲密度</h3>
+                        <div class="value" id="intimacy-score">--</div>
+                        <div class="subtitle" id="intimacy-level">--</div>
+                        <div class="intimacy-bar">
+                            <div class="intimacy-fill" id="intimacy-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3>关心表达</h3>
+                        <div class="value" id="caring-count">--</div>
+                        <div class="subtitle">次</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>吃醋次数</h3>
+                        <div class="value" id="jealous-count">--</div>
+                        <div class="subtitle">次</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>温暖表达</h3>
+                        <div class="value" id="warm-count">--</div>
+                        <div class="subtitle">次</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>记忆条数</h3>
+                        <div class="value" id="memory-count">--</div>
+                        <div class="subtitle">条</div>
+                    </div>
+                </div>
+
+                <div class="emotion-chart">
+                    <h3>情绪分布</h3>
+                    <div id="emotion-bars"></div>
+                </div>
+
+                <div class="analysis-section">
+                    <h3>对话风格分析</h3>
+                    <div id="analysis-items"></div>
+                </div>
+
+                <div class="advice-card">
+                    <h3>关系建议</h3>
+                    <div id="advice-items"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="divider"></div>
+            <p><a href="/terms" target="_blank">服务条款</a> &nbsp;|&nbsp; <a href="/privacy" target="_blank">隐私政策</a></p>
+            <p style="margin-top: 8px; opacity: 0.6;">车如云 &copy; 2025</p>
+        </footer>
+    </div>
 
     <script>
+        // ====== 全局状态 ======
         let chatHistory = [];
+        let lastMessageCount = 0;
+        let syncInterval = null;
+        let authToken = localStorage.getItem('auth_token');
+        let isLoginMode = true;
 
+        // ====== 初始化 ======
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (authToken) {
+                // 验证 token 有效性
+                const isValid = await validateToken();
+                if (isValid) {
+                    showApp();
+                } else {
+                    localStorage.removeItem('auth_token');
+                    authToken = null;
+                    showLogin();
+                }
+            } else {
+                showLogin();
+            }
+        });
+
+        // ====== 登录/注册相关 ======
+        function showLogin() {
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.remove('active');
+        }
+
+        function showApp() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('app-container').classList.add('active');
+            // 加载聊天历史并开始同步
+            loadChatHistory();
+            startMessageSync();
+        }
+
+        function switchLoginTab(mode) {
+            isLoginMode = mode === 'login';
+            document.querySelectorAll('.login-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('login-btn').textContent = isLoginMode ? '登录' : '注册';
+            hideError();
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideError() {
+            const errorEl = document.getElementById('error-message');
+            errorEl.classList.remove('show');
+        }
+
+        async function validateToken() {
+            try {
+                const response = await fetch('/api/user/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            hideError();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('login-btn');
+
+            if (!username || !password) {
+                showError('请输入用户名和密码');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = isLoginMode ? '登录中...' : '注册中...';
+
+            try {
+                const endpoint = isLoginMode ? '/api/login' : '/api/register';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    // 保存 token
+                    authToken = data.token;
+                    localStorage.setItem('auth_token', authToken);
+                    // 清空表单
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                    // 显示应用
+                    showApp();
+                } else {
+                    showError(data.error || (isLoginMode ? '登录失败' : '注册失败'));
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isLoginMode ? '登录' : '注册';
+            }
+        }
+
+        function logout() {
+            // 停止同步
+            stopMessageSync();
+            // 清除 token
+            authToken = null;
+            localStorage.removeItem('auth_token');
+            // 重置聊天状态
+            chatHistory = [];
+            lastMessageCount = 0;
+            document.getElementById('chat-messages').innerHTML = `
+                <div class="message bot">
+                    <div class="message-bubble">...又是你。（低头，不看你）...好吧，既然你来了。直接说话就行。</div>
+                    <div class="message-time">刚刚</div>
+                </div>
+            `;
+            // 显示登录界面
+            showLogin();
+        }
+
+        // ====== API 请求辅助函数 ======
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        // ====== 标签切换 ======
         function showTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.chat-container, .dashboard-container').forEach(c => c.classList.remove('active'));
@@ -925,7 +1363,7 @@
                 loadChatHistory();
                 startMessageSync();
             } else {
-                document.querySelector('.nav-tab:last-child').classList.add('active');
+                document.querySelector('.nav-tab:nth-child(2)').classList.add('active');
                 document.getElementById('dashboard-tab').classList.add('active');
                 // 停止消息同步
                 stopMessageSync();
@@ -939,10 +1377,7 @@
             }
         }
 
-        // 消息同步相关变量
-        let lastMessageCount = 0;
-        let syncInterval = null;
-
+        // ====== 聊天功能 ======
         async function sendMessage() {
             const input = document.getElementById('message-input');
             const message = input.value.trim();
@@ -959,9 +1394,16 @@
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ message })
                 });
+
+                // 处理 401 未授权
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
                 const data = await response.json();
 
                 // 隐藏打字指示器
@@ -986,7 +1428,18 @@
         // 从服务器同步新消息（Telegram -> Web）
         async function syncMessages() {
             try {
-                const response = await fetch('/api/messages/sync?since=' + lastMessageCount);
+                const response = await fetch(`/api/messages/sync?since=${lastMessageCount}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                // 处理 401 未授权
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (data.messages && data.messages.length > 0) {
@@ -1003,7 +1456,18 @@
         // 加载历史消息
         async function loadChatHistory() {
             try {
-                const response = await fetch('/api/messages/history?limit=50');
+                const response = await fetch('/api/messages/history?limit=50', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                // 处理 401 未授权
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (data.messages && data.messages.length > 0) {
@@ -1055,9 +1519,21 @@
             return div.innerHTML;
         }
 
+        // ====== 仪表盘功能 ======
         async function loadDashboard() {
             try {
-                const response = await fetch('/api/stats');
+                const response = await fetch('/api/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                // 处理 401 未授权
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
                 const data = await response.json();
 
                 // 更新统计卡片
