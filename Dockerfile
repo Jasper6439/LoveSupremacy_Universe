@@ -7,9 +7,11 @@ LABEL version="0.1.0"
 # 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖（添加 git 用于 webhook 自动部署）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Python 依赖
