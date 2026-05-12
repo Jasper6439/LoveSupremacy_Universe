@@ -94,7 +94,7 @@ SEMANTIC_MEMORY_FILE = os.path.join(DATA_DIR, "semantic_memory.json")
 
 # [Skill: auto-updater] 版本信息文件
 VERSION_FILE = os.path.join(DATA_DIR, "version.json")
-BOT_VERSION = "1.4.5.1"
+BOT_VERSION = "1.4.6"
 APP_NAME = "恋爱至上主义区域"
 APP_NAME_EN = "Love Supremacy Zone"
 
@@ -106,6 +106,7 @@ os.makedirs(VIDEO_DIR, exist_ok=True)
 SKILLS_STATE_FILE = os.path.join(DATA_DIR, "skills_state.json")
 
 # Skills 注册表：记录所有已集成的 skills
+# v1.4.6 - 精简: 移除 gemini, gemini-deep-research, relay-for-telegram
 SKILLS_REGISTRY = {
     "humanize-ai-text": {"name": "AI文本人性化", "desc": "让回复更像真人，去除机械感", "enabled": True, "category": "对话优化"},
     "self-improving": {"name": "自我改进", "desc": "从用户纠正中学习", "enabled": True, "category": "学习"},
@@ -114,11 +115,8 @@ SKILLS_REGISTRY = {
     "claw-summarize-pro": {"name": "摘要生成", "desc": "文本/URL摘要", "enabled": True, "category": "工具"},
     "auto-updater": {"name": "自动更新", "desc": "代码变更检测", "enabled": True, "category": "运维"},
     "agent-orchestration": {"name": "Prompt架构", "desc": "5层Prompt工程", "enabled": True, "category": "核心"},
-    "gemini": {"name": "Gemini API", "desc": "Google Gemini集成", "enabled": True, "category": "AI"},
     "vision-sandbox": {"name": "图片分析", "desc": "Gemini图片深度分析", "enabled": True, "category": "AI"},
     "deepread-ocr": {"name": "文档OCR", "desc": "文档文字识别", "enabled": True, "category": "工具"},
-    "gemini-deep-research": {"name": "深度研究", "desc": "复杂研究任务", "enabled": True, "category": "工具"},
-    "relay-for-telegram": {"name": "消息历史", "desc": "Telegram消息搜索", "enabled": True, "category": "工具"},
     "tts": {"name": "语音合成", "desc": "TTS语音回复(Edge/SoVITS/Fish)", "enabled": True, "category": "工具"},
     "chromadb-memory": {"name": "Qdrant记忆", "desc": "Qdrant Cloud向量记忆(语义搜索)", "enabled": True, "category": "记忆"},
     "lightrag": {"name": "知识库", "desc": "原作小说知识查询", "enabled": True, "category": "知识"},

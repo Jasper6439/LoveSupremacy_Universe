@@ -4,57 +4,16 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from config import YOUR_CHAT_ID, GEMINI_API_KEY, RELAY_API_KEY
-from packages.commands.misc import (
-    call_gemini,
-    deep_research,
-    search_relay_messages,
-    list_relay_chats,
-)
+from config import YOUR_CHAT_ID, GEMINI_API_KEY
 from image_gen import analyze_image_with_gemini, ocr_document
 
 
 __all__ = [
-    "gemini_cmd",
     "analyze_img_cmd",
     "ocr_cmd",
-    "research_cmd",
-    "search_msg_cmd",
-    "my_chats_cmd",
     "_pending_analyze_img",
     "_pending_ocr",
 ]
-
-
-async def gemini_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """使用Gemini直接回答问题"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-
-    if not context.args:
-        await update.message.reply_text("...问什么。用法：/gemini <问题>")
-        return
-
-    if not GEMINI_API_KEY:
-        await update.message.reply_text("...Gemini没配置。需要设置 GEMINI_API_KEY 环境变量。")
-        return
-
-    question = " ".join(context.args)
-    await update.message.chat.send_action("typing")
-
-    try:
-        result = await call_gemini(question)
-        if result:
-            # 截断过长回复
-            if len(result) > 4000:
-                result = result[:4000] + "\n\n...太长了，就这些。"
-            await update.message.reply_text(result)
-        else:
-            await update.message.reply_text("...Gemini没有回复。再试试。")
-    except Exception as e:
-        logging.error(f"[Skill: gemini] /gemini命令失败: {e}")
-        await update.message.reply_text("...出错了。")
 
 
 # ============================================================
@@ -152,114 +111,4 @@ async def ocr_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("...没识别出文字。图片太模糊或者没有文字。")
     except Exception as e:
         logging.error(f"[Skill: deepread-ocr] /ocr失败: {e}")
-        await update.message.reply_text("...出错了。")
-
-
-# ============================================================
-# [Skill: gemini-deep-research] /research 命令 - 深度研究
-# ============================================================
-
-async def research_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """使用Gemini进行深度研究"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-
-    if not context.args:
-        await update.message.reply_text("...研究什么。用法：/research <主题>")
-        return
-
-    if not GEMINI_API_KEY:
-        await update.message.reply_text("...深度研究没配置。需要设置 GEMINI_API_KEY 环境变量。")
-        return
-
-    topic = " ".join(context.args)
-    await update.message.chat.send_action("typing")
-
-    try:
-        report = await deep_research(topic, chat_id, context)
-        if report:
-            # 分段发送长报告
-            if len(report) > 4000:
-                for i in range(0, len(report), 4000):
-                    await context.bot.send_message(chat_id, report[i:i+4000])
-            else:
-                await context.bot.send_message(chat_id, report)
-        else:
-            await context.bot.send_message(chat_id, "...研究失败了。换个主题试试。")
-    except Exception as e:
-        logging.error(f"[Skill: gemini-deep-research] /research失败: {e}")
-        await context.bot.send_message(chat_id, "...出错了。")
-
-
-# ============================================================
-# [Skill: relay-for-telegram] /search_msg 和 /my_chats 命令
-# ============================================================
-
-async def search_msg_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """搜索Telegram消息历史"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-
-    if not context.args:
-        await update.message.reply_text("...搜什么。用法：/search_msg <关键词>")
-        return
-
-    if not RELAY_API_KEY:
-        await update.message.reply_text(
-            "...消息搜索没配置。\n\n"
-            "需要设置 RELAY_API_KEY 环境变量。\n"
-            "获取方式：\n"
-            "1. 访问 https://relayfortelegram.com\n"
-            "2. 用Telegram手机号注册\n"
-            "3. 获取API Key\n"
-            "4. 设置环境变量 RELAY_API_KEY=rl_live_xxx"
-        )
-        return
-
-    query = " ".join(context.args)
-    await update.message.chat.send_action("typing")
-
-    try:
-        result = await search_relay_messages(query)
-        if result:
-            if len(result) > 4000:
-                result = result[:4000] + "\n\n...结果太多了，就这些。"
-            await update.message.reply_text(result)
-        else:
-            await update.message.reply_text("...搜索失败了。")
-    except Exception as e:
-        logging.error(f"[Skill: relay-for-telegram] /search_msg失败: {e}")
-        await update.message.reply_text("...出错了。")
-
-
-async def my_chats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """列出已同步的Telegram聊天"""
-    chat_id = update.effective_chat.id
-    if YOUR_CHAT_ID != 0 and chat_id != YOUR_CHAT_ID:
-        return
-
-    if not RELAY_API_KEY:
-        await update.message.reply_text(
-            "...聊天列表没配置。\n\n"
-            "需要设置 RELAY_API_KEY 环境变量。\n"
-            "获取方式：\n"
-            "1. 访问 https://relayfortelegram.com\n"
-            "2. 用Telegram手机号注册\n"
-            "3. 获取API Key\n"
-            "4. 设置环境变量 RELAY_API_KEY=rl_live_xxx"
-        )
-        return
-
-    await update.message.chat.send_action("typing")
-
-    try:
-        result = await list_relay_chats()
-        if result:
-            await update.message.reply_text(result)
-        else:
-            await update.message.reply_text("...获取失败了。")
-    except Exception as e:
-        logging.error(f"[Skill: relay-for-telegram] /my_chats失败: {e}")
         await update.message.reply_text("...出错了。")

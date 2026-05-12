@@ -102,8 +102,7 @@ from packages.commands.misc import (
     check_for_updates,
 )
 from packages.commands.extra import (
-    gemini_cmd, analyze_img_cmd, ocr_cmd, research_cmd,
-    search_msg_cmd, my_chats_cmd,
+    analyze_img_cmd, ocr_cmd,
 )
 from packages.commands.import_cmds import import_chat_cmd, list_imported_cmd
 
@@ -781,15 +780,9 @@ def main():
     app.add_handler(CommandHandler("version", version_cmd))
     app.add_handler(CommandHandler("check_update", check_update_cmd))
 
-    # Gemini commands
-    app.add_handler(CommandHandler("gemini", gemini_cmd))
+    # Vision commands
     app.add_handler(CommandHandler("analyze_img", analyze_img_cmd))
     app.add_handler(CommandHandler("ocr", ocr_cmd))
-    app.add_handler(CommandHandler("research", research_cmd))
-
-    # Relay commands
-    app.add_handler(CommandHandler("search_msg", search_msg_cmd))
-    app.add_handler(CommandHandler("my_chats", my_chats_cmd))
 
     # TTS commands
     app.add_handler(CommandHandler("tts", tts_voice_toggle))
