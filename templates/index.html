@@ -1079,7 +1079,12 @@
                 </div>
                 <div class="form-group">
                     <label for="password">密码</label>
-                    <input type="password" id="password" class="form-input" placeholder="请输入密码" required autocomplete="current-password">
+                    <div style="position: relative;">
+                        <input type="password" id="password" class="form-input" placeholder="请输入密码" required autocomplete="current-password" style="padding-right: 44px;">
+                        <button type="button" onclick="togglePasswordVisibility()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--text-muted); font-size: 16px;" id="toggle-pwd-btn" aria-label="切换密码可见性">
+                            👁️
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group" id="chatid-group" style="display: none;">
                     <label for="chat-id">Telegram Chat ID <span style="color: var(--danger);">*</span></label>
@@ -1274,6 +1279,18 @@
             errorEl.classList.remove('show');
         }
 
+        function togglePasswordVisibility() {
+            const pwdInput = document.getElementById('password');
+            const btn = document.getElementById('toggle-pwd-btn');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                pwdInput.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
         async function validateToken() {
             try {
                 const response = await fetch('/api/user/profile', {
@@ -1329,10 +1346,16 @@
                     // 清空表单
                     document.getElementById('username').value = '';
                     document.getElementById('password').value = '';
+                    if (document.getElementById('chat-id')) document.getElementById('chat-id').value = '';
                     // 显示应用
                     showApp();
                 } else {
-                    showError(data.error || (isLoginMode ? '登录失败' : '注册失败'));
+                    let errorMsg = data.error || (isLoginMode ? '登录失败' : '注册失败');
+                    // 如果是注册时账号已存在，提示切换到登录
+                    if (!isLoginMode && errorMsg.includes('已注册')) {
+                        errorMsg += '，请直接登录';
+                    }
+                    showError(errorMsg);
                 }
             } catch (error) {
                 showError('网络错误，请稍后重试');
