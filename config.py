@@ -94,7 +94,7 @@ SEMANTIC_MEMORY_FILE = os.path.join(DATA_DIR, "semantic_memory.json")
 
 # [Skill: auto-updater] 版本信息文件
 VERSION_FILE = os.path.join(DATA_DIR, "version.json")
-BOT_VERSION = "3.4"
+BOT_VERSION = "1.3.1"
 
 # 视频目录
 VIDEO_DIR = os.path.join(DATA_DIR, "videos")

@@ -1,8 +1,8 @@
 FROM python:3.10-slim
 
 LABEL maintainer="Ulysses"
-LABEL description="恋爱至上主义区域 - NxSiran Telegram Bot v0.1"
-LABEL version="0.1.0"
+LABEL description="恋爱至上主义区域 - NxSiran Telegram Bot v1.3.1"
+LABEL version="1.3.1"
 
 # 设置工作目录
 WORKDIR /app
