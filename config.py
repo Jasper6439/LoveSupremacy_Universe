@@ -45,8 +45,8 @@ CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 
 # 默认配置（首次运行时创建）
 DEFAULT_CONFIG = {
-    "admin_username": "Ulysses",
-    "admin_password": "646039",
+    "admin_username": "",
+    "admin_password": "",
     "telegram_token": "",
     "chat_id": "",
     "ai_api_key": "",
