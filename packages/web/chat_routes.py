@@ -15,8 +15,6 @@ from config import *
 from auth import *
 from prompts import *
 from memory_legacy import *
-from weather import *
-from anniversary import *
 from emotion import *
 from stats import *
 from image_gen import *

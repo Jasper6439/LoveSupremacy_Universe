@@ -5,7 +5,6 @@
 
 import asyncio
 import logging
-import os
 
 from datetime import datetime
 
@@ -177,8 +176,12 @@ async def api_send_message(request):
         telegram_id = user['telegram_id']
 
         # Save user message to chat history
-        from chat_history import append_message
-        append_message(telegram_id, 'user', message)
+        from chat_history import get_history, save_chat_history
+        history = get_history(telegram_id)
+        history.append({"role": "user", "content": message})
+        if len(history) > 100:
+            history = history[-100:]
+        save_chat_history(telegram_id, history)
 
         # Trigger AI reply asynchronously (don't wait for it)
         asyncio.create_task(generate_ai_reply(telegram_id, message))

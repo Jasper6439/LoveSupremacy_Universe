@@ -20,7 +20,7 @@ from chat_history import *
 from image_gen import *
 from packages.commands.basic import selfie_cmd, reset, memory_cmd, stats_cmd
 from packages.commands.skills import sticker_cmd
-from packages.commands.misc import anniversary_cmd, quota_cmd
+from packages.commands.misc import anniversary_cmd
 
 # Lazy import for bot.call_ai (the high-level AI function with character/memory/emotion integration)
 def _get_call_ai():

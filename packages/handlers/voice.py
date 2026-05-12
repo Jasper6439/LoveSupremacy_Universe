@@ -617,11 +617,20 @@ async def tts_voice_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tts_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """查看 TTS 状态"""
     backends = []
-    if await TTSEngine._backends["edge"].is_available():
-        backends.append("Edge TTS ✅")
-    if TTSEngine._backends["sovits"].is_available():
-        backends.append("GPT-SoVITS ✅")
-    if TTSEngine._backends["fish"].is_available():
-        backends.append("Fish Speech ✅")
+    try:
+        if await tts._backends["edge"].is_available():
+            backends.append("Edge TTS ✅")
+    except Exception:
+        pass
+    try:
+        if tts._backends["sovits"].is_available():
+            backends.append("GPT-SoVITS ✅")
+    except Exception:
+        pass
+    try:
+        if await tts._backends["fish"].is_available():
+            backends.append("Fish Speech ✅")
+    except Exception:
+        pass
     status = "\n".join(backends) if backends else "无可用引擎 ❌"
     await update.message.reply_text(f"🔊 TTS 状态\n当前引擎: {tts.current_backend}\n可用引擎:\n{status}")

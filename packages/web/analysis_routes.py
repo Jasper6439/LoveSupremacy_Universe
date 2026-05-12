@@ -11,11 +11,11 @@ from datetime import datetime
 from aiohttp import web
 
 from config import *
-from auth import *
 
 from packages.analysis.chatlog import (
     parse_wechat_chatlog,
     analyze_chatlog_with_ai,
+    save_chat_analysis,
 )
 from packages.importers.video import (
     extract_audio_from_video,

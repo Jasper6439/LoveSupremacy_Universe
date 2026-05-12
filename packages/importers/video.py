@@ -197,7 +197,6 @@ def save_video_analysis(video_type: str, analysis_result: dict):
     style = analysis.get('speaking_style', '')
     traits = analysis.get('personality_traits', [])
     catchphrases = analysis.get('catchphrases', [])
-    analysis.get('tone_analysis', '')
     
     if video_type == "采访":
         save_memory_entry(f"演员真实说话风格: {style}")

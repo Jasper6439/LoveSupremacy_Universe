@@ -7,7 +7,6 @@ import os
 
 from aiohttp import web
 
-from packages.web.skills_state import _get_skills_functions
 from packages.web.page_routes import health_check, serve_index, serve_miniapp, serve_game
 from packages.web.chat_routes import api_chat, api_stats
 from packages.web.media_routes import *
@@ -39,6 +38,12 @@ __all__ = [
     "api_analyze_video",
     "api_register",
     "api_login",
+    "api_forgot_password",
+    "api_verify_reset_code",
+    "api_reset_password",
+    "api_user_profile",
+    "api_bind_character",
+    "api_get_character_bindings",
     "api_get_config",
     "api_update_config",
     "api_skills_list",
@@ -50,6 +55,9 @@ __all__ = [
     "api_switch_character",
     "api_messages_history",
     "api_messages_sync",
+    "api_link_telegram",
+    "api_get_linked_telegram",
+    "api_send_message",
     "cors_middleware",
     "register_routes",
 ]

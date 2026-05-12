@@ -230,11 +230,6 @@ def format_quota_report() -> str:
             color = '🟢'
         return f"{color}{'█' * filled}{'░' * (width - filled)} {ratio * 100:.1f}%"
 
-    usage['requests'] / QUOTA_LIMITS['requests'] * 100
-    usage['cpu_seconds'] / QUOTA_LIMITS['cpu_seconds'] * 100
-    usage['memory_gib_seconds'] / QUOTA_LIMITS['memory_gib_seconds'] * 100
-    usage['network_gb'] / QUOTA_LIMITS['network_gb'] * 100 if QUOTA_LIMITS['network_gb'] > 0 else 0
-
     # 估算剩余天数
     days_in_month = 30
     current_day = datetime.now(get_default_tz()).day

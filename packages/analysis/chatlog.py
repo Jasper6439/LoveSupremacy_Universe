@@ -79,7 +79,6 @@ def parse_json_chatlog(data: dict) -> dict:
                 if isinstance(ts, (int, float)):
                     # 时间戳
                     try:
-                        from datetime import datetime
                         time_str = datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d %H:%M:%S')
                     except Exception:
                         time_str = str(ts)
@@ -137,7 +136,6 @@ def parse_chatlab_format(data: dict) -> dict:
         # 处理时间戳格式
         if isinstance(time_str, (int, float)):
             try:
-                from datetime import datetime
                 time_str = datetime.fromtimestamp(time_str / 1000 if time_str > 1e10 else time_str).strftime('%Y-%m-%d %H:%M:%S')
             except Exception:
                 time_str = str(time_str)

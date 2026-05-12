@@ -98,7 +98,6 @@ async def web_search(query: str, max_results: int = 3) -> str:
                 return ""
             text = response.text
             results = []
-            re.findall(r'<a[^>]*class="result-link"[^>]*href="([^"]*)"', text)
             snippets = re.findall(r'<td[^>]*class="result-snippet"[^>]*>(.*?)</td>', text, re.DOTALL)
             for i in range(min(max_results, len(snippets))):
                 clean = re.sub(r'<[^>]+>', '', snippets[i]).strip()

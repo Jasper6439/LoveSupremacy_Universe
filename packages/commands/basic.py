@@ -21,8 +21,8 @@ from telegram.ext import ContextTypes
 
 from config import (
     YOUR_CHAT_ID, MEMORY_FILE, HISTORY_FILE, ANNIVERSARY_FILE,
-    STATS_FILE, SEMANTIC_MEMORY_FILE, DATA_DIR, LOG_DIR,
-    load_json, save_json, get_user_selfie_dir,
+    STATS_FILE, SEMANTIC_MEMORY_FILE,
+    load_json, get_user_selfie_dir,
 )
 from prompts import SELFIE_CAPTIONS
 from memory_legacy import (
@@ -31,14 +31,10 @@ from memory_legacy import (
 )
 from stats import load_stats
 from anniversary import load_anniversaries, get_days_together
-from emotion import detect_emotion
 from image_gen import get_selfie_count, get_saved_selfies, send_selfie_to_chat
-from chat_history import get_history, chat_histories, save_chat_history
+from chat_history import chat_histories, save_chat_history
 from characters import get_current_character
-from tts_engine import TTSEngine
 from packages.commands.misc import auto_delete_messages
-
-tts = TTSEngine()
 
 # Lazy import for bot.call_ai (high-level AI function with character/memory/emotion integration)
 def _get_call_ai():
@@ -61,7 +57,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     days_info = f"\n💕 我们认识 {days} 天了" if days > 0 else ""
     
     # 设置菜单按钮
-    from telegram import BotCommand
     commands = [
         BotCommand("selfie", "📸 发自拍"),
         BotCommand("sticker", "🎨 表情包"),

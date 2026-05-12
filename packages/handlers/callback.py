@@ -1,7 +1,5 @@
 """内联按钮回调处理"""
 
-import logging
-
 from telegram import Update
 from telegram.ext import ContextTypes
 
