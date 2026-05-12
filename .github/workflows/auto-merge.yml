@@ -1,0 +1,108 @@
+name: Auto Merge by Version
+
+on:
+  push:
+    branches-ignore:
+      - 'master'
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          # 从分支名提取版本号（支持多种格式）
+          VERSION=$(echo "$BRANCH" | grep -oP 'v?\K\d+\.\d+\.\d+[\.\d]*' | head -1)
+
+          if [ -z "$VERSION" ]; then
+            echo "No version found in branch name: $BRANCH"
+            echo "has_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION from branch: $BRANCH"
+
+      - name: Check and merge in version order
+        if: steps.version.outputs.has_version != 'false'
+        run: |
+          CURRENT_VERSION="${{ steps.version.outputs.version }}"
+          CURRENT_BRANCH="${{ steps.version.outputs.branch }}"
+
+          echo "=== Current branch: $CURRENT_BRANCH (v$CURRENT_VERSION) ==="
+
+          # 获取所有远程分支（排除 master）
+          git branch -r | grep -v 'master' | grep -v 'HEAD' | sed 's|origin/||' | while read BRANCH; do
+            # 提取版本号
+            VER=$(echo "$BRANCH" | grep -oP 'v?\K\d+\.\d+\.\d+[\.\d]*' | head -1)
+            if [ -n "$VER" ]; then
+              echo "Branch: $BRANCH -> Version: $VER"
+            fi
+          done
+
+          # 获取所有有版本号的远程分支
+          BRANCHES=$(git branch -r | grep -v 'master' | grep -v 'HEAD' | sed 's|origin/||')
+
+          # 找出所有版本号并排序
+          LOWER_EXISTS=false
+          for BRANCH in $BRANCHES; do
+            VER=$(echo "$BRANCH" | grep -oP 'v?\K\d+\.\d+\.\d+[\.\d]*' | head -1)
+            if [ -z "$VER" ]; then
+              continue
+            fi
+
+            # 检查该分支是否已合并到 master
+            MERGED=$(git branch -r --merged origin/master | grep "origin/$BRANCH" | head -1)
+            if [ -n "$MERGED" ]; then
+              continue
+            fi
+
+            # 比较版本号
+            if [ "$VER" != "$CURRENT_VERSION" ]; then
+              # 用 sort -V 比较版本号
+              LOWER=$(echo -e "$VER\n$CURRENT_VERSION" | sort -V | head -1)
+              if [ "$LOWER" = "$VER" ]; then
+                echo "⚠️ Branch $BRANCH (v$VER) has lower version and is not merged yet"
+                echo "   Waiting for v$VER to merge before v$CURRENT_VERSION"
+                LOWER_EXISTS=true
+              fi
+            fi
+          done
+
+          if [ "$LOWER_EXISTS" = true ]; then
+            echo ""
+            echo "🚫 Cannot merge: there are lower-version branches pending"
+            echo "   Current: v$CURRENT_VERSION"
+            exit 0
+          fi
+
+          echo ""
+          echo "✅ No lower-version branches pending. Safe to merge!"
+          echo ""
+
+          # 合并到 master
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout master
+          git pull origin master
+
+          echo "Merging $CURRENT_BRANCH (v$CURRENT_VERSION) into master..."
+          git merge --no-ff "$CURRENT_BRANCH" -m "Merge $CURRENT_BRANCH (v$CURRENT_VERSION)"
+
+          git push origin master
+
+          # 删除已合并的远程分支
+          git push origin --delete "$CURRENT_BRANCH" 2>/dev/null || true
+
+          echo "🎉 Successfully merged v$CURRENT_VERSION to master!"
