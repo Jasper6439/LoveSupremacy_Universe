@@ -1,6 +1,6 @@
 """
-auth.py - 车如云 Telegram Bot 认证模块
-v1.3.1 优化版：以 chat_id 为主键，支持多端统一登录
+auth.py - 恋爱至上主义区域 认证模块
+v1.4.5: 支持邮箱注册，角色独立绑定 Telegram Chat ID
 """
 
 import hashlib
@@ -9,8 +9,9 @@ import json
 import logging
 import os
 import secrets
+from datetime import datetime, timedelta
 
-from config import USERS_FILE, load_config
+from config import USERS_FILE, load_config, get_default_tz
 
 
 # ============================================================
@@ -22,29 +23,36 @@ USER_SESSIONS = {}  # {token: {"user_id": chat_id, "username": xxx, "created": t
 # API 认证令牌存储（内存，重启后失效）
 API_TOKENS = {}  # {token: {"user_id": xxx, "created": timestamp}}
 
+# 自动登录令牌（长期有效）
+AUTO_LOGIN_TOKENS = {}  # {token: {"user_id": xxx, "expires": timestamp}}
+AUTO_LOGIN_FILE = os.path.join(os.path.dirname(USERS_FILE), "auto_login.json")
+
 
 # ============================================================
-# 用户数据结构 v2
+# 用户数据结构 v2.5
 # ============================================================
-# 以 chat_id 为主键（一个 Telegram 账号只能绑定一个用户）
+# 支持邮箱注册，角色独立绑定 Chat ID
 #
 # {
 #   "5315601134": {
 #     "username": "jasper",
+#     "email": "user@example.com",      # 新增：邮箱
 #     "password_hash": "sha256...",
 #     "display_name": "Jasper",
-#     "role": "admin",           // admin | user
+#     "role": "admin",
 #     "created_at": "2026-05-12T...",
 #     "last_login": "2026-05-12T...",
 #     "login_count": 5,
-#     "preferences": {
-#       "language": "zh-CN",
-#       "theme": "auto"
-#     }
+#     "preferences": {...},
+#     "character_bindings": {            # 新增：角色绑定
+#       "chayewoon": {"chat_id": "123456", "bound_at": "..."}
+#     },
+#     "reset_code": null,                # 新增：密码重置码
+#     "reset_code_expires": null         # 新增：重置码过期时间
 #   }
 # }
 
-USER_DATA_VERSION = 2
+USER_DATA_VERSION = 2.5
 
 
 # ============================================================
@@ -361,3 +369,211 @@ def validate_api_token(request):
         if token in API_TOKENS:
             return API_TOKENS[token]["user_id"]
     return None
+
+
+# ============================================================
+# 自动登录 Token（长期有效）
+# ============================================================
+
+def _load_auto_login():
+    """加载自动登录令牌"""
+    global AUTO_LOGIN_TOKENS
+    try:
+        if os.path.exists(AUTO_LOGIN_FILE):
+            with open(AUTO_LOGIN_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                now = time.time()
+                AUTO_LOGIN_TOKENS = {
+                    k: v for k, v in data.items()
+                    if v.get("expires", 0) > now
+                }
+    except Exception as e:
+        logging.warning(f"[自动登录] 加载失败: {e}")
+        AUTO_LOGIN_TOKENS = {}
+
+def _save_auto_login():
+    """保存自动登录令牌"""
+    try:
+        os.makedirs(os.path.dirname(AUTO_LOGIN_FILE), exist_ok=True)
+        with open(AUTO_LOGIN_FILE, 'w', encoding='utf-8') as f:
+            json.dump(AUTO_LOGIN_TOKENS, f, ensure_ascii=False)
+    except Exception as e:
+        logging.warning(f"[自动登录] 保存失败: {e}")
+
+# 启动时加载
+_load_auto_login()
+
+def generate_auto_login_token(user_id):
+    """生成自动登录令牌（30天有效）"""
+    token = secrets.token_hex(32)
+    AUTO_LOGIN_TOKENS[token] = {
+        "user_id": user_id,
+        "expires": time.time() + 30 * 24 * 3600
+    }
+    _save_auto_login()
+    return token
+
+def validate_auto_login_token(token):
+    """验证自动登录令牌，返回 user_id 或 None"""
+    if token not in AUTO_LOGIN_TOKENS:
+        return None
+    session = AUTO_LOGIN_TOKENS[token]
+    if session.get("expires", 0) < time.time():
+        del AUTO_LOGIN_TOKENS[token]
+        _save_auto_login()
+        return None
+    return session.get("user_id")
+
+def revoke_auto_login_token(token):
+    """撤销自动登录令牌"""
+    if token in AUTO_LOGIN_TOKENS:
+        del AUTO_LOGIN_TOKENS[token]
+        _save_auto_login()
+
+
+# ============================================================
+# 角色绑定 Chat ID
+# ============================================================
+
+def bind_character_chat_id(user_id, character_id, chat_id):
+    """
+    绑定角色的 Telegram Chat ID
+    返回: (success: bool, message: str)
+    """
+    if not chat_id:
+        return False, "Chat ID 不能为空"
+    try:
+        chat_id_str = str(int(chat_id))
+    except ValueError:
+        return False, "Chat ID 必须是数字"
+
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return False, "用户不存在"
+
+    if "character_bindings" not in user:
+        user["character_bindings"] = {}
+
+    user["character_bindings"][character_id] = {
+        "chat_id": chat_id_str,
+        "bound_at": datetime.now(get_default_tz()).isoformat()
+    }
+    users[str(user_id)] = user
+    _save_users_dict(users)
+    logging.info(f"[角色绑定] {user_id} -> {character_id} ({chat_id_str})")
+    return True, "绑定成功"
+
+def get_character_chat_id(user_id, character_id):
+    """获取用户绑定的角色 Chat ID"""
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return None
+    bindings = user.get("character_bindings", {})
+    return bindings.get(character_id, {}).get("chat_id")
+
+def get_user_character_bindings(user_id):
+    """获取用户的所有角色绑定"""
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return {}
+    return user.get("character_bindings", {})
+
+
+# ============================================================
+# 找回密码
+# ============================================================
+
+def generate_reset_code(email_or_username):
+    """
+    生成密码重置验证码
+    返回: (success: bool, code: str or None, message: str)
+    """
+    users = _get_users_dict()
+
+    # 查找用户（支持邮箱或用户名）
+    user_key = None
+    user_data = None
+
+    for cid, u in users.items():
+        if u.get("email", "").lower() == email_or_username.lower():
+            user_key = cid
+            user_data = u
+            break
+        if u.get("username", "").lower() == email_or_username.lower():
+            user_key = cid
+            user_data = u
+            break
+
+    if not user_data:
+        return False, None, "该用户不存在"
+
+    # 生成6位数字验证码
+    code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+    expires = (datetime.now(get_default_tz()) + timedelta(minutes=10)).isoformat()
+
+    user_data["reset_code"] = code
+    user_data["reset_code_expires"] = expires
+    users[user_key] = user_data
+    _save_users_dict(users)
+
+    logging.info(f"[找回密码] 生成重置码: {user_data.get('username')}")
+    return True, code, "验证码已生成"
+
+def verify_reset_code(email_or_username, code):
+    """
+    验证重置码
+    返回: (success: bool, user_id: str or None, message: str)
+    """
+    users = _get_users_dict()
+
+    user_key = None
+    user_data = None
+
+    for cid, u in users.items():
+        if u.get("email", "").lower() == email_or_username.lower():
+            user_key = cid
+            user_data = u
+            break
+        if u.get("username", "").lower() == email_or_username.lower():
+            user_key = cid
+            user_data = u
+            break
+
+    if not user_data:
+        return False, None, "用户不存在"
+
+    stored_code = user_data.get("reset_code")
+    expires = user_data.get("reset_code_expires")
+
+    if not stored_code or not expires:
+        return False, None, "请先获取验证码"
+
+    if datetime.now(get_default_tz()) > datetime.fromisoformat(expires):
+        return False, None, "验证码已过期"
+
+    if code != stored_code:
+        return False, None, "验证码错误"
+
+    return True, user_key, "验证成功"
+
+def reset_password(user_id, new_password):
+    """重置密码"""
+    if len(new_password) < 6:
+        return False, "密码长度至少 6 位"
+
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return False, "用户不存在"
+
+    user["password_hash"] = hash_password(new_password)
+    user["reset_code"] = None
+    user["reset_code_expires"] = None
+    users[str(user_id)] = user
+    _save_users_dict(users)
+
+    logging.info(f"[找回密码] 密码重置: {user_id}")
+    return True, "密码重置成功"

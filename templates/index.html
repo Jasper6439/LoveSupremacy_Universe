@@ -1182,6 +1182,10 @@
         </div>
 
         <form class="login-form" id="login-form" onsubmit="handleAuth(event)">
+            <div class="form-group" id="email-group" style="display: none;">
+                <label class="form-label" for="auth-email">邮箱</label>
+                <input type="email" id="auth-email" class="form-input" placeholder="请输入邮箱" autocomplete="email">
+            </div>
             <div class="form-group">
                 <label class="form-label" for="auth-username">用户名</label>
                 <input type="text" id="auth-username" class="form-input" placeholder="请输入用户名" required autocomplete="username">
@@ -1193,20 +1197,33 @@
                     <button type="button" class="password-toggle" id="pwd-toggle-btn" onclick="togglePasswordVisibility()" aria-label="切换密码可见性">&#128065;</button>
                 </div>
             </div>
-            <div class="form-group" id="chatid-group" style="display: none;">
-                <label class="form-label" for="auth-chatid">Telegram Chat ID <span style="color: var(--error);">*</span></label>
-                <input type="text" id="auth-chatid" class="form-input" placeholder="你的 Telegram Chat ID">
-                <div class="form-hint">
-                    向 <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> 发送任意消息获取
-                </div>
-            </div>
             <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: -8px;">
-                <input type="checkbox" id="remember-me" style="width: 16px; height: 16px; cursor: pointer;">
-                <label for="remember-me" style="font-size: var(--font-size-sm); color: var(--text-secondary); cursor: pointer; user-select: none;">记住账号</label>
+                <input type="checkbox" id="auto-login" style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="auto-login" style="font-size: var(--font-size-sm); color: var(--text-secondary); cursor: pointer; user-select: none;">30天内自动登录</label>
             </div>
             <div class="form-error" id="auth-error"></div>
             <button type="submit" class="btn-primary login-btn" id="auth-submit-btn">登录</button>
+            <div style="text-align: center; margin-top: 12px;">
+                <a href="#" onclick="showForgotPassword()" style="font-size: var(--font-size-sm); color: var(--purple);">忘记密码？</a>
+            </div>
         </form>
+
+        <!-- Forgot Password Modal -->
+        <div id="forgot-password-modal" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: var(--radius-lg);">
+            <div style="font-weight: 600; margin-bottom: 12px;">找回密码</div>
+            <div class="form-group">
+                <input type="text" id="forgot-email" class="form-input" placeholder="请输入邮箱或用户名">
+            </div>
+            <button type="button" class="btn-primary" style="width: 100%; margin-bottom: 8px;" onclick="sendResetCode()">发送验证码</button>
+            <div class="form-group" id="reset-code-group" style="display: none; margin-top: 12px;">
+                <input type="text" id="reset-code" class="form-input" placeholder="请输入6位验证码" maxlength="6">
+            </div>
+            <div class="form-group" id="new-password-group" style="display: none; margin-top: 12px;">
+                <input type="password" id="new-password" class="form-input" placeholder="请输入新密码">
+            </div>
+            <button type="button" id="reset-btn" class="btn-primary" style="width: 100%; display: none;" onclick="resetPassword()">重置密码</button>
+            <button type="button" class="btn-secondary" style="width: 100%; margin-top: 8px;" onclick="hideForgotPassword()">取消</button>
+        </div>
 
         <div class="login-card-footer">
             __APP_NAME__ &copy; 2025
@@ -1648,14 +1665,17 @@
                     </div>
                 </div>
 
-                <!-- Character Selection -->
+                <!-- Character Bindings -->
                 <div class="settings-group">
-                    <div class="settings-group-title">角色</div>
-                    <div id="character-list">
+                    <div class="settings-group-title">角色绑定</div>
+                    <div class="settings-list" id="character-bindings-list">
                         <div class="settings-item">
                             <span class="settings-icon">&#128100;</span>
                             <span class="settings-label">加载中...</span>
                         </div>
+                    </div>
+                    <div style="padding: var(--space-3); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                        绑定角色的 Telegram Chat ID 后，可以通过 Telegram 与角色对话
                     </div>
                 </div>
 
@@ -1789,8 +1809,8 @@ function switchLoginTab(el, mode) {
     document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
     document.getElementById('auth-submit-btn').textContent = isLoginMode ? '登录' : '注册';
-    document.getElementById('chatid-group').style.display = isLoginMode ? 'none' : 'block';
-    document.getElementById('auth-chatid').required = !isLoginMode;
+    document.getElementById('email-group').style.display = isLoginMode ? 'none' : 'block';
+    document.getElementById('auth-email').required = !isLoginMode;
     document.getElementById('auth-error').textContent = '';
 }
 
@@ -1824,15 +1844,16 @@ async function handleAuth(event) {
 
     const username = document.getElementById('auth-username').value.trim();
     const password = document.getElementById('auth-password').value;
-    const chatId = document.getElementById('auth-chatid').value.trim();
+    const email = document.getElementById('auth-email').value.trim();
+    const autoLogin = document.getElementById('auto-login').checked;
     const btn = document.getElementById('auth-submit-btn');
 
     if (!username || !password) {
         errorEl.textContent = '请输入用户名和密码';
         return;
     }
-    if (!isLoginMode && !chatId) {
-        errorEl.textContent = '请输入 Telegram Chat ID';
+    if (!isLoginMode && !email) {
+        errorEl.textContent = '请输入邮箱';
         return;
     }
 
@@ -1842,8 +1863,8 @@ async function handleAuth(event) {
     try {
         const endpoint = isLoginMode ? '/api/login' : '/api/register';
         const body = isLoginMode
-            ? { username, password }
-            : { username, password, chat_id: chatId };
+            ? { username, password, auto_login: autoLogin }
+            : { email, username, password };
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1855,17 +1876,14 @@ async function handleAuth(event) {
             authToken = data.token;
             localStorage.setItem('auth_token', authToken);
 
-            // 记住账号功能
-            const rememberMe = document.getElementById('remember-me').checked;
-            if (rememberMe) {
-                localStorage.setItem('remembered_username', username);
-            } else {
-                localStorage.removeItem('remembered_username');
+            // 自动登录：保存 auto_token
+            if (data.auto_token) {
+                localStorage.setItem('auto_login_token', data.auto_token);
             }
 
             document.getElementById('auth-username').value = '';
             document.getElementById('auth-password').value = '';
-            document.getElementById('auth-chatid').value = '';
+            document.getElementById('auth-email').value = '';
             showApp();
         } else {
             let errorMsg = data.error || (isLoginMode ? '登录失败' : '注册失败');
@@ -1895,6 +1913,103 @@ function logout() {
         </div>
     `;
     showLogin();
+}
+
+/* ================================================================
+   Forgot Password
+   ================================================================ */
+function showForgotPassword() {
+    document.getElementById('forgot-password-modal').style.display = 'block';
+    document.getElementById('login-form').style.display = 'none';
+}
+
+function hideForgotPassword() {
+    document.getElementById('forgot-password-modal').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('reset-code-group').style.display = 'none';
+    document.getElementById('new-password-group').style.display = 'none';
+    document.getElementById('reset-btn').style.display = 'none';
+    document.getElementById('forgot-email').value = '';
+    document.getElementById('reset-code').value = '';
+    document.getElementById('new-password').value = '';
+}
+
+let resetUserId = null;
+
+async function sendResetCode() {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email) {
+        alert('请输入邮箱或用户名');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email_or_username: email })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert('验证码已发送（测试模式：' + data.code + '）');
+            document.getElementById('reset-code-group').style.display = 'block';
+            document.getElementById('new-password-group').style.display = 'block';
+            document.getElementById('reset-btn').style.display = 'block';
+        } else {
+            alert(data.error || '发送失败');
+        }
+    } catch (e) {
+        alert('网络错误');
+    }
+}
+
+async function resetPassword() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const code = document.getElementById('reset-code').value.trim();
+    const newPassword = document.getElementById('new-password').value;
+
+    if (!code || !newPassword) {
+        alert('请输入验证码和新密码');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        alert('密码长度至少6位');
+        return;
+    }
+
+    try {
+        // 先验证验证码
+        const verifyResponse = await fetch('/api/verify-reset-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email_or_username: email, code: code })
+        });
+        const verifyData = await verifyResponse.json();
+
+        if (!verifyData.success) {
+            alert(verifyData.error || '验证码错误');
+            return;
+        }
+
+        // 重置密码
+        const resetResponse = await fetch('/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: verifyData.user_id, new_password: newPassword })
+        });
+        const resetData = await resetResponse.json();
+
+        if (resetData.success) {
+            alert('密码重置成功，请用新密码登录');
+            hideForgotPassword();
+        } else {
+            alert(resetData.error || '重置失败');
+        }
+    } catch (e) {
+        alert('网络错误');
+    }
 }
 
 /* ================================================================
