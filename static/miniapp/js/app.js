@@ -13,7 +13,8 @@
         settings: '\u8BBE\u7F6E',
         skills: '\u6280\u80FD\u7BA1\u7406',
         game: '\u8F66\u5982\u4E91\u7269\u8BED',
-        farm: '\u519C\u573A'
+        farm: '\u519C\u573A',
+        chat: '\u804A\u5929'
     };
 
     // Page lifecycle callbacks
@@ -263,6 +264,7 @@
         if (window.SettingsPage) window.SettingsPage.init();
         if (window.SkillsPage) window.SkillsPage.init();
         if (window.QuotaPage) window.QuotaPage.init();
+        if (window.PageChat) window.PageChat.init();
 
         // Wire up inline onclick handlers that reference switchPage
         window.switchPage = navigate;
@@ -289,10 +291,16 @@
         onPageEnter('game', function () {
             if (typeof initGameIfNeeded === 'function') initGameIfNeeded();
         });
+        onPageEnter('chat', function () {
+            if (window.PageChat) window.PageChat.onPageEnter();
+        });
 
         // Leave callbacks for cleanup
         onPageLeave('farm', function () {
             if (window.FarmPage) window.FarmPage.onPageLeave();
+        });
+        onPageLeave('chat', function () {
+            if (window.PageChat) window.PageChat.onPageLeave();
         });
     });
 

@@ -1237,6 +1237,51 @@ async def api_get_linked_telegram(request):
         return web.json_response({'error': str(e)}, status=500)
 
 
+async def api_send_message(request):
+    """从 Web 端发送消息到 Telegram"""
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+        
+        data = await request.json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return web.json_response({'error': '消息不能为空'}, status=400)
+        
+        if len(message) > 2000:
+            return web.json_response({'error': '消息过长 (最大2000字符)'}, status=400)
+        
+        # Get user's telegram_id
+        db = get_db()
+        user = db.get_user_by_id(user_id)
+        if not user or not user.get('telegram_id'):
+            return web.json_response({
+                'error': '请先关联 Telegram 账号',
+                'linked': False
+            }, status=403)
+        
+        telegram_id = user['telegram_id']
+        
+        # Save message to chat history
+        from chat_history import append_message
+        append_message(telegram_id, 'user', message)
+        
+        # Trigger bot to generate reply (async)
+        # This will be handled by the bot's message handler
+        # For now, just acknowledge receipt
+        
+        return web.json_response({
+            'success': True,
+            'message': '消息已发送',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logging.error(f"[发送消息] 失败: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
 # CORS 中间件 - 允许 Telegram Mini App 跨域访问
 @web.middleware
 async def cors_middleware(request, handler):
@@ -1260,6 +1305,7 @@ def register_routes(app):
     app.router.add_get('/api/messages/sync', api_messages_sync)
     app.router.add_post('/api/telegram/link', api_link_telegram)
     app.router.add_get('/api/telegram/link', api_get_linked_telegram)
+    app.router.add_post('/api/messages/send', api_send_message)
     app.router.add_get('/miniapp', serve_miniapp)
     app.router.add_get('/game', serve_game)
     app.router.add_post('/api/upload-selfies', api_upload_selfies)

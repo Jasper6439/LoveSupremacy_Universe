@@ -298,6 +298,11 @@
             },
             getLinked: function () {
                 return request('GET', '/api/telegram/link');
+            },
+            sendMessage: function (message) {
+                return request('POST', '/api/messages/send', {
+                    body: { message: message }
+                });
             }
         },
 
