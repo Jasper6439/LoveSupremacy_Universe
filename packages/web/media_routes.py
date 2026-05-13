@@ -251,7 +251,19 @@ async def serve_uploaded_file(request):
                     if os.path.exists(candidate):
                         filepath = candidate
             
-            # 2. 如果找不到，尝试全局 uploads/{folder}/ 目录（兼容旧数据）
+            # 2. 如果找不到，扫描所有用户目录（用于图片分享链接）
+            if not filepath:
+                if os.path.exists(DATA_DIR):
+                    for entry in os.listdir(DATA_DIR):
+                        if entry.startswith("user_"):
+                            user_dir = os.path.join(DATA_DIR, entry, "selfies", folder)
+                            if os.path.isdir(user_dir):
+                                candidate = os.path.join(user_dir, filename)
+                                if os.path.exists(candidate):
+                                    filepath = candidate
+                                    break
+            
+            # 3. 如果找不到，尝试全局 uploads/{folder}/ 目录（兼容旧数据）
             if not filepath:
                 global_dir = os.path.join(DATA_DIR, "uploads", folder)
                 if os.path.isdir(global_dir):
@@ -259,7 +271,7 @@ async def serve_uploaded_file(request):
                     if os.path.exists(candidate):
                         filepath = candidate
             
-            # 3. 再尝试 SELFIE_DIR/{folder}/ 目录
+            # 4. 再尝试 SELFIE_DIR/{folder}/ 目录
             if not filepath:
                 legacy_dir = os.path.join(SELFIE_DIR, folder)
                 if os.path.isdir(legacy_dir):
