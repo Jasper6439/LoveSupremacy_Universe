@@ -99,11 +99,7 @@ async def api_chat(request):
         except Exception:
             pass
 
-        # 过滤明显的提示词泄露关键词（不影响韩语等正常回复）
-        leak_keywords = ['respond as', 'following the style', 'system prompt', 'calling user', 'We need to respond']
-        if response and any(kw in response for kw in leak_keywords):
-            logging.warning(f"[WebChat] 检测到提示词泄露，已替换: {response[:80]}...")
-            response = "...（沉默）"
+        # 过滤由 ai_compete 规则引擎处理，此处不再重复过滤
 
         # 保存到共享历史（带时间戳）
         timestamp = datetime.now(get_default_tz()).isoformat()
