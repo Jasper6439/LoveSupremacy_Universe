@@ -921,7 +921,7 @@
         }
         .page-gallery .photo-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             gap: var(--space-2);
         }
         .page-gallery .photo-item {
@@ -945,7 +945,7 @@
             position: fixed;
             inset: 0;
             z-index: var(--z-modal);
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.92);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -953,16 +953,19 @@
             visibility: hidden;
             transition: opacity var(--duration-normal) var(--ease),
                         visibility var(--duration-normal) var(--ease);
+            cursor: zoom-out;
         }
         .page-gallery .lightbox.lightbox-visible {
             opacity: 1;
             visibility: visible;
         }
         .page-gallery .lightbox img {
-            max-width: 90%;
-            max-height: 80vh;
+            max-width: 92%;
+            max-height: 85vh;
             object-fit: contain;
             border-radius: var(--radius-sm);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            cursor: default;
         }
         .page-gallery .lightbox-close {
             position: absolute;
@@ -978,6 +981,8 @@
             border-radius: var(--radius-full);
             font-size: 20px;
             cursor: pointer;
+            border: none;
+            z-index: 1;
         }
         .page-gallery .lightbox-close:hover {
             background: rgba(255, 255, 255, 0.25);
@@ -2701,11 +2706,26 @@ function openLightbox(src) {
     const lightbox = document.getElementById('gallery-lightbox');
     document.getElementById('lightbox-image').src = src;
     lightbox.classList.add('lightbox-visible');
+    lightbox.style.display = 'flex';
 }
 
 function closeLightbox() {
-    document.getElementById('gallery-lightbox').classList.remove('lightbox-visible');
+    const lightbox = document.getElementById('gallery-lightbox');
+    lightbox.classList.remove('lightbox-visible');
+    lightbox.style.display = 'none';
+    document.getElementById('lightbox-image').src = '';
 }
+
+// 点击背景关闭 lightbox
+document.addEventListener('click', function(e) {
+    const lightbox = document.getElementById('gallery-lightbox');
+    if (e.target === lightbox) closeLightbox();
+});
+
+// ESC 关闭 lightbox
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
 
 /* ================================================================
    Photo Upload (Home Page)
