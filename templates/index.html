@@ -940,6 +940,7 @@
             transition: transform var(--duration-slow) var(--ease);
         }
         .page-media .photo-item:hover img { transform: scale(1.05); }
+        .page-media .photo-item:hover button { opacity: 1 !important; }
 
         .page-media .lightbox {
             position: fixed;
@@ -1627,6 +1628,7 @@
                 <!-- Lightbox -->
                 <div class="lightbox" id="gallery-lightbox" style="display:none;">
                     <button class="lightbox-close" onclick="closeLightbox()">&#10005;</button>
+                    <button class="lightbox-delete" id="lightbox-delete-btn" onclick="deleteLightboxPhoto()" style="position:absolute;top:var(--space-4);left:var(--space-4);width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,60,60,0.8);color:#fff;border-radius:var(--radius-full);font-size:18px;cursor:pointer;border:none;z-index:1;" title="删除照片">&#128465;</button>
                     <img id="lightbox-image" src="" alt="Preview">
                 </div>
             </div>
@@ -2714,6 +2716,63 @@ function closeLightbox() {
     lightbox.classList.remove('lightbox-visible');
     lightbox.style.display = 'none';
     document.getElementById('lightbox-image').src = '';
+    currentLightboxFilename = '';
+    currentLightboxCharacterId = '';
+}
+
+var currentLightboxFilename = '';
+var currentLightboxCharacterId = '';
+
+function openLightbox(src, filename, characterId) {
+    currentLightboxFilename = filename || '';
+    currentLightboxCharacterId = characterId || '';
+    const lightbox = document.getElementById('gallery-lightbox');
+    document.getElementById('lightbox-image').src = src;
+    lightbox.classList.add('lightbox-visible');
+    lightbox.style.display = 'flex';
+}
+
+async function deleteLightboxPhoto() {
+    if (!currentLightboxFilename) return;
+    if (!confirm('确定要删除这张照片吗？')) return;
+
+    try {
+        const resp = await fetch('/api/delete-selfie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ filename: currentLightboxFilename, character_id: currentLightboxCharacterId || null })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            closeLightbox();
+            loadGalleryItems();
+            showToast('已删除', 'success');
+        } else {
+            showToast(data.error || '删除失败', 'error');
+        }
+    } catch (e) {
+        showToast('删除失败', 'error');
+    }
+}
+
+async function deletePhoto(filename, characterId) {
+    if (!confirm('确定要删除这张照片吗？')) return;
+    try {
+        const resp = await fetch('/api/delete-selfie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ filename: filename, character_id: characterId || null })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            loadGalleryItems();
+            showToast('已删除', 'success');
+        } else {
+            showToast(data.error || '删除失败', 'error');
+        }
+    } catch (e) {
+        showToast('删除失败', 'error');
+    }
 }
 
 // 点击背景关闭 lightbox
@@ -2990,10 +3049,14 @@ async function loadGalleryItems() {
         grid.innerHTML = items.map(item => {
             const url = item.url || item.thumbnail || item;
             const filename = item.filename || item.name || '';
+            const characterId = item.character_id || '';
             // 添加 token 到 URL，用于图片身份验证
             const urlWithToken = url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(authToken);
-            return `<div class="photo-item" data-type="photo" onclick="openLightbox('${urlWithToken}')" style="aspect-ratio:1; background:var(--bg-tertiary); border-radius:var(--radius-md); overflow:hidden; cursor:pointer;">
-                <img src="${urlWithToken}" alt="${filename}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none'">
+            const fnEsc = filename.replace(/'/g, "\\'");
+            const chEsc = characterId.replace(/'/g, "\\'");
+            return `<div class="photo-item" data-type="photo" style="aspect-ratio:1; background:var(--bg-tertiary); border-radius:var(--radius-md); overflow:hidden; cursor:pointer; position:relative;">
+                <img src="${urlWithToken}" alt="${filename}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none'" onclick="openLightbox('${urlWithToken}','${fnEsc}','${chEsc}')">
+                <button onclick="event.stopPropagation(); deletePhoto('${fnEsc}','${chEsc}')" style="position:absolute;top:4px;right:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);color:#fff;border-radius:50%;font-size:12px;cursor:pointer;border:none;opacity:0;transition:opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0" title="删除">&#10005;</button>
             </div>`;
         }).join('');
     } catch (e) {
