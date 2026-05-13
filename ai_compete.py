@@ -22,7 +22,8 @@ COMPETE_MODELS = [
 # 权重持久化文件
 WEIGHTS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "ai_weights.json")
 
-# 评比提示词
+# 评委模型（独立于竞争模型，避免既当选手又当裁判）
+JUDGE_MODEL = "google/gemma-4-31b-it:free"
 JUDGE_PROMPT = """你是一个评委，需要从三个AI角色的回复中选出最好的一个。
 
 角色设定：车如云，一个傲娇但内心温柔的韩国女生。说话极简短，用"..."开头，可能带括号动作描写，不直接表达正面情感，用平语。
@@ -68,9 +69,9 @@ def _save_weights(weights: Dict[str, float]):
 
 
 def update_model_weight(model: str, delta: float = 0.1):
-    """更新模型权重（获胜加分）"""
+    """更新模型权重（获胜加分，失败减分，最低0.1）"""
     weights = _load_weights()
-    weights[model] = weights.get(model, 1.0) + delta
+    weights[model] = max(0.1, weights.get(model, 1.0) + delta)
     _save_weights(weights)
     logger.info(f"[AI竞争] 权重更新: {model} -> {weights[model]:.2f}")
 
@@ -150,7 +151,7 @@ async def _judge_replies(user_message: str, replies: Dict[str, str],
         judge_result = await call_ai(
             system_prompt="你是一个客观的评委，只回复一个字母。",
             user_message=judge_request,
-            model=None,  # 用默认模型做评委
+            model=JUDGE_MODEL,  # 用独立模型做评委
             temperature=0.3,
             max_tokens=10,
             timeout=30.0,
@@ -228,8 +229,11 @@ async def compete_reply(system_prompt: str, user_message: str,
         # 4. 多个成功，进行评比
         winning_model, best_reply = await _judge_replies(user_message, replies, system_prompt)
 
-    # 5. 更新权重
+    # 5. 更新权重：获胜 +0.1，失败 -0.05
     update_model_weight(winning_model, 0.1)
+    for model in replies:
+        if model != winning_model:
+            update_model_weight(model, -0.05)
 
     # 6. 缓存最佳回复
     await _save_to_cache(user_message, best_reply, winning_model)
