@@ -189,10 +189,15 @@ async def serve_uploaded_file(request):
         if '..' in filename or '/' in filename:
             return web.Response(status=403)
 
-        # 验证用户身份 - 只允许访问自己的文件
+        # 验证用户身份 - 支持 header 或 query string
         user_id = validate_session_token(request)
         if not user_id:
             user_id = validate_api_token(request)
+        # 支持从 query string 获取 token（用于 <img> 标签）
+        if not user_id:
+            token = request.query.get('token', '')
+            if token:
+                user_id = validate_session_token_from_token(token)
         if not user_id:
             user_id = load_config().get('your_chat_id', 0)
         if not user_id:

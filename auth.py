@@ -313,18 +313,27 @@ def validate_session_token(request):
     auth = request.headers.get('Authorization', '')
     if auth.startswith('Bearer '):
         token = auth[7:]
-        # 如果内存中没有，尝试重新加载
-        if token not in USER_SESSIONS:
-            _load_sessions()
-        if token in USER_SESSIONS:
-            # 检查是否过期
-            session = USER_SESSIONS[token]
-            if time.time() - session.get("created", 0) < 7 * 24 * 3600:
-                return session["user_id"]
-            else:
-                # 过期删除
-                del USER_SESSIONS[token]
-                _save_sessions()
+        return _validate_token_string(token)
+    return None
+
+def validate_session_token_from_token(token):
+    """直接从 token 字符串验证，返回 user_id 或 None"""
+    return _validate_token_string(token)
+
+def _validate_token_string(token):
+    """验证 token 字符串，返回 user_id 或 None"""
+    # 如果内存中没有，尝试重新加载
+    if token not in USER_SESSIONS:
+        _load_sessions()
+    if token in USER_SESSIONS:
+        # 检查是否过期
+        session = USER_SESSIONS[token]
+        if time.time() - session.get("created", 0) < 7 * 24 * 3600:
+            return session["user_id"]
+        else:
+            # 过期删除
+            del USER_SESSIONS[token]
+            _save_sessions()
     return None
 
 def is_admin_user(request):
