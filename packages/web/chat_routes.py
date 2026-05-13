@@ -153,7 +153,7 @@ async def api_stats(request):
             user_selfie_count = len([f for f in os.listdir(user_selfie_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))])
         
         # 用户照片目录
-        user_photos_dir = get_user_dir(user_id, 'photos')
+        user_photos_dir = os.path.join(get_user_dir(user_id), 'photos')
         user_photo_count = 0
         if os.path.exists(user_photos_dir):
             user_photo_count = len([f for f in os.listdir(user_photos_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))])
@@ -163,9 +163,9 @@ async def api_stats(request):
             'total_days': stats.get('total_days', 0),
             'today_count': stats.get('today_count', 0),
             'memory_count': stats.get('memories_count', 0),
-            'caring_count': analysis.get('关心表达次数', 0) if isinstance(analysis.get('关心表达次数'), int) else 0,
-            'jealous_count': analysis.get('吃醋次数', 0) if isinstance(analysis.get('吃醋次数'), int) else 0,
-            'warm_count': analysis.get('温暖表达次数', 0) if isinstance(analysis.get('温暖表达次数'), int) else 0,
+            'caring_count': analysis.get('关心表达次数', 0) if isinstance(analysis.get('关心表达次数', 0), int) else 0,
+            'jealous_count': analysis.get('吃醋次数', 0) if isinstance(analysis.get('吃醋次数', 0), int) else 0,
+            'warm_count': analysis.get('温暖表达次数', 0) if isinstance(analysis.get('温暖表达次数', 0), int) else 0,
             'intimacy_score': intimacy['score'],
             'intimacy_level': intimacy['level'],
             'emotions': emotions,
