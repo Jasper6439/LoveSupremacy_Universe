@@ -74,12 +74,21 @@ async def api_chat(request):
         # 使用共享的聊天记录
         history = load_chat_history(user_id)
 
-        # 调用 AI
-        response = await call_ai(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            chat_history=history
-        )
+        # [AI竞争] 多模型竞争生成最佳回复
+        try:
+            from ai_compete import compete_reply
+            response = await compete_reply(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                chat_history=history
+            )
+        except Exception as e:
+            logging.warning(f"[WebChat] AI竞争失败，fallback 单模型: {e}")
+            response = await call_ai(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                chat_history=history
+            )
 
         # 使用蒸馏角色的格式化方法
         try:

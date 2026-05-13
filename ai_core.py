@@ -124,14 +124,26 @@ async def call_ai(user_message: str, chat_history: list = None, use_memory: bool
             search_context = f"\n\n【联网搜索结果】\n{search_result}\n\n请结合以上搜索结果回答，如果搜索结果不相关就忽略。"
             final_user_message = user_message + search_context
 
-    # 使用统一的 AI 调用模块
+    # [AI竞争] 多模型竞争生成最佳回复
+    try:
+        from ai_compete import compete_reply
+        content = await compete_reply(
+            system_prompt=system_content,
+            user_message=final_user_message,
+            chat_history=chat_history,
+        )
+        content = humanize_text(content)
+        return content
+    except Exception as e:
+        logging.warning(f"[AI] 竞争模式失败，fallback 单模型: {e}")
+
+    # fallback: 使用统一的 AI 调用模块
     try:
         content = await ai_client_call_ai(
             system_prompt=system_content,
             user_message=final_user_message,
             chat_history=chat_history,
         )
-        # [Skill: humanize-ai-text] 对 AI 回复进行人性化后处理
         content = humanize_text(content)
         return content
     except Exception as e:
