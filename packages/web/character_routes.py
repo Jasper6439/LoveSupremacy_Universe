@@ -88,6 +88,7 @@ async def api_get_config(request):
             'ai_api_base': config.get('ai_api_base', ''),
             'admin_username': config.get('admin_username', ''),
             'public_url': config.get('public_url', ''),
+            'smtp_email': config.get('smtp_email', ''),
         }
         return web.json_response({'success': True, 'config': safe_config})
     except Exception as e:
@@ -104,7 +105,7 @@ async def api_update_config(request):
         config = load_config()
 
         # 允许更新的字段
-        updatable = ['telegram_token', 'chat_id', 'ai_api_key', 'ai_api_base', 'admin_username', 'admin_password', 'public_url']
+        updatable = ['telegram_token', 'chat_id', 'ai_api_key', 'ai_api_base', 'admin_username', 'admin_password', 'public_url', 'smtp_email', 'smtp_password']
         updated = []
 
         for key in updatable:

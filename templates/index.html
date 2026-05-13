@@ -1784,6 +1784,17 @@
                                     <label class="form-label">修改密码（留空不修改）</label>
                                     <input type="password" class="form-input" id="cfg-newpass" placeholder="新密码">
                                 </div>
+                                <div style="border-top:1px solid var(--border-color);margin:var(--space-3) 0;padding-top:var(--space-3);">
+                                    <div style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:var(--space-2);color:var(--text-secondary);">📧 邮件服务 (SMTP)</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">发件邮箱</label>
+                                    <input type="text" class="form-input" id="cfg-smtp-email" placeholder="your@gmail.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">应用专用密码</label>
+                                    <input type="password" class="form-input" id="cfg-smtp-password" placeholder="Gmail 应用专用密码（非登录密码）">
+                                </div>
                                 <button class="btn-primary" onclick="saveConfig()">保存配置</button>
                             </div>
                         </div>
@@ -2412,6 +2423,17 @@ function navigateTo(pageName) {
             .then(data => {
                 if (data.is_admin) {
                     document.getElementById('admin-config-group').style.display = 'block';
+                    // 加载管理员配置到表单
+                    fetch('/api/config', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                        .then(r => r.json())
+                        .then(cfg => {
+                            if (cfg.telegram_token) document.getElementById('cfg-token').value = cfg.telegram_token;
+                            if (cfg.chat_id) document.getElementById('cfg-chatid').value = cfg.chat_id;
+                            if (cfg.ai_api_base) document.getElementById('cfg-aibase').value = cfg.ai_api_base;
+                            if (cfg.public_url) document.getElementById('cfg-publicurl').value = cfg.public_url;
+                            if (cfg.smtp_email) document.getElementById('cfg-smtp-email').value = cfg.smtp_email;
+                            // smtp_password 不回显
+                        }).catch(() => {});
                 }
 
                 // Avatar upload - 使用标志避免重复绑定事件
@@ -2989,6 +3011,8 @@ async function saveConfig() {
     const aibase = document.getElementById('cfg-aibase').value.trim();
     const publicurl = document.getElementById('cfg-publicurl').value.trim();
     const newpass = document.getElementById('cfg-newpass').value;
+    const smtpEmail = document.getElementById('cfg-smtp-email').value.trim();
+    const smtpPassword = document.getElementById('cfg-smtp-password').value.trim();
 
     try {
         const body = {};
@@ -2998,6 +3022,8 @@ async function saveConfig() {
         if (aibase) body.ai_api_base = aibase;
         if (publicurl) body.public_url = publicurl;
         if (newpass) body.new_password = newpass;
+        if (smtpEmail) body.smtp_email = smtpEmail;
+        if (smtpPassword) body.smtp_password = smtpPassword;
 
         const response = await fetch('/api/config', {
             method: 'POST',

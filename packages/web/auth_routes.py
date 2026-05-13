@@ -316,14 +316,47 @@ async def api_forgot_password(request):
         success, code, message = generate_reset_code(email_or_username)
 
         if success:
-            # 这里应该发送邮件，但暂时直接返回验证码（测试用）
-            # 生产环境应该调用邮件服务
-            logging.info(f"[找回密码] 验证码: {code}")
-            return web.json_response({
-                'success': True,
-                'message': '验证码已生成（测试模式：请在日志中查看）',
-                'code': code  # 测试时返回，生产环境应删除
-            })
+            # 尝试通过邮件发送验证码
+            from email_sender import is_smtp_configured, send_verification_code
+            if is_smtp_configured():
+                # 获取用户邮箱
+                from auth import load_users
+                users_data = load_users()
+                users = users_data.get("users", {})
+                user_email = None
+                for u in users.values():
+                    if u.get('username', '').lower() == email_or_username.lower() or u.get('email', '').lower() == email_or_username.lower():
+                        user_email = u.get('email')
+                        break
+
+                if user_email:
+                    sent = await send_verification_code(user_email, code)
+                    if sent:
+                        return web.json_response({
+                            'success': True,
+                            'message': f'验证码已发送到 {user_email}',
+                            'sent_email': True
+                        })
+                    else:
+                        return web.json_response({
+                            'success': True,
+                            'message': '邮件发送失败，请使用下方测试验证码',
+                            'code': code  # fallback: 测试模式
+                        })
+                else:
+                    return web.json_response({
+                        'success': True,
+                        'message': '未找到关联邮箱，请使用下方测试验证码',
+                        'code': code
+                    })
+            else:
+                # SMTP 未配置，测试模式
+                logging.info(f"[找回密码] 验证码: {code}")
+                return web.json_response({
+                    'success': True,
+                    'message': '验证码已生成（测试模式：SMTP 未配置）',
+                    'code': code
+                })
         else:
             return web.json_response({'success': False, 'error': message})
 
