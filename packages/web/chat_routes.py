@@ -42,6 +42,17 @@ async def api_chat(request):
         if not user_id:
             user_id = 1
 
+        # 获取用户显示名（不使用 user_id 作为名字）
+        user_name = '完成者'
+        try:
+            from auth import load_users
+            users_data = load_users()
+            users = users_data.get("users", {})
+            user_info = users.get(str(user_id), {})
+            user_name = user_info.get('display_name') or user_info.get('username', '完成者')
+        except Exception:
+            pass
+
         # 使用蒸馏角色的系统提示词
         system_prompt = None
         try:
@@ -50,7 +61,7 @@ async def api_chat(request):
             if character:
                 system_prompt = character.get_system_prompt({
                     'user_id': user_id,
-                    'user_name': str(user_id)
+                    'user_name': user_name
                 })
                 logging.info(f"[WebChat] 使用蒸馏角色: {character.config.name}")
         except Exception as e:
