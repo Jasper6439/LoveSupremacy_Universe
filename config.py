@@ -60,7 +60,8 @@ YOUR_CHAT_ID = 0
 AI_API_BASE = "https://openrouter.ai/api/v1"
 AI_API_KEY = ""
 AI_MODELS = [
-    "minimax/minimax-m2.5:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "nousresearch/hermes-4-405b:free",
     "google/gemma-4-31b-it:free",
     "tencent/hy3-preview:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
