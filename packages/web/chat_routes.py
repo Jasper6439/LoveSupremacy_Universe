@@ -111,6 +111,18 @@ async def api_chat(request):
         history.append({"role": "assistant", "content": response, "timestamp": timestamp})
         save_chat_history(user_id, history)
 
+        # [自动发自拍] 检测角色表达是否暗示要发照片
+        selfie_keywords = ['自拍', '照片', '拍给你看', '给你看', '这张照片', '我拍的照片']
+        selfie_generated = None
+        if response and any(kw in response for kw in selfie_keywords):
+            try:
+                from image_gen import generate_face_from_user_photos
+                selfie_result = await generate_face_from_user_photos(str(user_id))
+                if selfie_result.get("success"):
+                    selfie_generated = selfie_result["image_b64"]
+            except Exception as e:
+                logging.debug(f"[自动发自拍] 生成失败: {e}")
+
         # [双向同步 v1.4.12.13] 通过角色绑定的 Bot Token 发送消息到用户的 Telegram
         try:
             from auth import get_user_info, get_character_bot_token
@@ -143,7 +155,10 @@ async def api_chat(request):
         except Exception as e:
             logging.error(f"[双向同步] 初始化发送失败: {e}")
 
-        return web.json_response({'response': response})
+        result_data = {'response': response}
+        if selfie_generated:
+            result_data['selfie'] = selfie_generated
+        return web.json_response(result_data)
     except Exception as e:
         logging.error(f"[WebChat] 错误: {e}")
         return web.json_response({'error': str(e)})

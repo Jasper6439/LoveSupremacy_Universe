@@ -125,29 +125,24 @@ def generate_sticker_url(mood: str) -> str:
 # AI生成相似人脸照片
 # ============================================================
 
-async def generate_face_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """AI生成相似人脸照片 - 使用 OpenRouter + Gemini"""
-    chat_id = update.effective_chat.id
+# ============================================================
+# AI生成相似人脸照片（通用函数，Telegram/Web 共用）
+# ============================================================
 
-    # 检查是否有照片
-    if not update.message.reply_to_message or not update.message.reply_to_message.photo:
-        await update.message.reply_text("...请回复一张照片，并描述你想要的场景。\n\n例如：回复照片后发送「穿白色衬衫在咖啡厅」")
-        return
-
-    # 获取描述
-    description = " ".join(context.args) if context.args else "自然微笑的肖像照"
-
-    await update.message.reply_text("...正在生成照片，请稍等...")
-
+async def generate_face_image_core(photo_b64: str, description: str = "自然微笑的肖像照") -> dict:
+    """
+    AI 换脸核心函数 - 不依赖 Telegram，可被任何端调用。
+    
+    Args:
+        photo_b64: base64 编码的参考照片（不含 data:image 前缀）
+        description: 场景描述
+    
+    Returns:
+        dict: {"success": True, "image_b64": "...", "filename": "..."} 或 {"success": False, "error": "..."}
+    """
     try:
-        # 下载用户发送的照片
-        photo = update.message.reply_to_message.photo[-1]
-        file = await context.bot.get_file(photo.file_id)
-        photo_bytes = await file.download_as_bytearray()
-        photo_b64 = base64.b64encode(photo_bytes).decode('utf-8')
         photo_data_url = f"data:image/jpeg;base64,{photo_b64}"
 
-        # 调用 OpenRouter API 生成图片
         headers = {
             "Authorization": f"Bearer {AI_API_KEY}",
             "Content-Type": "application/json"
@@ -185,7 +180,6 @@ async def generate_face_image(update: Update, context: ContextTypes.DEFAULT_TYPE
             ) as resp:
                 result = await resp.json()
 
-        # 提取生成的图片
         if result.get("choices"):
             message = result["choices"][0].get("message", {})
             images = message.get("images", [])
@@ -194,36 +188,110 @@ async def generate_face_image(update: Update, context: ContextTypes.DEFAULT_TYPE
                 for img in images:
                     image_url = img.get("image_url", {}).get("url", "")
                     if image_url.startswith("data:image"):
-                        # 解码 base64 图片
                         img_data = image_url.split(",", 1)[1]
-                        img_bytes = base64.b64decode(img_data)
-
-                        # 保存到 selfies 目录
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         filename = f"ai_gen_{timestamp}.jpg"
-                        filepath = os.path.join(get_user_selfie_dir(chat_id), filename)
+                        return {
+                            "success": True,
+                            "image_b64": img_data,
+                            "filename": filename,
+                        }
 
-                        img = Image.open(io.BytesIO(img_bytes))
-                        if img.mode in ('RGBA', 'P'):
-                            img = img.convert('RGB')
-                        img.save(filepath, 'JPEG', quality=95)
-
-                        # 发送给用户
-                        with open(filepath, 'rb') as f:
-                            await update.message.reply_photo(
-                                photo=f,
-                                caption=f"✨ AI生成完成\n场景：{description}"
-                            )
-
-                        logging.info(f"AI人脸生成成功: {filename}")
-                        return
-
-        # 如果没有生成图片
         error_msg = result.get("error", {}).get("message", "未知错误")
-        await update.message.reply_text(f"...生成失败：{error_msg}")
+        return {"success": False, "error": error_msg}
 
     except Exception as e:
-        logging.error(f"AI人脸生成失败: {e}")
+        logging.error(f"[AI换脸] 生成失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def generate_face_from_user_photos(user_id, description: str = "自然微笑的肖像照") -> dict:
+    """
+    从用户已上传的照片中随机选一张，调用 AI 换脸。
+    用于 Web 端和自动发自拍。
+    
+    Args:
+        user_id: 用户 ID
+        description: 场景描述
+    
+    Returns:
+        dict: {"success": True, "image_b64": "...", "filename": "...", "filepath": "..."} 或 {"success": False, "error": "..."}
+    """
+    selfie_dir = get_user_selfie_dir(user_id)
+    if not os.path.exists(selfie_dir):
+        return {"success": False, "error": "没有上传的照片"}
+
+    # 找到用户上传的照片（排除 AI 生成的）
+    photo_files = [
+        f for f in os.listdir(selfie_dir)
+        if f.lower().endswith(('.jpg', '.jpeg', '.png'))
+        and not f.startswith('ai_gen_')
+    ]
+
+    if not photo_files:
+        return {"success": False, "error": "没有找到用户上传的照片"}
+
+    # 随机选一张
+    import random as _random
+    photo_path = os.path.join(selfie_dir, _random.choice(photo_files))
+
+    with open(photo_path, 'rb') as f:
+        photo_b64 = base64.b64encode(f.read()).decode('utf-8')
+
+    result = await generate_face_image_core(photo_b64, description)
+
+    if result.get("success"):
+        # 保存到自拍目录
+        filepath = os.path.join(selfie_dir, result["filename"])
+        img_bytes = base64.b64decode(result["image_b64"])
+        img = Image.open(io.BytesIO(img_bytes))
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        img.save(filepath, 'JPEG', quality=95)
+        result["filepath"] = filepath
+        logging.info(f"[AI换脸] 生成成功: {result['filename']} (user: {user_id})")
+
+    return result
+
+
+async def generate_face_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """AI生成相似人脸照片 - Telegram 命令 /genface，调用通用核心函数"""
+    chat_id = update.effective_chat.id
+
+    if not update.message.reply_to_message or not update.message.reply_to_message.photo:
+        await update.message.reply_text("...请回复一张照片，并描述你想要的场景。\n\n例如：回复照片后发送「穿白色衬衫在咖啡厅」")
+        return
+
+    description = " ".join(context.args) if context.args else "自然微笑的肖像照"
+    await update.message.reply_text("...正在生成照片，请稍等...")
+
+    try:
+        # 下载用户发送的照片
+        photo = update.message.reply_to_message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+        photo_bytes = await file.download_as_bytearray()
+        photo_b64 = base64.b64encode(photo_bytes).decode('utf-8')
+
+        # 调用通用核心函数
+        result = await generate_face_image_core(photo_b64, description)
+
+        if result.get("success"):
+            # 保存到 selfies 目录
+            filepath = os.path.join(get_user_selfie_dir(chat_id), result["filename"])
+            img_bytes = base64.b64decode(result["image_b64"])
+            img = Image.open(io.BytesIO(img_bytes))
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            img.save(filepath, 'JPEG', quality=95)
+
+            with open(filepath, 'rb') as f:
+                await update.message.reply_photo(photo=f, caption=f"✨ AI生成完成\n场景：{description}")
+            logging.info(f"[AI换脸] Telegram 生成成功: {result['filename']}")
+        else:
+            await update.message.reply_text(f"...生成失败：{result.get('error', '未知错误')}")
+
+    except Exception as e:
+        logging.error(f"[AI换脸] Telegram 生成失败: {e}")
         await update.message.reply_text(f"...生成出错：{str(e)}")
 
 

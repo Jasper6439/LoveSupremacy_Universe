@@ -91,6 +91,7 @@ def register_routes(app):
     app.router.add_get('/miniapp', serve_miniapp)
     app.router.add_get('/game', serve_game)
     app.router.add_post('/api/upload-selfies', api_upload_selfies)
+    app.router.add_post('/api/generate-face', api_generate_face)
     app.router.add_get('/api/selfies', api_get_selfies)
     app.router.add_post('/api/delete-selfie', api_delete_selfie)
     # [Skill: TTS v1.4.7.3] 声音语料 API

@@ -12,18 +12,21 @@ from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# 竞争模型列表（免费模型）
-COMPETE_MODELS = [
+# 所有模型（4个免费模型，轮换参赛/评委）
+ALL_MODELS = [
     "deepseek/deepseek-chat-v3-0324:free",
     "minimax/minimax-m2.5:free",
     "nousresearch/hermes-4-405b:free",
+    "google/gemma-4-31b-it:free",
 ]
+
+# 轮换计数器（每次竞争后递增，决定谁当评委）
+_rotate_counter = 0
 
 # 权重持久化文件
 WEIGHTS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "ai_weights.json")
 
-# 评委模型（独立于竞争模型，避免既当选手又当裁判）
-JUDGE_MODEL = "google/gemma-4-31b-it:free"
+# 评委提示词
 JUDGE_PROMPT = """你是一个评委，需要从三个AI角色的回复中选出最好的一个。
 
 角色设定：车如云，一个傲娇但内心温柔的韩国女生。说话极简短，用"..."开头，可能带括号动作描写，不直接表达正面情感，用平语。
@@ -136,14 +139,13 @@ async def _save_to_cache(user_message: str, best_reply: str, winning_model: str)
 
 
 async def _judge_replies(user_message: str, replies: Dict[str, str],
-                         system_prompt: str) -> Tuple[str, str]:
-    """让 AI 评比回复，返回 (winning_model, best_reply)"""
-    # 构建评比请求
+                         judge_model: str, competitor_models: List[str]) -> Tuple[str, str]:
+    """让评委模型评比回复，返回 (winning_model, best_reply)"""
     judge_request = JUDGE_PROMPT.format(
         user_message=user_message[:200],
-        reply_a=replies.get(COMPETE_MODELS[0], "（无回复）"),
-        reply_b=replies.get(COMPETE_MODELS[1], "（无回复）"),
-        reply_c=replies.get(COMPETE_MODELS[2], "（无回复）"),
+        reply_a=replies.get(competitor_models[0], "（无回复）"),
+        reply_b=replies.get(competitor_models[1], "（无回复）"),
+        reply_c=replies.get(competitor_models[2], "（无回复）"),
     )
 
     try:
@@ -151,23 +153,25 @@ async def _judge_replies(user_message: str, replies: Dict[str, str],
         judge_result = await call_ai(
             system_prompt="你是一个客观的评委，只回复一个字母。",
             user_message=judge_request,
-            model=JUDGE_MODEL,  # 用独立模型做评委
+            model=judge_model,
             temperature=0.3,
             max_tokens=10,
             timeout=30.0,
         )
 
-        # 解析评委结果
         result = judge_result.strip().upper()
-        model_map = {'A': COMPETE_MODELS[0], 'B': COMPETE_MODELS[1], 'C': COMPETE_MODELS[2]}
+        model_map = {
+            'A': competitor_models[0],
+            'B': competitor_models[1],
+            'C': competitor_models[2],
+        }
 
         if result in model_map:
             winning_model = model_map[result]
             best_reply = replies[winning_model]
-            logger.info(f"[AI竞争] 评委选择: {result} ({winning_model})")
+            logger.info(f"[AI竞争] 评委 {judge_model} 选择: {result} ({winning_model})")
             return winning_model, best_reply
         else:
-            # 解析失败，按权重随机选
             logger.warning(f"[AI竞争] 评委结果无法解析: {result}")
     except Exception as e:
         logger.warning(f"[AI竞争] 评比失败: {e}")
@@ -176,7 +180,7 @@ async def _judge_replies(user_message: str, replies: Dict[str, str],
     weights = _load_weights()
     valid_replies = {m: r for m, r in replies.items() if r}
     if not valid_replies:
-        return COMPETE_MODELS[0], ""
+        return competitor_models[0], ""
 
     weighted = []
     for model, reply in valid_replies.items():
@@ -190,18 +194,28 @@ async def _judge_replies(user_message: str, replies: Dict[str, str],
 async def compete_reply(system_prompt: str, user_message: str,
                         chat_history: Optional[List[Dict]] = None) -> str:
     """
-    AI 竞争入口：多个模型并行生成，评比后返回最佳回复。
+    AI 竞争入口：4个模型轮换，3个参赛+1个评委，评比后返回最佳回复。
     优先使用 Qdrant 缓存。
     """
+    global _rotate_counter
+
     # 1. 先查缓存
     cached = await _search_cache(user_message)
     if cached:
         return cached
 
-    # 2. 并行调用所有竞争模型
+    # 2. 轮换：决定谁当评委
+    judge_index = _rotate_counter % len(ALL_MODELS)
+    judge_model = ALL_MODELS[judge_index]
+    competitor_models = [m for i, m in enumerate(ALL_MODELS) if i != judge_index]
+    _rotate_counter += 1
+
+    logger.info(f"[AI竞争] 第{_rotate_counter}轮 | 评委: {judge_model} | 参赛: {competitor_models}")
+
+    # 3. 并行调用 3 个参赛模型
     tasks = {
         model: _call_single_model(model, system_prompt, user_message, chat_history)
-        for model in COMPETE_MODELS
+        for model in competitor_models
     }
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
@@ -210,7 +224,6 @@ async def compete_reply(system_prompt: str, user_message: str,
         if isinstance(result, Exception):
             logger.warning(f"[AI竞争] {model} 异常: {result}")
         elif result and len(result.strip()) > 0:
-            # 过滤提示词泄露
             leak_kw = ['respond as', 'following the style', 'We need to respond', 'calling user']
             if not any(kw in result for kw in leak_kw):
                 replies[model] = result.strip()
@@ -218,16 +231,17 @@ async def compete_reply(system_prompt: str, user_message: str,
                 logger.warning(f"[AI竞争] {model} 提示词泄露，已排除")
 
     if not replies:
-        logger.error("[AI竞争] 所有模型都失败了")
+        logger.error("[AI竞争] 所有参赛模型都失败了")
         return ""
 
-    # 3. 如果只有一个模型成功，直接用
+    # 4. 评比
     if len(replies) == 1:
         winning_model = list(replies.keys())[0]
         best_reply = replies[winning_model]
     else:
-        # 4. 多个成功，进行评比
-        winning_model, best_reply = await _judge_replies(user_message, replies, system_prompt)
+        winning_model, best_reply = await _judge_replies(
+            user_message, replies, judge_model, competitor_models
+        )
 
     # 5. 更新权重：获胜 +0.1，失败 -0.05
     update_model_weight(winning_model, 0.1)

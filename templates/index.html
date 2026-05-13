@@ -2668,6 +2668,14 @@ async function sendMessage() {
 
         const replyText = data.response || data.reply;
         if (replyText) addMessage(replyText, 'bot');
+        // 自动发自拍
+        if (data.selfie) {
+            var img = document.createElement('img');
+            img.src = 'data:image/jpeg;base64,' + data.selfie;
+            img.style.cssText = 'max-width:200px;border-radius:var(--radius-md);margin-top:8px;';
+            var msgEl = document.querySelector('#chat-messages .chat-message:last-child .chat-bubble');
+            if (msgEl) msgEl.appendChild(img);
+        }
         lastMessageCount += 2;
     } catch (e) {
         document.getElementById('chat-typing').style.display = 'none';
