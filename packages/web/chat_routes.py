@@ -107,8 +107,8 @@ async def api_stats(request):
         stats = load_stats(user_id)
         stats["memories_count"] = len(load_json(get_user_memory_file(user_id), []))
 
-        # 分析对话
-        analysis = analyze_dialogue_patterns(YOUR_CHAT_ID) if YOUR_CHAT_ID else {}
+        # 分析对话 - 使用当前用户的 user_id
+        analysis = analyze_dialogue_patterns(user_id) if user_id else {}
 
         # 亲密度
         intimacy = calculate_intimacy(stats)
@@ -119,6 +119,18 @@ async def api_stats(request):
         # 建议列表
         advice_str = get_relationship_advice(analysis)
         advice_list = [line.strip() for line in advice_str.split('\n') if line.strip()]
+
+        # 用户特定的照片目录
+        user_selfie_dir = get_user_selfie_dir(user_id)
+        user_selfie_count = 0
+        if os.path.exists(user_selfie_dir):
+            user_selfie_count = len([f for f in os.listdir(user_selfie_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))])
+        
+        # 用户照片目录
+        user_photos_dir = get_user_dir(user_id, 'photos')
+        user_photo_count = 0
+        if os.path.exists(user_photos_dir):
+            user_photo_count = len([f for f in os.listdir(user_photos_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))])
 
         return web.json_response({
             'total_messages': stats.get('total_messages', 0),
@@ -138,8 +150,8 @@ async def api_stats(request):
             'bot_ellipsis': analysis.get('车如云使用省略号', '--'),
             'bot_inner': analysis.get('车如云内心独白', '--'),
             'advice': advice_list,
-            'selfie_count': get_selfie_count(),
-            'user_photo_count': len([f for f in os.listdir(USER_PHOTOS_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))]) if os.path.exists(USER_PHOTOS_DIR) else 0,
+            'selfie_count': user_selfie_count,
+            'user_photo_count': user_photo_count,
         })
     except Exception as e:
         logging.error(f"仪表盘API错误: {e}")

@@ -181,7 +181,7 @@ async def api_user_photos(request):
 
 
 async def serve_uploaded_file(request):
-    """提供上传的文件"""
+    """提供上传的文件 - 只允许访问当前用户的文件"""
     try:
         folder = request.match_info.get('folder', '')
         filename = request.match_info.get('filename', '')
@@ -189,62 +189,55 @@ async def serve_uploaded_file(request):
         if '..' in filename or '/' in filename:
             return web.Response(status=403)
 
-        # 查找文件路径：支持多种 folder 格式
-        # 1. folder == 'selfies' (旧格式)
-        # 2. folder == character_id (新格式，路径: DATA_DIR/user_{user_id}/selfies/{character_id}/)
-        # 3. folder == 'user_photos'
+        # 验证用户身份 - 只允许访问自己的文件
+        user_id = validate_session_token(request)
+        if not user_id:
+            user_id = validate_api_token(request)
+        if not user_id:
+            user_id = load_config().get('your_chat_id', 0)
+        if not user_id:
+            # 未登录用户不允许访问
+            return web.Response(status=401)
+
         filepath = None
 
         if folder == 'selfies':
-            # 在所有用户目录中查找自拍文件（包括角色子目录）
-            if os.path.exists(DATA_DIR):
-                for entry in os.listdir(DATA_DIR):
-                    if entry.startswith("user_"):
-                        user_dir = os.path.join(DATA_DIR, entry, "selfies")
-                        if os.path.isdir(user_dir):
-                            # 先检查直接路径
-                            candidate = os.path.join(user_dir, filename)
+            # 只在当前用户的目录中查找
+            user_selfie_dir = get_user_selfie_dir(user_id)
+            if os.path.isdir(user_selfie_dir):
+                # 检查直接路径
+                candidate = os.path.join(user_selfie_dir, filename)
+                if os.path.exists(candidate):
+                    filepath = candidate
+                else:
+                    # 检查角色子目录
+                    for sub in os.listdir(user_selfie_dir):
+                        sub_path = os.path.join(user_selfie_dir, sub)
+                        if os.path.isdir(sub_path):
+                            candidate = os.path.join(sub_path, filename)
                             if os.path.exists(candidate):
                                 filepath = candidate
                                 break
-                            # 再检查角色子目录
-                            for sub in os.listdir(user_dir):
-                                sub_path = os.path.join(user_dir, sub)
-                                if os.path.isdir(sub_path):
-                                    candidate = os.path.join(sub_path, filename)
-                                    if os.path.exists(candidate):
-                                        filepath = candidate
-                                        break
-                            if filepath:
-                                break
             if not filepath:
-                # 回退到旧的全局目录
+                # 回退到旧的全局目录（仅用于兼容旧数据）
                 filepath = os.path.join(SELFIE_DIR, filename)
 
         elif folder == 'user_photos':
-            filepath = os.path.join(USER_PHOTOS_DIR, filename)
+            # 只在当前用户的照片目录中查找
+            user_photos_dir = get_user_dir(user_id, 'photos')
+            candidate = os.path.join(user_photos_dir, filename)
+            if os.path.exists(candidate):
+                filepath = candidate
 
         else:
-            # folder 是 character_id，直接在用户自拍目录中查找
-            # 路径: DATA_DIR/user_{user_id}/selfies/{character_id}/
-            if os.path.exists(DATA_DIR):
-                for entry in os.listdir(DATA_DIR):
-                    if entry.startswith("user_"):
-                        user_dir = os.path.join(DATA_DIR, entry, "selfies", folder)
-                        if os.path.isdir(user_dir):
-                            candidate = os.path.join(user_dir, filename)
-                            if os.path.exists(candidate):
-                                filepath = candidate
-                                break
-                        # 也检查 _shared 子目录
-                        shared_dir = os.path.join(DATA_DIR, entry, "selfies", "_shared")
-                        if os.path.isdir(shared_dir):
-                            candidate = os.path.join(shared_dir, filename)
-                            if os.path.exists(candidate):
-                                filepath = candidate
-                                break
+            # folder 是 character_id，只在当前用户的目录中查找
+            user_selfie_dir = get_user_selfie_dir(user_id, folder)
+            if os.path.isdir(user_selfie_dir):
+                candidate = os.path.join(user_selfie_dir, filename)
+                if os.path.exists(candidate):
+                    filepath = candidate
 
-        if os.path.exists(filepath):
+        if filepath and os.path.exists(filepath):
             with open(filepath, 'rb') as f:
                 content = f.read()
 

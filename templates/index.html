@@ -1385,7 +1385,8 @@
                 <div class="welcome-card" id="home-welcome">
                     <div class="welcome-greeting">欢迎使用</div>
                     <div class="welcome-name" id="home-username">车如云</div>
-                    <div class="welcome-message">你的智能助手，管理照片、分析聊天记录和视频</div>
+                    <!-- 名言显示区域 - 替换原来的静态文本 -->
+                    <div class="welcome-message" id="home-quote-main" style="font-style:italic;min-height:20px;"></div>
                 </div>
 
                 <div id="home-quote" style="text-align:center;padding:12px 20px;font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.6;"></div>
@@ -2215,14 +2216,23 @@ function getDefaultQuotes() {
 }
 
 function showHomeQuote() {
-    var el = document.getElementById('home-quote');
-    if (!el) return;
-    if (homeQuotes.length === 0) {
-        loadQuotesFromCharacter();
-        return;
+    // 显示在欢迎卡片中的名言
+    var mainEl = document.getElementById('home-quote-main');
+    if (mainEl) {
+        if (homeQuotes.length === 0) {
+            loadQuotesFromCharacter();
+            return;
+        }
+        var q = homeQuotes[Math.floor(Math.random() * homeQuotes.length)];
+        mainEl.textContent = '「' + q + '」';
     }
-    var q = homeQuotes[Math.floor(Math.random() * homeQuotes.length)];
-    el.textContent = '「' + q + '」';
+    
+    // 同时更新下方的名言区域（如果存在）
+    var el = document.getElementById('home-quote');
+    if (el && homeQuotes.length > 0) {
+        var q2 = homeQuotes[Math.floor(Math.random() * homeQuotes.length)];
+        el.textContent = '「' + q2 + '」';
+    }
 }
 
 /* ================================================================
