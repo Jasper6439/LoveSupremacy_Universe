@@ -1934,6 +1934,11 @@ function showApp() {
         try { loadUserProfile(); } catch (e) { console.error('loadUserProfile failed:', e); }
         try { loadHomeStats(); } catch (e) { console.error('loadHomeStats failed:', e); }
         try { showHomeQuote(); } catch (e) { console.error('showHomeQuote failed:', e); }
+        // 恢复上次所在页面
+        var savedPage = sessionStorage.getItem('current_page');
+        if (savedPage && savedPage !== 'home') {
+            navigateTo(savedPage);
+        }
     } catch (e) {
         console.error('showApp failed:', e);
         // 如果显示主应用失败，回到登录页
@@ -2329,6 +2334,7 @@ function navigateTo(pageName) {
     if (pageName === 'game') pageName = 'farm';
 
     currentPage = pageName;
+    sessionStorage.setItem('current_page', pageName);
 
     // Update sidebar active state
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -2640,6 +2646,17 @@ function closeEmojiPicker() {
     var picker = document.getElementById('emoji-picker');
     if (picker) picker.style.display = 'none';
 }
+
+// 点击表情面板外部自动关闭
+document.addEventListener('click', function(e) {
+    var picker = document.getElementById('emoji-picker');
+    var btn = document.getElementById('chat-emoji-btn');
+    if (picker && picker.style.display !== 'none') {
+        if (!picker.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            picker.style.display = 'none';
+        }
+    }
+});
 
 function switchEmojiCategory(index) {
     currentEmojiCategory = index;

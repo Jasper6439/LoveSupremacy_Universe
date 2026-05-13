@@ -134,10 +134,10 @@ async def call_ai(user_message: str, chat_history: list = None, use_memory: bool
         # [Skill: humanize-ai-text] 对 AI 回复进行人性化后处理
         content = humanize_text(content)
         return content
-    except RuntimeError:
-        pass
+    except Exception as e:
+        logging.error(f"[AI] OpenRouter 调用失败: {type(e).__name__}: {e}")
 
-    logging.error("所有OpenRouter模型都失败了")
+    logging.error("[AI] 所有OpenRouter模型都失败了")
 
     # [Skill: gemini] 所有OpenRouter模型失败时，fallback到Gemini
     if GEMINI_API_KEY:

@@ -429,7 +429,16 @@ def main():
     app.add_handler(MessageHandler(filters.ATTACHMENT & ~filters.PHOTO & ~filters.VIDEO, handle_document))
 
     # Text message handler (must be last)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    async def safe_handle_message(update, context):
+        try:
+            return await handle_message(update, context)
+        except Exception as e:
+            logging.error(f"[handle_message] 未捕获异常: {type(e).__name__}: {e}", exc_info=True)
+            try:
+                await update.message.reply_text("...（沉默）")
+            except Exception:
+                pass
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, safe_handle_message))
 
     count = get_selfie_count()
     print(f"📸 已加载 {count} 张自拍照片")

@@ -49,8 +49,8 @@ async def api_chat(request):
             users_data = load_users()
             users = users_data.get("users", {})
             user_info = users.get(str(user_id), {})
-            # 优先使用用户自定义称呼，其次 display_name，最后默认"学长"
-            user_name = user_info.get('preferred_name') or user_info.get('display_name') or user_info.get('username', '学长')
+            # 优先使用用户自定义称呼，其次 display_name，最后默认"学长"（不用 username）
+            user_name = user_info.get('preferred_name') or user_info.get('display_name') or '学长'
         except Exception:
             pass
 
