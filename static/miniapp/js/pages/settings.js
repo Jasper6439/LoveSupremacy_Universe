@@ -22,6 +22,8 @@
         loadConfig();
         loadCharacters();
         loadTelegramLinkStatus();
+        // 每次进入页面时重新设置头像上传（因为 DOM 元素可能被替换）
+        setupAvatarUpload();
     }
 
     // ===== Load Config =====

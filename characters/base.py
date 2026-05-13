@@ -134,4 +134,9 @@ class CharacterBase(ABC):
             "theme_color": self.config.theme_color,
             "avatar_url": self.config.avatar_url,
             "user_nickname": self.config.user_nickname,
+            # 新增字段 - 支持名言展示
+            "is_novel_character": self.config.is_novel_character,
+            "catchphrases": self.config.catchphrases,
+            # 名言从 catchphrases 获取
+            "quotes": self.config.catchphrases if self.config.catchphrases else [],
         }

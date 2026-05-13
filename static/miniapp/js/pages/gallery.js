@@ -39,9 +39,10 @@
         if (loading) loading.classList.add('active');
 
         window.API.selfies.list(currentCharacterId).then(function (data) {
-            if (data.selfies && data.selfies.length > 0) {
+            var photos = data.photos || data.selfies || [];
+            if (photos.length > 0) {
                 grid.innerHTML = '';
-                data.selfies.forEach(function (item) {
+                photos.forEach(function (item) {
                 var imgUrl = item.url;
                 if (imgUrl && imgUrl.charAt(0) === '/') {
                     imgUrl = (window.API._base || '') + imgUrl;

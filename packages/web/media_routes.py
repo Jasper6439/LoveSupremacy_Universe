@@ -97,7 +97,8 @@ async def api_get_selfies(request):
                     stat = os.stat(filepath)
                     selfies.append({
                         'filename': f,
-                        'url': f'/uploads/selfies/{f}',
+                        # 返回带 character_id 的 URL，让前端能正确加载
+                        'url': f'/uploads/{character_id or "default"}/{f}',
                         'date': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d'),
                         'size': stat.st_size
                     })
@@ -105,6 +106,7 @@ async def api_get_selfies(request):
         return web.json_response({
             'success': True,
             'selfies': selfies,
+            'photos': selfies,  # 兼容两种调用方式
             'count': len(selfies)
         })
     except Exception as e:
@@ -187,9 +189,14 @@ async def serve_uploaded_file(request):
         if '..' in filename or '/' in filename:
             return web.Response(status=403)
 
+        # 查找文件路径：支持多种 folder 格式
+        # 1. folder == 'selfies' (旧格式)
+        # 2. folder == character_id (新格式，路径: DATA_DIR/user_{user_id}/selfies/{character_id}/)
+        # 3. folder == 'user_photos'
+        filepath = None
+
         if folder == 'selfies':
             # 在所有用户目录中查找自拍文件（包括角色子目录）
-            filepath = None
             if os.path.exists(DATA_DIR):
                 for entry in os.listdir(DATA_DIR):
                     if entry.startswith("user_"):
@@ -213,10 +220,29 @@ async def serve_uploaded_file(request):
             if not filepath:
                 # 回退到旧的全局目录
                 filepath = os.path.join(SELFIE_DIR, filename)
+
         elif folder == 'user_photos':
             filepath = os.path.join(USER_PHOTOS_DIR, filename)
+
         else:
-            return web.Response(status=404)
+            # folder 是 character_id，直接在用户自拍目录中查找
+            # 路径: DATA_DIR/user_{user_id}/selfies/{character_id}/
+            if os.path.exists(DATA_DIR):
+                for entry in os.listdir(DATA_DIR):
+                    if entry.startswith("user_"):
+                        user_dir = os.path.join(DATA_DIR, entry, "selfies", folder)
+                        if os.path.isdir(user_dir):
+                            candidate = os.path.join(user_dir, filename)
+                            if os.path.exists(candidate):
+                                filepath = candidate
+                                break
+                        # 也检查 _shared 子目录
+                        shared_dir = os.path.join(DATA_DIR, entry, "selfies", "_shared")
+                        if os.path.isdir(shared_dir):
+                            candidate = os.path.join(shared_dir, filename)
+                            if os.path.exists(candidate):
+                                filepath = candidate
+                                break
 
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:

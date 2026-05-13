@@ -23,35 +23,91 @@
     /**
      * Called when the home page is entered.
      */
+    var hasAutoShownChatCount = false;
+    
     function onPageEnter() {
         loadStats();
         rotateQuote();
+        
+        // 问题2: 登录后默认显示总消息数详情（首次进入时）
+        var chatCountEl = document.getElementById('chat-count');
+        if (chatCountEl && !hasAutoShownChatCount && window.Auth && window.Auth.isLoggedIn) {
+            hasAutoShownChatCount = true;
+            setTimeout(function() {
+                showChatCountModal();
+            }, 500);
+        }
+    }
+    
+    // 问题3&4: 关闭所有模态框
+    function closeAllModals() {
+        var modals = document.querySelectorAll('.stats-modal');
+        modals.forEach(function(m) { m.remove(); });
     }
 
-    // ===== Quotes =====
-    var quotes = [
-        '恋爱是两个人的事，但喜欢是一个人的事。',
-        '世界上最远的距离，不是生与死，而是我就站在你面前，你却不知道我爱你。',
-        '如果你认识从前的我，也许你会原谅现在的我。',
-        '人生若只如初见，何事秋风悲画扇。',
-        '我行过许多地方的桥，看过许多次数的云，喝过许多种类的酒，却只爱过一个正当最好年龄的人。',
-        '于千万人之中遇见你所要遇见的人，于千万年之中，时间的无涯的荒野里，没有早一步，也没有晚一步。',
-        '你是一树一树的花开，是燕在梁间呢喃。你是爱，是暖，是希望，你是人间的四月天。',
-        '草在结它的种子，风在摇它的叶子。我们站着，不说话，就十分美好。',
-        '从前的日色变得慢，车、马、邮件都慢，一生只够爱一个人。',
-        '我明白你会来，所以我等。'
-    ];
+    // ===== Quotes - 从角色原著获取 =====
+    var cachedQuotes = null;
+    
+    function loadQuotesFromCharacter() {
+        if (cachedQuotes && cachedQuotes.length > 0) {
+            showRandomQuote();
+            return;
+        }
+        
+        window.API.characters.list().then(function(data) {
+            var chars = data.characters || [];
+            var currentId = data.current;
+            
+            // 找到当前角色
+            var char = chars.find(function(c) { return c.id === currentId; }) || chars[0];
+            if (!char) {
+                showDefaultQuote();
+                return;
+            }
+            
+            // 从角色的名言列表中获取
+            if (char.quotes && char.quotes.length > 0) {
+                cachedQuotes = char.quotes;
+            } else {
+                // 回退到默认名言
+                cachedQuotes = getDefaultQuotes();
+            }
+            showRandomQuote();
+        }).catch(function() {
+            showDefaultQuote();
+        });
+    }
+    
+    function showDefaultQuote() {
+        cachedQuotes = getDefaultQuotes();
+        showRandomQuote();
+    }
+    
+    function getDefaultQuotes() {
+        return [
+            '恋爱是两个人的事，但喜欢是一个人的事。',
+            '世界上最远的距离，不是生与死，而是我就站在你面前，你却不知道我爱你。',
+            '如果你认识从前的我，也许你会原谅现在的我。',
+            '人生若只如初见，何事秋风悲画扇。',
+            '我行过许多地方的桥，看过许多次数的云，喝过许多种类的酒，却只爱过一个正当最好年龄的人。',
+            '于千万人之中遇见你所要遇见的人，于千万年之中，时间的无涯的荒野里，没有早一步，也没有晚一步。',
+            '你是一树一树的花开，是燕在梁间呢喃。你是爱，是暖，是希望，你是人间的四月天。',
+            '草在结它的种子，风在摇它的叶子。我们站着，不说话，就十分美好。',
+            '从前的日色变得慢，车、马、邮件都慢，一生只够爱一个人。',
+            '我明白你会来，所以我等。'
+        ];
+    }
 
     function showRandomQuote() {
         var container = document.getElementById('quote-display');
-        if (!container) return;
-        var quote = quotes[Math.floor(Math.random() * quotes.length)];
+        if (!container || !cachedQuotes || cachedQuotes.length === 0) return;
+        var quote = cachedQuotes[Math.floor(Math.random() * cachedQuotes.length)];
         container.textContent = '\u300C' + quote + '\u300D';
     }
 
     function rotateQuote() {
-        showRandomQuote();
-        setInterval(showRandomQuote, 30000);
+        loadQuotesFromCharacter();
+        setInterval(loadQuotesFromCharacter, 30000);
     }
 
     // ===== Stats =====
@@ -74,6 +130,7 @@
 
     // ===== Chat Days Modal =====
     function showChatDaysModal() {
+        closeAllModals();  // 先关闭其他模态框
         var chatDaysEl = document.getElementById('chat-days-count');
         var totalDays = chatDaysEl ? parseInt(chatDaysEl.textContent) || 0 : 0;
         var now = new Date();
@@ -119,6 +176,7 @@
 
     // ===== Chat Count Modal =====
     function showChatCountModal() {
+        closeAllModals();  // 先关闭其他模态框
         var chatCountEl = document.getElementById('chat-count');
         var count = chatCountEl ? parseInt(chatCountEl.textContent) || 0 : 0;
         var modal = document.createElement('div');

@@ -84,6 +84,9 @@
 
         currentPage = pageName;
 
+        // 问题10: 保存当前页面到 sessionStorage
+        try { sessionStorage.setItem('lastPage', pageName); } catch(e) {}
+
         // Fire enter callbacks for new page
         if (pageEnterCallbacks[pageName]) {
             pageEnterCallbacks[pageName].forEach(function (cb) {
@@ -227,6 +230,14 @@
             window.Navigation.init();
         }
 
+        // 问题10: 页面加载后恢复上次页面
+        try {
+            var savedPage = sessionStorage.getItem('lastPage');
+            if (savedPage && savedPage !== 'home') {
+                setTimeout(function() { navigate(savedPage); }, 100);
+            }
+        } catch(e) {}
+
         // Initialize auth
         if (window.Auth) {
             window.Auth.checkAutoLogin().then(function (loggedIn) {
@@ -273,6 +284,10 @@
         // Register page enter callbacks
         onPageEnter('home', function () {
             if (window.HomePage) window.HomePage.onPageEnter();
+        });
+        onPageLeave('home', function () {
+            // 问题3&4: 离开首页时关闭所有模态框
+            document.querySelectorAll('.stats-modal').forEach(function(m) { m.remove(); });
         });
         onPageEnter('farm', function () {
             if (window.FarmPage) window.FarmPage.onPageEnter();
