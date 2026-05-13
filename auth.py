@@ -446,7 +446,7 @@ def revoke_auto_login_token(token):
 
 def bind_character_chat_id(user_id, character_id, chat_id):
     """
-    绑定角色的 Telegram Chat ID
+    绑定角色的 Telegram Chat ID（已废弃，保留兼容）
     返回: (success: bool, message: str)
     """
     if not chat_id:
@@ -472,6 +472,58 @@ def bind_character_chat_id(user_id, character_id, chat_id):
     _save_users_dict(users)
     logging.info(f"[角色绑定] {user_id} -> {character_id} ({chat_id_str})")
     return True, "绑定成功"
+
+
+def bind_character_bot_token(user_id, character_id, bot_token):
+    """
+    绑定角色的 Telegram Bot Token - v1.4.12.13
+    用户绑定该角色对应的 Bot Token，系统通过该 token 发送消息到用户的 telegram_chat_id
+    返回: (success: bool, message: str)
+    """
+    if not bot_token:
+        return False, "Bot Token 不能为空"
+    if ':' not in bot_token:
+        return False, "Bot Token 格式不正确"
+
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return False, "用户不存在"
+
+    # 检查用户是否已绑定 telegram_chat_id
+    telegram_chat_id = user.get('telegram_chat_id')
+    if not telegram_chat_id:
+        return False, "请先在设置页绑定您的 Telegram Chat ID"
+
+    if "character_bindings" not in user:
+        user["character_bindings"] = {}
+
+    user["character_bindings"][character_id] = {
+        "bot_token": bot_token,
+        "bound_at": datetime.now(get_default_tz()).isoformat()
+    }
+    users[str(user_id)] = user
+    _save_users_dict(users)
+    logging.info(f"[角色绑定] {user_id} -> {character_id} (bot_token: {bot_token[:10]}...)")
+    return True, f"绑定成功！角色 {character_id} 的消息将通过该 Bot 发送到您的 Telegram"
+
+
+def get_character_bot_token(user_id, character_id):
+    """获取用户绑定的角色 Bot Token"""
+    users = _get_users_dict()
+    user = users.get(str(user_id))
+    if not user:
+        return None
+    bindings = user.get("character_bindings", {})
+    binding = bindings.get(character_id, {})
+    return binding.get("bot_token")
+
+
+def get_user_info(user_id):
+    """获取用户信息"""
+    users = _get_users_dict()
+    return users.get(str(user_id))
+
 
 def get_character_chat_id(user_id, character_id):
     """获取用户绑定的角色 Chat ID"""

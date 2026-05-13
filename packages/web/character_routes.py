@@ -17,7 +17,7 @@ from characters import (
 
 
 async def api_bind_character(request):
-    """绑定角色 Chat ID"""
+    """绑定角色 Bot Token - v1.4.12.13: 绑定该角色对应的 Telegram Bot Token"""
     try:
         user_id = validate_session_token(request)
         if not user_id:
@@ -25,13 +25,19 @@ async def api_bind_character(request):
 
         data = await request.json()
         character_id = data.get('character_id', '')
-        chat_id = data.get('chat_id', '').strip()
+        bot_token = data.get('bot_token', '').strip()
 
-        if not character_id or not chat_id:
-            return web.json_response({'success': False, 'error': '角色ID和Chat ID不能为空'})
+        if not character_id:
+            return web.json_response({'success': False, 'error': '角色ID不能为空'})
+        if not bot_token:
+            return web.json_response({'success': False, 'error': 'Bot Token 不能为空'})
 
-        from auth import bind_character_chat_id
-        success, message = bind_character_chat_id(user_id, character_id, chat_id)
+        # 验证 Bot Token 格式（数字:字母数字混合）
+        if ':' not in bot_token:
+            return web.json_response({'success': False, 'error': 'Bot Token 格式不正确，应为 数字:字母数字混合'})
+
+        from auth import bind_character_bot_token
+        success, message = bind_character_bot_token(user_id, character_id, bot_token)
 
         if success:
             return web.json_response({'success': True, 'message': message})

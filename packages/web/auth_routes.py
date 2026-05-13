@@ -12,7 +12,7 @@ from auth import *
 
 
 async def api_register(request):
-    """用户注册API - v1.4.12.1: 必须提供 Telegram Chat ID"""
+    """用户注册API - v1.4.12.13: telegram_chat_id 选填，后续可在设置页绑定"""
     try:
         data = await request.json()
         email = data.get('email', '').strip().lower()
@@ -24,11 +24,10 @@ async def api_register(request):
         if not email or not username or not password:
             return web.json_response({'success': False, 'error': '邮箱、用户名和密码不能为空'})
 
-        # 验证 Telegram Chat ID（必填）
-        if not telegram_chat_id:
-            return web.json_response({'success': False, 'error': '请提供 Telegram Chat ID，用于与角色对话'})
-        if not telegram_chat_id.isdigit():
-            return web.json_response({'success': False, 'error': 'Telegram Chat ID 必须是纯数字'})
+        # Telegram Chat ID 选填，如果提供则验证格式
+        if telegram_chat_id:
+            if not telegram_chat_id.isdigit():
+                return web.json_response({'success': False, 'error': 'Telegram Chat ID 必须是纯数字'})
 
         # 验证邮箱格式
         if '@' not in email or '.' not in email.split('@')[-1]:
@@ -51,10 +50,11 @@ async def api_register(request):
             if u.get('username', '').lower() == username.lower():
                 return web.json_response({'success': False, 'error': '用户名已被使用'})
 
-        # 检查 Telegram Chat ID 是否已被绑定
-        for uid, u in users.items():
-            if u.get('telegram_chat_id') == telegram_chat_id:
-                return web.json_response({'success': False, 'error': '该 Telegram Chat ID 已被其他账号绑定'})
+        # 检查 Telegram Chat ID 是否已被绑定（如果提供了的话）
+        if telegram_chat_id:
+            for uid, u in users.items():
+                if u.get('telegram_chat_id') == telegram_chat_id:
+                    return web.json_response({'success': False, 'error': '该 Telegram Chat ID 已被其他账号绑定'})
 
         # 创建用户
         from config import get_default_tz

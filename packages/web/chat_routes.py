@@ -96,32 +96,35 @@ async def api_chat(request):
         history.append({"role": "assistant", "content": response, "timestamp": timestamp})
         save_chat_history(user_id, history)
 
-        # [双向同步] 如果配置了 Telegram Bot，将用户消息和回复都发送到Telegram
+        # [双向同步 v1.4.12.13] 通过角色绑定的 Bot Token 发送消息到用户的 Telegram
         try:
-            if TELEGRAM_TOKEN and user_id and user_id == YOUR_CHAT_ID:
-                import telegram
-                from telegram.request import HTTPXRequest
+            from auth import get_user_info, get_character_bot_token
+            user_info = get_user_info(user_id)
+            telegram_chat_id = user_info.get('telegram_chat_id') if user_info else None
 
-                # 异步发送消息到 Telegram（不等待结果）
-                async def send_to_telegram():
-                    try:
-                        bot = telegram.Bot(token=TELEGRAM_TOKEN, request=HTTPXRequest())
-                        # 先发送用户消息（标注来自Web）
-                        await bot.send_message(
-                            chat_id=user_id,
-                            text=f"🌐 [Web] {user_message}"
-                        )
-                        # 再发送AI回复
-                        await bot.send_message(
-                            chat_id=user_id,
-                            text=response
-                        )
-                        logging.info(f"[双向同步] 消息已发送到 Telegram: {user_id}")
-                    except Exception as e:
-                        logging.error(f"[双向同步] 发送到 Telegram 失败: {e}")
+            if telegram_chat_id:
+                # 获取当前角色的 bot_token（默认 chayewoon）
+                character_id = 'chayewoon'  # TODO: 支持多角色时从请求参数获取
+                bot_token = get_character_bot_token(user_id, character_id)
 
-                # 后台发送，不阻塞响应
-                asyncio.create_task(send_to_telegram())
+                if bot_token:
+                    import telegram
+                    from telegram.request import HTTPXRequest
+
+                    async def send_to_telegram():
+                        try:
+                            bot = telegram.Bot(token=bot_token, request=HTTPXRequest())
+                            # 发送AI回复
+                            await bot.send_message(
+                                chat_id=telegram_chat_id,
+                                text=response
+                            )
+                            logging.info(f"[双向同步] 消息已通过角色 {character_id} 的 Bot 发送到 Telegram: {telegram_chat_id}")
+                        except Exception as e:
+                            logging.error(f"[双向同步] 发送到 Telegram 失败: {e}")
+
+                    # 后台发送，不阻塞响应
+                    asyncio.create_task(send_to_telegram())
         except Exception as e:
             logging.error(f"[双向同步] 初始化发送失败: {e}")
 

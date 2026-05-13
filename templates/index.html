@@ -1790,25 +1790,41 @@
                     </div>
                 </div>
 
-                <!-- Character Bindings -->
+                <!-- Telegram 绑定 -->
                 <div class="settings-group">
-                    <div class="settings-group-title">角色绑定</div>
+                    <div class="settings-group-title">Telegram 绑定</div>
+                    <div class="settings-list">
+                        <div class="settings-item" style="flex-direction: column; align-items: stretch; cursor: default;">
+                            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
+                                <span class="settings-icon">&#128172;</span>
+                                <span class="settings-label">您的 Telegram Chat ID</span>
+                            </div>
+                            <div style="display: flex; gap: var(--space-2);">
+                                <input type="text" id="telegram-chat-id-input" class="form-input" placeholder="纯数字，如 5315601134" style="flex:1;">
+                                <button class="btn-primary" onclick="bindTelegramChatId()" style="white-space:nowrap;">绑定</button>
+                            </div>
+                            <div id="telegram-bind-status" style="margin-top:6px; font-size:12px; color:var(--text-secondary);"></div>
+                            <div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-top:4px;">绑定后可接收角色发送的 Telegram 消息。获取方式：在 Telegram 搜索 @userinfobot 发送任意消息即可获得。</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Character Bot Token Bindings -->
+                <div class="settings-group">
+                    <div class="settings-group-title">角色 Bot 绑定</div>
                     <div class="settings-list" id="character-bindings-list">
-                        <div class="settings-item">
-                            <span class="settings-icon">&#128100;</span>
-                            <span class="settings-label">加载中...</span>
+                        <div class="settings-item" style="flex-direction: column; align-items: stretch; cursor: default;">
+                            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);">
+                                <span class="settings-icon">&#129302;</span>
+                                <span class="settings-label">车如云 Bot Token</span>
+                            </div>
+                            <div style="display: flex; gap: var(--space-2);">
+                                <input type="text" id="chayewoon-bot-token-input" class="form-input" placeholder="从 @BotFather 获取，如 123456:ABC-DEF..." style="flex:1;">
+                                <button class="btn-primary" onclick="bindCharacterBotToken('chayewoon')" style="white-space:nowrap;">绑定</button>
+                            </div>
+                            <div id="chayewoon-bind-status" style="margin-top:6px; font-size:12px; color:var(--text-secondary);"></div>
+                            <div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-top:4px;">在 @BotFather 创建新 Bot 获取 Token。绑定后车如云的消息会通过该 Bot 发送到您的 Telegram。</div>
                         </div>
-                    </div>
-                    <!-- Telegram Chat ID 绑定 -->
-                    <div style="padding: var(--space-3);">
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <input type="text" id="telegram-chat-id-input" class="form-input" placeholder="输入 Telegram Chat ID" style="flex:1; padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-tertiary); font-size:var(--font-size-sm);">
-                            <button onclick="bindTelegramChatId()" style="padding:8px 16px; border-radius:var(--radius-md); border:none; background:var(--purple); color:#fff; font-size:var(--font-size-sm); cursor:pointer; white-space:nowrap;">绑定</button>
-                        </div>
-                        <div id="telegram-bind-status" style="margin-top:6px; font-size:12px; color:var(--text-secondary);"></div>
-                    </div>
-                    <div style="padding: 0 var(--space-3) var(--space-3); font-size: var(--font-size-sm); color: var(--text-secondary);">
-                        绑定角色的 Telegram Chat ID 后，可以通过 Telegram 与角色对话
                     </div>
                 </div>
 
@@ -2500,7 +2516,42 @@ async function bindTelegramChatId() {
         var data = await resp.json();
         if (data.success) {
             if (bindStatus) { bindStatus.textContent = '绑定成功！Chat ID: ' + chatId; bindStatus.style.color = 'var(--success)'; }
-            if (typeof showToast === 'function') Toast.show('Telegram Chat ID 绑定成功', 'success');
+            Toast.show('Telegram Chat ID 绑定成功', 'success');
+        } else {
+            if (bindStatus) { bindStatus.textContent = data.error || '绑定失败'; bindStatus.style.color = 'var(--danger)'; }
+        }
+    } catch (e) {
+        if (bindStatus) { bindStatus.textContent = '网络错误'; bindStatus.style.color = 'var(--danger)'; }
+    }
+}
+
+// 绑定角色 Bot Token
+async function bindCharacterBotToken(characterId) {
+    var tokenInput = document.getElementById(characterId + '-bot-token-input');
+    var bindStatus = document.getElementById(characterId + '-bind-status');
+    if (!tokenInput) return;
+
+    var botToken = tokenInput.value.trim();
+    if (!botToken) {
+        if (bindStatus) { bindStatus.textContent = '请输入 Bot Token'; bindStatus.style.color = 'var(--danger)'; }
+        return;
+    }
+
+    if (botToken.indexOf(':') === -1) {
+        if (bindStatus) { bindStatus.textContent = 'Token 格式不正确'; bindStatus.style.color = 'var(--danger)'; }
+        return;
+    }
+
+    try {
+        var resp = await fetch('/api/bind-character', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify({ character_id: characterId, bot_token: botToken })
+        });
+        var data = await resp.json();
+        if (data.success) {
+            if (bindStatus) { bindStatus.textContent = '绑定成功！'; bindStatus.style.color = 'var(--success)'; }
+            Toast.show(data.message || 'Bot Token 绑定成功', 'success');
         } else {
             if (bindStatus) { bindStatus.textContent = data.error || '绑定失败'; bindStatus.style.color = 'var(--danger)'; }
         }
