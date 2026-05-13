@@ -1901,11 +1901,19 @@ function showLogin() {
 }
 
 function showApp() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app-shell').classList.add('active');
-    loadUserProfile();
-    loadHomeStats();
-    showHomeQuote();
+    try {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-shell').classList.add('active');
+        
+        // 使用 try-catch 包装每个初始化函数，防止一个失败影响其他
+        try { loadUserProfile(); } catch (e) { console.error('loadUserProfile failed:', e); }
+        try { loadHomeStats(); } catch (e) { console.error('loadHomeStats failed:', e); }
+        try { showHomeQuote(); } catch (e) { console.error('showHomeQuote failed:', e); }
+    } catch (e) {
+        console.error('showApp failed:', e);
+        // 如果显示主应用失败，回到登录页
+        showLogin();
+    }
 }
 
 function switchLoginTab(el, mode) {
