@@ -69,7 +69,7 @@ async def api_register(request):
             "email": email,
             "username": username,
             "password_hash": hash_password(password),
-            "display_name": username.capitalize(),
+            "display_name": "",
             "role": role,
             "created_at": datetime.now(get_default_tz()).isoformat(),
             "last_login": None,

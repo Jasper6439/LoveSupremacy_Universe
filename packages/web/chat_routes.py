@@ -90,6 +90,20 @@ async def api_chat(request):
         except Exception:
             pass
 
+        # 过滤提示词泄露：检测英文长回复（角色应该用中文回复）
+        if response and len(response) > 50:
+            chinese_chars = sum(1 for c in response if '\u4e00' <= c <= '\u9fff')
+            if chinese_chars < len(response) * 0.3:
+                # 非中文内容占比过高，可能是提示词泄露
+                logging.warning(f"[WebChat] 检测到非中文回复，已替换: {response[:80]}...")
+                response = "...（沉默）"
+
+        # 过滤明显的提示词泄露关键词
+        leak_keywords = ['respond as', 'following the style', 'system prompt', 'you are', 'calling user']
+        if response and any(kw in response.lower() for kw in leak_keywords):
+            logging.warning(f"[WebChat] 检测到提示词泄露，已替换: {response[:80]}...")
+            response = "...（沉默）"
+
         # 保存到共享历史（带时间戳）
         timestamp = datetime.now(get_default_tz()).isoformat()
         history.append({"role": "user", "content": user_message, "timestamp": timestamp})
