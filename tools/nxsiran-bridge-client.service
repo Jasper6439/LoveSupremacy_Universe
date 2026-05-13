@@ -1,0 +1,23 @@
+[Unit]
+Description=NxSiran Bridge Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/NxSiran
+ExecStart=/usr/bin/python3 /opt/NxSiran/tools/bridge_client.py
+Restart=always
+RestartSec=5
+Environment=BRIDGE_URL=http://localhost:8082
+Environment=BRIDGE_TOKEN=nxsiran_bridge_2024
+Environment=VM_ID=default
+Environment=POLL_INTERVAL=5
+
+# 内存控制：允许被 swap
+MemoryMax=50M
+MemorySwapMax=100M
+
+[Install]
+WantedBy=multi-user.target

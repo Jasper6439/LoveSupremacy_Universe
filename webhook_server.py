@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-独立 Webhook 服务 - v1.4.8.1
-不依赖 bot 主进程，即使 bot 崩溃也能接收部署请求
+独立 Webhook + Bridge 服务 - v1.4.12.13
+不依赖 bot 主进程，即使 bot 崩溃也能接收部署请求和执行远程命令
 
 端口: 8082 (可通过 WEBHOOK_PORT 环境变量修改)
 功能:
 - GitHub Webhook 接收
 - 自动 git pull + 重启 bot 服务
+- Bridge 远程命令执行（SOLO -> VM）
 - 健康检查
 """
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -40,6 +42,11 @@ WEBHOOK_PORT = int(os.environ.get('WEBHOOK_PORT', 8082))
 WEBHOOK_SECRET = os.environ.get('GITHUB_WEBHOOK_SECRET', '')
 PROJECT_DIR = os.environ.get('PROJECT_DIR', '/root/NxSiran-Telegram-Bot')
 BOT_SERVICE = os.environ.get('BOT_SERVICE', 'nxsiran-bot.service')
+BRIDGE_TOKEN = os.environ.get('BRIDGE_TOKEN', 'nxsiran_bridge_2024')
+
+# Bridge 命令队列
+pending_commands = {}  # {vm_id: [commands]}
+bridge_results = {}    # {command_id: result}  # 存储最近的结果
 
 
 # ============================================================
@@ -158,7 +165,120 @@ async def manual_deploy(request):
         return web.json_response({'status': 'deploying'})
 
     except Exception as e:
-        logger.error(f"手动部署错误: {e}")
+        logger.error(f"部署状态错误: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+# ============================================================
+# Bridge 路由（远程命令执行）
+# ============================================================
+
+async def bridge_send(request):
+    """SOLO 发送命令到 VM"""
+    try:
+        data = await request.json()
+        vm_id = data.get('vm_id', 'default')
+        auth_token = data.get('token', '')
+        command = data.get('command', '')
+
+        if auth_token != BRIDGE_TOKEN:
+            return web.json_response({'error': 'auth failed'}, status=401)
+        if not command:
+            return web.json_response({'error': 'no command'}, status=400)
+
+        import uuid
+        cmd_id = str(uuid.uuid4())[:8]
+        if vm_id not in pending_commands:
+            pending_commands[vm_id] = []
+        pending_commands[vm_id].append({
+            'id': cmd_id,
+            'command': command,
+            'timestamp': datetime.now().isoformat()
+        })
+
+        logger.info(f"[Bridge] 命令入队: [{cmd_id}] {command[:80]}...")
+        return web.json_response({'status': 'queued', 'id': cmd_id, 'vm_id': vm_id})
+
+    except Exception as e:
+        logger.error(f"[Bridge] 发送错误: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def bridge_poll(request):
+    """VM 轮询获取命令"""
+    try:
+        data = await request.json()
+        vm_id = data.get('vm_id', 'default')
+        auth_token = data.get('token', '')
+
+        if auth_token != BRIDGE_TOKEN:
+            return web.json_response({'error': 'auth failed'}, status=401)
+
+        commands = pending_commands.pop(vm_id, [])
+        return web.json_response({
+            'status': 'ok',
+            'commands': commands,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"[Bridge] 轮询错误: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def bridge_result(request):
+    """VM 回传命令执行结果"""
+    try:
+        data = await request.json()
+        auth_token = data.get('token', '')
+
+        if auth_token != BRIDGE_TOKEN:
+            return web.json_response({'error': 'auth failed'}, status=401)
+
+        cmd_id = data.get('id', '')
+        command = data.get('command', '')
+        returncode = data.get('returncode', -1)
+        stdout = data.get('stdout', '')
+        stderr = data.get('stderr', '')
+
+        bridge_results[cmd_id] = {
+            'command': command,
+            'returncode': returncode,
+            'stdout': stdout[:2000],
+            'stderr': stderr[:1000],
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # 只保留最近 50 条结果
+        if len(bridge_results) > 50:
+            oldest = list(bridge_results.keys())[:len(bridge_results) - 50]
+            for k in oldest:
+                del bridge_results[k]
+
+        logger.info(f"[Bridge] 结果回传: [{cmd_id}] rc={returncode} | {stdout[:100]}")
+        return web.json_response({'status': 'received'})
+
+    except Exception as e:
+        logger.error(f"[Bridge] 结果回传错误: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
+async def bridge_get_result(request):
+    """获取命令执行结果"""
+    try:
+        cmd_id = request.match_info.get('cmd_id', '')
+        auth_token = request.query.get('token', '')
+
+        if auth_token != BRIDGE_TOKEN:
+            return web.json_response({'error': 'auth failed'}, status=401)
+
+        result = bridge_results.get(cmd_id)
+        if result:
+            return web.json_response(result)
+        else:
+            return web.json_response({'status': 'pending'}, status=202)
+
+    except Exception as e:
         return web.json_response({'error': str(e)}, status=500)
 
 
@@ -212,6 +332,12 @@ async def create_app():
     app.router.add_get('/deploy', manual_deploy)
     app.router.add_post('/deploy', manual_deploy)
     app.router.add_get('/status', deploy_status)
+
+    # Bridge 路由
+    app.router.add_post('/bridge/send', bridge_send)
+    app.router.add_post('/bridge/poll', bridge_poll)
+    app.router.add_post('/bridge/result', bridge_result)
+    app.router.add_get('/bridge/result/{cmd_id}', bridge_get_result)
 
     return app
 
