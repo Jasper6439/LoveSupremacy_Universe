@@ -2318,6 +2318,17 @@ function navigateTo(pageName) {
         if (window.FarmPage && window.FarmPage.onPageEnter) window.FarmPage.onPageEnter();
     }
 
+    if (pageName === 'skills') {
+        if (window.SkillsPage && window.SkillsPage.onPageEnter) window.SkillsPage.onPageEnter();
+    }
+
+    if (pageName === 'game') {
+        // Initialize game canvas
+        if (typeof initGame === 'function') {
+            setTimeout(() => initGame('game-canvas'), 100);
+        }
+    }
+
     if (pageName === 'settings') {
         if (window.SettingsPage && window.SettingsPage.onPageEnter) window.SettingsPage.onPageEnter();
         // Load admin status (only Ulysses can see admin config)
@@ -2436,18 +2447,6 @@ async function bindTelegramChatId() {
         }
     } catch (e) {
         if (bindStatus) { bindStatus.textContent = '网络错误'; bindStatus.style.color = 'var(--danger)'; }
-    }
-}
-
-    if (pageName === 'skills') {
-        if (window.SkillsPage && window.SkillsPage.onPageEnter) window.SkillsPage.onPageEnter();
-    }
-
-    if (pageName === 'game') {
-        // Initialize game canvas
-        if (typeof initGame === 'function') {
-            setTimeout(() => initGame('game-canvas'), 100);
-        }
     }
 }
 
