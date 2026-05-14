@@ -129,7 +129,12 @@ def register_routes(app):
 
     # web-v2 静态资源 (Vite 构建产物: JS/CSS/images)
     web_v2_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'web-v2', 'dist')
-    app.router.add_static('/web-v2/assets', os.path.join(web_v2_dist, 'assets'))
+    web_v2_assets = os.path.join(web_v2_dist, 'assets')
+    if os.path.isdir(web_v2_assets):
+        app.router.add_static('/web-v2/assets', web_v2_assets)
+    else:
+        import logging
+        logging.warning(f"[Routes] web-v2/assets 目录不存在: {web_v2_assets}")
 
     # web-v2 SPA fallback: 所有未匹配路由返回 index.html (前端路由)
     async def web_v2_fallback(request):
