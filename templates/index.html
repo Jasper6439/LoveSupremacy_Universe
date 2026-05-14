@@ -1359,10 +1359,10 @@
                 <span class="nav-item-label">游戏</span>
             </div>
             <div class="nav-item" data-page="media" onclick="navigateTo('media')">
-                <span class="nav-item-icon">&#127916;</span>
-                <span class="nav-item-label">多媒体</span>
+                <span class="nav-item-icon">&#127891;</span>
+                <span class="nav-item-label">角色学习</span>
             </div>
-            <div class="nav-item" data-page="quota" onclick="navigateTo('quota')">
+            <div class="nav-item admin-only" data-page="quota" onclick="navigateTo('quota')" style="display:none;">
                 <span class="nav-item-icon">&#128202;</span>
                 <span class="nav-item-label">监控</span>
             </div>
@@ -1424,7 +1424,7 @@
                     <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('selfies')">
                         <div class="stat-icon">&#127916;</div>
                         <div class="stat-value" id="stat-selfies">--</div>
-                        <div class="stat-label">多媒体数据</div>
+                        <div class="stat-label">学习数据</div>
                     </div>
                     <div class="stat-card" style="cursor:pointer" onclick="showStatDetail('intimacy')">
                         <div class="stat-icon">&#10084;&#65039;</div>
@@ -1551,8 +1551,28 @@
                 </div>
             </div>
 
-            <!-- ===== Page: Media (照片+视频+聊天记录) ===== -->
+            <!-- ===== Page: Media (角色学习) ===== -->
             <div class="page page-media" id="page-media">
+                <!-- 角色选择器 -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-3);">
+                    <div class="section-title" style="margin-bottom:0;">
+                        <span class="section-title-text">🎓 角色学习</span>
+                    </div>
+                    <select id="media-character-select" onchange="onMediaCharacterChange()" style="padding:6px 12px;border-radius:var(--radius-md);border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-primary);font-size:var(--font-size-sm);cursor:pointer;">
+                        <option value="">全部角色</option>
+                    </select>
+                </div>
+
+                <!-- 功能说明 -->
+                <div style="background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:var(--space-3); margin-bottom:var(--space-3); font-size:var(--font-size-sm); color:var(--text-secondary);">
+                    <div style="font-weight:600; margin-bottom:var(--space-2); color:var(--text-primary);">💡 上传内容用途</div>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-2);">
+                        <div>📷 <b>照片</b>：用于AI换脸生成角色自拍</div>
+                        <div>🎬 <b>视频</b>：自动提取音频和字幕，让角色学习声音和说话方式</div>
+                        <div>💬 <b>聊天记录</b>：让角色了解你的现实生活，更好地与你互动</div>
+                    </div>
+                </div>
+
                 <!-- Tab Switch: 上传 / 相册 -->
                 <div style="display:flex; gap:0; margin-bottom:var(--space-3); background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:3px;">
                     <button id="media-tab-upload" class="btn-secondary" style="flex:1; border-radius:var(--radius-md); border:none; padding:8px; font-size:var(--font-size-sm); cursor:pointer; background:var(--purple); color:#fff;" onclick="switchMediaTab('upload')">📤 上传</button>
@@ -1562,22 +1582,22 @@
                 <!-- Upload View -->
                 <div id="media-upload-view">
                     <div class="card">
-                        <div class="card-title">📤 上传内容</div>
+                        <div class="card-title">📤 上传给 <span id="upload-target-character">全部角色</span></div>
                         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-3); margin-top:var(--space-3);">
                             <div class="upload-type-card" onclick="triggerUpload('photo')" style="background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:var(--space-4); text-align:center; cursor:pointer; border:2px dashed var(--border-color); transition:all 0.2s;">
                                 <div style="font-size:2.5rem; margin-bottom:var(--space-2);">📷</div>
                                 <div style="font-weight:600; margin-bottom:4px;">照片</div>
-                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">JPG, PNG, GIF, WEBP</div>
+                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">用于AI换脸</div>
                             </div>
                             <div class="upload-type-card" onclick="triggerUpload('video')" style="background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:var(--space-4); text-align:center; cursor:pointer; border:2px dashed var(--border-color); transition:all 0.2s;">
                                 <div style="font-size:2.5rem; margin-bottom:var(--space-2);">🎬</div>
                                 <div style="font-weight:600; margin-bottom:4px;">视频</div>
-                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">MP4, MOV, AVI (最大500MB)</div>
+                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">提取音频+字幕学习</div>
                             </div>
                             <div class="upload-type-card" onclick="triggerUpload('chatlog')" style="background:var(--bg-tertiary); border-radius:var(--radius-lg); padding:var(--space-4); text-align:center; cursor:pointer; border:2px dashed var(--border-color); transition:all 0.2s;">
                                 <div style="font-size:2.5rem; margin-bottom:var(--space-2);">💬</div>
                                 <div style="font-weight:600; margin-bottom:4px;">聊天记录</div>
-                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">TXT, CSV, JSON</div>
+                                <div style="font-size:var(--font-size-xs); color:var(--text-tertiary);">了解你的现实生活</div>
                             </div>
                         </div>
                     </div>
@@ -1952,11 +1972,27 @@ function showLogin() {
     }
 }
 
-function showApp() {
+async function showApp() {
     try {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-shell').classList.add('active');
-        
+
+        // 获取用户信息，检查是否为管理员
+        try {
+            const response = await fetch('/api/user/profile', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const data = await response.json();
+            if (data.success && data.is_admin) {
+                // 显示监控页面
+                document.querySelectorAll('.nav-item.admin-only').forEach(el => {
+                    el.style.display = '';
+                });
+            }
+        } catch (e) {
+            console.error('检查管理员状态失败:', e);
+        }
+
         // 使用 try-catch 包装每个初始化函数，防止一个失败影响其他
         try { loadUserProfile(); } catch (e) { console.error('loadUserProfile failed:', e); }
         try { loadHomeStats(); } catch (e) { console.error('loadHomeStats failed:', e); }
@@ -2061,6 +2097,14 @@ async function handleAuth(event) {
             // 自动登录：保存 auto_token
             if (data.auto_token) {
                 localStorage.setItem('auto_login_token', data.auto_token);
+            }
+
+            // 记住账号
+            const rememberMe = document.getElementById('remember-me').checked;
+            if (rememberMe) {
+                localStorage.setItem('remembered_username', username);
+            } else {
+                localStorage.removeItem('remembered_username');
             }
 
             document.getElementById('auth-username').value = '';
@@ -2397,6 +2441,7 @@ function navigateTo(pageName) {
 
     if (pageName === 'gallery' || pageName === 'media') {
         if (window.GalleryPage && window.GalleryPage.onPageEnter) window.GalleryPage.onPageEnter();
+        loadMediaCharacterSelector(); // 加载角色选择器
         loadGalleryItems();
     }
 
@@ -3072,8 +3117,47 @@ function switchFarmTab(tab) {
 }
 
 /* ================================================================
-   Media Tab Switch
+   Media Tab Switch & Character Selector
    ================================================================ */
+
+// 加载角色列表到选择器
+async function loadMediaCharacterSelector() {
+    const select = document.getElementById('media-character-select');
+    if (!select) return;
+
+    try {
+        const response = await fetch('/api/characters', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await response.json();
+
+        if (data.success && data.characters) {
+            // 保留第一个选项（全部角色）
+            select.innerHTML = '<option value="">全部角色</option>';
+            data.characters.forEach(char => {
+                const option = document.createElement('option');
+                option.value = char.id;
+                option.textContent = char.name || char.id;
+                select.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error('加载角色列表失败:', e);
+    }
+}
+
+// 角色选择变化处理
+function onMediaCharacterChange() {
+    const select = document.getElementById('media-character-select');
+    const targetSpan = document.getElementById('upload-target-character');
+    if (select && targetSpan) {
+        const charName = select.value ? select.options[select.selectedIndex].text : '全部角色';
+        targetSpan.textContent = charName;
+    }
+    // 刷新相册以显示选中角色的内容
+    loadGalleryItems();
+}
+
 function switchMediaTab(tab) {
     const uploadView = document.getElementById('media-upload-view');
     const galleryView = document.getElementById('media-gallery-view');
@@ -3215,6 +3299,9 @@ async function loadGalleryItems() {
    Chat Days Calendar Modal
    ================================================================ */
 function showChatDaysModal() {
+    // 先关闭其他统计详情 modal
+    document.getElementById('stat-detail-modal').style.display = 'none';
+
     // 如果已存在，先移除旧的
     var existing = document.getElementById('chat-days-calendar');
     if (existing) {
@@ -3270,6 +3357,10 @@ function showChatDaysModal() {
    Stat Detail
    ================================================================ */
 function showStatDetail(type) {
+    // 先关闭日历 modal
+    var calendar = document.getElementById('chat-days-calendar');
+    if (calendar) calendar.remove();
+
     const modal = document.getElementById('stat-detail-modal');
     const title = document.getElementById('stat-detail-title');
     const content = document.getElementById('stat-detail-content');

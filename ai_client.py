@@ -252,7 +252,7 @@ def _strip_thinking_content(content: str) -> str:
                 if part and len(part) < 80:
                     return part
         
-        # 策略B: 找以 ... 或 （ 开头的行
+        # 策略B: 找以 ... 或 （ 开头的行（排除纯标点）
         lines = content.split('\n')
         for line in reversed(lines):
             stripped = line.strip()
@@ -260,7 +260,10 @@ def _strip_thinking_content(content: str) -> str:
                 stripped.startswith('...') or stripped.startswith('（') or 
                 stripped.startswith('(') or stripped.startswith('…')
             ):
-                return stripped
+                # 排除纯标点符号（如 "......" "..." "……"）
+                text_content = stripped.lstrip('.').lstrip('…').lstrip('（').lstrip('(').rstrip('）').rstrip(')').strip()
+                if len(text_content) >= 2:  # 至少要有2个有效字符
+                    return stripped
         
         # 策略C: 找最后一个句号/问号/感叹号后的短句
         # 思考过程通常以分析结尾，回复通常是独立短句

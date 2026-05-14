@@ -387,9 +387,9 @@ async def compete_reply(system_prompt: str, user_message: str,
         status = "淘汰" if disqualified else f"{score}分"
         logger.info(f"[规则引擎] {model.split('/')[1]}: {status} | {reply[:40]}...")
 
-    # 分离合格和淘汰的
+    # 分离合格和淘汰的（只淘汰 disqualified=True 的）
     qualified = {m: v for m, v in scored.items() if not v[1]}
-    disqualified = {m: v for m, v in scored.items() if v[1] or v[0] < 60}
+    disqualified = {m: v for m, v in scored.items() if v[1]}
 
     winning_model = None
     best_reply = ""
