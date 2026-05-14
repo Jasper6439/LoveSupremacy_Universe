@@ -7,6 +7,7 @@ from database import get_db
 from system.config import get_default_tz
 from characters import get_current_character
 from game_api.auth import authenticate_request
+from game_api.game_state import notify_state_change
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,8 @@ async def api_interact_with_character(request):
         # 获取更新后的关系
         relationship = db.get_relationship(user_id, character_id)
 
+        notify_state_change(user_id, ['hearts', 'relationshipStatus'])
+
         return web.json_response({
             'success': True,
             'hearts': relationship['hearts'] if relationship else 0,
@@ -138,6 +141,8 @@ async def api_gift_to_character(request):
 
         # 获取更新后的关系
         relationship = db.get_relationship(user_id, character_id)
+
+        notify_state_change(user_id, ['hearts', 'relationshipStatus', 'inventory'])
 
         return web.json_response({
             'success': True,

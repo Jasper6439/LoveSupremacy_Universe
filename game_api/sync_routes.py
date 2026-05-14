@@ -1,10 +1,20 @@
-# 同步 + 全量状态 API
+# 同步 + 全量状态 API + SSE 实时推送
+# v1.6.3 — 前后端游戏状态同步
 
+import asyncio
+import json
 import logging
+import time
+
 from aiohttp import web
 from database import get_db
 from characters import get_current_character
 from game_api.auth import authenticate_request
+from game_api.game_state import (
+    serialize_game_state, get_state_version, notify_state_change,
+    compute_state_diff, get_snapshot, subscribe_state_changes,
+    unsubscribe_state_changes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,152 +64,19 @@ async def api_mark_synced(request):
 
 
 async def api_get_full_game_state(request):
-    """一次性获取全部游戏状态"""
+    """一次性获取全部游戏状态（v1.6.3: 使用 game_state 模块，附带版本号）"""
     try:
         user_id, err = await authenticate_request(request)
         if err:
             return err
 
-        db = get_db()
-
-        # 获取农场
-        db.get_or_create_user(user_id, f"game_{user_id}")
-        farm = db.get_or_create_farm(user_id)
-
-        # 更新作物生长
-        db.update_crop_growth(farm['id'])
-
-        # 获取所有数据
-        crops = db.get_crops(farm['id'])
-        inventory = db.get_inventory(user_id)
-        crop_types = db.get_crop_types()
-
-        # 获取角色关系
-        character = get_current_character()
-        character_id = character.config.id if character else 'chayewoon'
-        relationship = db.get_relationship(user_id, character_id)
-
-        # 获取情感值（恋爱至上主义区域）
-        emotion_values = db.get_emotion_values(user_id, character_id)
-
-        # 获取世界层级状态
-        world_layer_state = db.get_world_layer_state(user_id)
-
-        # 获取地图系统状态（v1.4.10.2）
-        map_state = db.get_map_state(user_id)
-
-        # 获取角色位置
-        location = db.get_character_location(character_id)
-
-        # 获取玩家位置
-        player_pos = db.get_player_position(user_id)
-
-        # 构建作物字典 (key: "x,y")
-        crops_dict = {}
-        for crop in crops:
-            key = f"{crop['tile_x']},{crop['tile_y']}"
-            crops_dict[key] = {
-                'type': crop['crop_type'],
-                'plantedAt': crop['planted_at'],
-                'growthStage': crop['growth_stage'],
-                'waterLevel': crop.get('water_level', 0),
-                'harvestable': crop.get('is_harvestable', 0) == 1
-            }
-
-        # 构建背包字典
-        inventory_dict = {}
-        for item in inventory:
-            item_key = f"{item['item_type']}_{item['item_id']}"
-            inventory_dict[item_key] = {
-                'type': item['item_type'],
-                'name': item.get('name', item['item_id']),
-                'quantity': item['quantity'],
-                'emoji': item.get('emoji', '')
-            }
-
-        # 为种子添加 emoji
-        for key, item in inventory_dict.items():
-            if item['type'] == 'seed':
-                ct = next((ct for ct in crop_types if ct['id'] == item['name']), None)
-                if ct:
-                    item['name'] = ct['name'] + '种子'
-                    item['emoji'] = ct['emoji']
-            elif item['type'] == 'crop':
-                ct = next((ct for ct in crop_types if ct['id'] == item['name']), None)
-                if ct:
-                    item['name'] = ct['name']
-                    item['emoji'] = ct['emoji']
-
-        # 构建作物类型字典
-        crop_types_dict = {}
-        for ct in crop_types:
-            crop_types_dict[ct['id']] = {
-                'name': ct['name'],
-                'growthTime': ct['growth_time'],
-                'sellPrice': ct['sell_price'],
-                'seedPrice': ct['seed_price'],
-                'emoji': ct['emoji']
-            }
-
-        # NPC 数据
-        npc_data = {}
-        if location:
-            npc_data['chayewoon'] = {
-                'id': 'chayewoon',
-                'x': location.get('x', 3),
-                'y': location.get('y', 2),
-                'direction': 'down',
-                'name': character.config.name if character else '车如云',
-                'location': location['location'],
-                'activity': location['activity']
-            }
-
-        # 默认建筑和装饰
-        buildings = {
-            'house': {'x': -6, 'y': 4, 'type': 'house'},
-            'barn': {'x': 6, 'y': 4, 'type': 'barn'}
-        }
-        decorations = {
-            'tree1': {'x': -7, 'y': 2, 'type': 'tree'},
-            'tree2': {'x': 7, 'y': 1, 'type': 'tree'},
-            'tree3': {'x': -5, 'y': -4, 'type': 'tree'},
-            'flower1': {'x': -4, 'y': 5, 'type': 'flower_red'},
-            'flower2': {'x': 4, 'y': -5, 'type': 'flower_yellow'},
-            'rock1': {'x': 8, 'y': 3, 'type': 'rock'}
-        }
+        state = serialize_game_state(user_id)
+        version = get_state_version(user_id)
 
         return web.json_response({
             'success': True,
-            'farm': {
-                'id': farm['id'],
-                'name': farm['farm_name'],
-                'money': farm['money'],
-                'level': farm['level'],
-                'exp': farm['experience'],
-                'gridWidth': farm['grid_width'],
-                'gridHeight': farm['grid_height']
-            },
-            'player': player_pos or {'x': 0, 'y': 0, 'direction': 'down'},
-            'crops': crops_dict,
-            'inventory': inventory_dict,
-            'cropTypes': crop_types_dict,
-            'npc': npc_data,
-            'hearts': relationship['hearts'] if relationship else 0,
-            'relationshipStatus': relationship['relationship_status'] if relationship else 'stranger',
-            'emotionValues': emotion_values,
-            'worldLayer': world_layer_state,
-            'mapSystem': {
-                'currentMap': map_state['current_map'],
-                'currentMapInfo': map_state['current_map_info'],
-                'maps': map_state['maps'],
-                'unlockedCount': map_state['unlocked_count'],
-                'totalMaps': map_state['total_maps'],
-            },
-            'buildings': buildings,
-            'decorations': decorations,
-            'weather': 'sunny',
-            'season': 'spring',
-            'gameDay': 1
+            'version': version,
+            **state
         })
 
     except Exception as e:
@@ -346,4 +223,143 @@ async def api_get_world_state(request):
 
     except Exception as e:
         logger.error(f"[Game API] 获取世界状态失败: {e}")
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+# ============================================================
+# v1.6.3 — SSE 实时推送 + 增量同步
+# ============================================================
+
+async def api_game_state_sse(request):
+    """SSE 端点 — 实时推送游戏状态变更通知
+
+    前端连接后，服务器在有状态变更时推送版本号。
+    前端收到通知后调用 /api/game/state/diff 获取增量差异。
+
+    SSE 协议：
+    - Content-Type: text/event-stream
+    - 每条消息格式: data: {json}\\n\\n
+    - 心跳: 每 30 秒发送 ping
+    """
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+
+        # 创建 SSE 响应
+        response = web.StreamResponse()
+        response.content_type = 'text/event-stream'
+        response.headers['Cache-Control'] = 'no-cache'
+        response.headers['Connection'] = 'keep-alive'
+        response.headers['X-Accel-Buffering'] = 'no'
+        await response.prepare(request)
+
+        # 订阅状态变更
+        queue = await subscribe_state_changes(user_id)
+
+        try:
+            # 立即发送当前版本号（让前端知道从哪个版本开始）
+            current_version = get_state_version(user_id)
+            init_msg = json.dumps({
+                'type': 'init',
+                'version': current_version,
+                'timestamp': time.time()
+            }, ensure_ascii=False)
+            await response.write(f"data: {init_msg}\n\n".encode('utf-8'))
+
+            # 持续监听
+            while True:
+                try:
+                    # 等待状态变更消息，30秒超时用于心跳
+                    msg = await asyncio.wait_for(queue.get(), timeout=30)
+                    await response.write(f"data: {msg}\n\n".encode('utf-8'))
+                except asyncio.TimeoutError:
+                    # 发送心跳
+                    await response.write(": ping\n\n".encode('utf-8'))
+
+        except asyncio.CancelledError:
+            logger.debug(f"[SSE] 用户 {user_id} 连接断开")
+        finally:
+            unsubscribe_state_changes(user_id, queue)
+
+        return response
+
+    except Exception as e:
+        logger.error(f"[SSE] 连接失败: {e}")
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def api_game_state_diff(request):
+    """增量状态差异 API
+
+    前端传入本地版本号，返回该版本之后的所有变更。
+    如果版本号过期或不存在，返回 needsFullSync=true 提示前端全量拉取。
+    """
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+
+        client_version = int(request.query.get('version', 0))
+        current_version = get_state_version(user_id)
+
+        # 版本号一致，无变更
+        if client_version == current_version:
+            return web.json_response({
+                'success': True,
+                'version': current_version,
+                'hasChanges': False,
+                'diff': {}
+            })
+
+        # 版本号落后太多（超过10个版本），建议全量同步
+        if current_version - client_version > 10:
+            return web.json_response({
+                'success': True,
+                'version': current_version,
+                'hasChanges': True,
+                'needsFullSync': True
+            })
+
+        # 尝试从快照计算差异
+        old_snapshot = get_snapshot(user_id)
+        new_state = serialize_game_state(user_id)
+
+        if old_snapshot:
+            diff = compute_state_diff(old_snapshot, new_state)
+        else:
+            # 无快照，返回全量
+            return web.json_response({
+                'success': True,
+                'version': current_version,
+                'hasChanges': True,
+                'needsFullSync': True
+            })
+
+        return web.json_response({
+            'success': True,
+            'version': current_version,
+            'hasChanges': True,
+            'diff': diff
+        })
+
+    except Exception as e:
+        logger.error(f"[Game API] 增量同步失败: {e}")
+        return web.json_response({'success': False, 'error': str(e)})
+
+
+async def api_game_state_version(request):
+    """获取当前状态版本号（轻量级，用于前端轮询判断是否需要同步）"""
+    try:
+        user_id, err = await authenticate_request(request)
+        if err:
+            return err
+
+        return web.json_response({
+            'success': True,
+            'version': get_state_version(user_id)
+        })
+
+    except Exception as e:
+        logger.error(f"[Game API] 获取版本号失败: {e}")
         return web.json_response({'success': False, 'error': str(e)})

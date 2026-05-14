@@ -15,7 +15,8 @@
 | `heart_routes.py` | 心级事件检查与触发 | `api_check_heart_events` |
 | `map_routes.py` | 多地图列表, 解锁状态, 地图切换 | `api_get_maps`, `api_unlock_map` |
 | `media_routes.py` | 自拍/贴纸/场景 AI 生成 | `api_generate_selfie`, `api_generate_sticker` |
-| `sync_routes.py` | 全量状态同步, 游戏事件拉取 | `api_get_full_state`, `api_get_game_events` |
+| `sync_routes.py` | 全量状态同步, 游戏事件拉取, SSE 实时推送, 增量 diff | `api_get_full_game_state`, `api_game_state_sse`, `api_game_state_diff`, `api_game_state_version` |
+| `game_state.py` | 状态序列化, 版本号管理, 变更通知, 快照缓存 | `serialize_game_state`, `notify_state_change`, `get_state_version` |
 
 ## 依赖关系
 

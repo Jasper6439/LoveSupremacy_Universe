@@ -6,7 +6,7 @@
 
 - **Name:** 恋爱至上主义区域 (Love Supremacy Zone)
 - **Type:** Telegram Bot + Web Game — 恋爱模拟 RPG
-- **Current Version:** v1.6.2.4
+- **Current Version:** v1.6.3
 - **Repository:** `Jasper6439/NxSiran-Telegram-Bot`
 - **Language:** Python 3.11+
 
@@ -47,7 +47,8 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 │   ├── farm_routes.py          # 农场种植/收获/浇水/售卖
 │   ├── character_routes.py     # 角色互动/送礼/同步
 │   ├── map_routes.py           # 多地图系统（6地图）
-│   ├── sync_routes.py          # 游戏事件同步
+│   ├── sync_routes.py          # 游戏事件同步 + SSE 实时推送 + 增量 diff
+│   ├── game_state.py           # 状态序列化 + 版本号管理 + 变更通知
 │   ├── cooking_routes.py       # 烹饪 + 每日签到
 │   ├── heart_routes.py         # 心级事件
 │   ├── media_routes.py         # 自拍/贴纸/场景图生成 API
@@ -125,7 +126,7 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 
 | Version | Feature | Status |
 |---------|---------|--------|
-| v1.6.3 | Front-end/back-end game state sync | Planned |
+| v1.6.3 | Front-end/back-end game state sync | Done |
 | v1.6.4 | Multi-character support | Planned |
 | v1.6.5 | Mobile touch controls | Planned |
 

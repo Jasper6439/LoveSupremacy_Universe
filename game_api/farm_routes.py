@@ -5,6 +5,7 @@ import random
 from aiohttp import web
 from database import get_db
 from game_api.auth import authenticate_request
+from game_api.game_state import notify_state_change
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,8 @@ async def api_plant_crop(request):
                 'x': x, 'y': y, 'crop_type': crop_type
             }, 'web')
 
+            notify_state_change(user_id, ['crops', 'inventory'])
+
             return web.json_response({
                 'success': True,
                 'message': f'种下了 {crop_type}'
@@ -151,6 +154,8 @@ async def api_harvest_crop(request):
             db.log_game_event(user_id, 'harvest', {
                 'x': x, 'y': y, 'crop_type': crop_type
             }, 'web')
+
+            notify_state_change(user_id, ['crops', 'inventory'])
 
             return web.json_response({
                 'success': True,
@@ -208,6 +213,7 @@ async def api_bulk_harvest(request):
 
         if harvested:
             db.log_game_event(user_id, 'harvest', {'crops': [h['type'] for h in harvested]}, 'web')
+            notify_state_change(user_id, ['crops', 'inventory'])
 
         return web.json_response({
             'success': True,
@@ -257,6 +263,8 @@ async def api_sell_crop(request):
             'quantity': quantity,
             'total': total
         }, 'web')
+
+        notify_state_change(user_id, ['farm', 'inventory'])
 
         return web.json_response({
             'success': True,
@@ -311,6 +319,8 @@ async def api_buy_seed(request):
             'cost': price
         }, 'web')
 
+        notify_state_change(user_id, ['farm', 'inventory'])
+
         return web.json_response({
             'success': True,
             'cost': price,
@@ -343,6 +353,7 @@ async def api_water_crop(request):
 
         if success:
             db.log_game_event(user_id, 'water', {'x': x, 'y': y}, 'web')
+            notify_state_change(user_id, ['crops'])
             return web.json_response({'success': True, 'message': '浇水完成'})
         else:
             return web.json_response({'success': False, 'error': '这里没有作物'})

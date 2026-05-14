@@ -20,6 +20,7 @@ from game_api.sync_routes import (
     api_get_full_game_state, api_get_emotion_values,
     api_check_awakening, api_trigger_awakening,
     api_switch_world_layer, api_get_world_state,
+    api_game_state_sse, api_game_state_diff, api_game_state_version,
 )
 from game_api.media_routes import (
     api_generate_selfie, api_generate_sticker,
@@ -90,3 +91,8 @@ def register_game_routes(app):
     app.router.add_get("/api/game/maps/state", api_get_map_state)
     app.router.add_post("/api/game/maps/discover", api_discover_map)
     app.router.add_get("/api/game/maps/discoveries", api_get_map_discoveries)
+
+    # v1.6.3 — 前后端状态同步
+    app.router.add_get("/api/game/state/sse", api_game_state_sse)
+    app.router.add_get("/api/game/state/diff", api_game_state_diff)
+    app.router.add_get("/api/game/state/version", api_game_state_version)
