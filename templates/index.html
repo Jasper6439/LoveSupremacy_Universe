@@ -2465,32 +2465,23 @@ function navigateTo(pageName) {
                     avatarEl.innerHTML = '';
                 }
 
-                // Load character bindings - 如果没有绑定，显示可用角色
+                // Load character bindings - 保留 Token 输入框，只更新状态
                 var bindingsList = document.getElementById('character-bindings-list');
                 if (bindingsList) {
                     var bindings = data.character_bindings || {};
                     var keys = Object.keys(bindings);
 
-                    if (keys.length === 0) {
-                        // 没有绑定，从 /api/characters 获取可用角色列表
-                        fetch('/api/characters', { headers: { 'Authorization': 'Bearer ' + authToken } })
-                            .then(function(r) { return r.json(); })
-                            .then(function(charData) {
-                                if (charData.success && charData.characters && charData.characters.length > 0) {
-                                    var currentChar = charData.characters.find(function(c) { return c.id === charData.current; }) || charData.characters[0];
-                                    bindingsList.innerHTML = '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">' + (currentChar.name || currentChar.id) + '</span><span class="settings-value" style="color:var(--success);">当前角色</span></div>';
-                                } else {
-                                    bindingsList.innerHTML = '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">暂无角色绑定</span></div>';
-                                }
-                            })
-                            .catch(function() {
-                                bindingsList.innerHTML = '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">暂无角色绑定</span></div>';
-                            });
-                    } else {
-                        bindingsList.innerHTML = keys.map(function(charName) {
-                            var chatId = bindings[charName];
-                            return '<div class="settings-item"><span class="settings-icon">&#128100;</span><span class="settings-label">' + charName + '</span><span class="settings-value">ID: ' + chatId + '</span></div>';
-                        }).join('');
+                    // 更新 Token 输入框所在 item 的状态
+                    var tokenStatus = document.getElementById('chayewoon-bind-status');
+                    if (tokenStatus) {
+                        var boundKeys = keys.filter(function(k) { return k !== '__len__'; });
+                        if (boundKeys.length > 0) {
+                            tokenStatus.textContent = '已绑定 Bot Token ✓';
+                            tokenStatus.style.color = 'var(--success)';
+                        } else {
+                            tokenStatus.textContent = '未绑定';
+                            tokenStatus.style.color = 'var(--text-tertiary)';
+                        }
                     }
                 }
 
@@ -3224,6 +3215,13 @@ async function loadGalleryItems() {
    Chat Days Calendar Modal
    ================================================================ */
 function showChatDaysModal() {
+    // 如果已存在，先移除旧的
+    var existing = document.getElementById('chat-days-calendar');
+    if (existing) {
+        existing.remove();
+        return; // 再次点击关闭
+    }
+
     var now = new Date();
     var year = now.getFullYear();
     var month = now.getMonth();
@@ -3233,10 +3231,10 @@ function showChatDaysModal() {
 
     var monthNames = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
 
-    var html = '<div style="margin-top:var(--space-4);background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:var(--shadow-sm);">';
+    var html = '<div id="chat-days-calendar" style="margin-top:var(--space-4);background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:var(--shadow-sm);">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">';
     html += '<div class="section-title" style="margin-bottom:0;"><span class="section-title-text">📅 ' + monthNames[month] + ' ' + year + '</span></div>';
-    html += '<button onclick="this.closest(\'div\').parentElement.remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);">&times;</button>';
+    html += '<button onclick="document.getElementById(\'chat-days-calendar\').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);">&times;</button>';
     html += '</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;">';
 

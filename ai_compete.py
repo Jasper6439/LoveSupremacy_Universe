@@ -111,37 +111,31 @@ def _rule_engine_score(reply: str) -> Tuple[float, bool]:
             logger.debug("[规则引擎] 淘汰: 直接正面情感")
             return 0, True
 
-    # --- 扣分规则 ---
+    # --- 扣分规则（大幅放宽，只淘汰最差回复） ---
 
-    # 长度
+    # 长度：仅对超长回复一票否决
     max_len = rules.get("max_length", 100)
     length = len(reply)
     if length > max_len * 2:
-        score -= rules.get("max_length_penalty", 25) + 10
+        logger.debug("[规则引擎] 淘汰: 回复过长")
+        return 0, True
     elif length > max_len:
         score -= rules.get("max_length_penalty", 25)
     elif length < 3:
-        score -= 20
+        score -= 10
 
-    # 格式：省略号和括号动作
+    # 格式：省略号和括号动作（不淘汰，只影响分数）
     has_ellipsis = reply.strip().startswith('...')
     has_action = bool(re.search(r'[（(].+?[）)]', reply))
     require_ellipsis = rules.get("require_ellipsis", False)
     require_action = rules.get("require_action_parentheses", False)
 
-    if require_ellipsis and require_action:
-        if not has_ellipsis and not has_action:
-            score -= 20
-        elif not has_ellipsis:
-            score -= 10
-        elif not has_action:
-            score -= 5
-    elif require_ellipsis and not has_ellipsis:
-        score -= 15
-    elif require_action and not has_action:
+    if require_ellipsis and not has_ellipsis:
         score -= 10
+    if require_action and not has_action:
+        score -= 5
 
-    # CJK 占比（支持角色配置的语言列表）
+    # CJK 占比（只淘汰完全无 CJK 的长回复）
     if length > 20:
         allowed_langs = rules.get("languages", ["zh", "en"])
         cjk_chars = 0
@@ -153,20 +147,13 @@ def _rule_engine_score(reply: str) -> Tuple[float, bool]:
             cjk_chars += sum(1 for c in reply if '\u3040' <= c <= '\u309F' or '\u30A0' <= c <= '\u30FF')
 
         min_ratio = rules.get("min_cjk_ratio", 0.0)
-        if min_ratio > 0:
+        if min_ratio > 0 and length > 30:
             cjk_ratio = cjk_chars / length
-            if cjk_ratio < min_ratio:
-                score -= 30
-            elif cjk_ratio < min_ratio + 0.2:
-                score -= 15
+            if cjk_ratio < min_ratio * 0.5:  # 只在 CJK 极低时淘汰
+                logger.debug(f"[规则引擎] 淘汰: CJK 占比过低 ({cjk_ratio:.2f})")
+                return 0, True
 
-    # 标点符号数量
-    max_punct = rules.get("max_punctuation_marks", 5)
-    punct_count = reply.count('！') + reply.count('?') + reply.count('！') + reply.count('？')
-    if punct_count > max_punct:
-        score -= 10
-
-    # Emoji
+    # Emoji（不淘汰，只扣分）
     if rules.get("disallow_emoji"):
         emoji_pattern = re.compile(
             '[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF'
@@ -176,7 +163,13 @@ def _rule_engine_score(reply: str) -> Tuple[float, bool]:
         )
         emoji_count = len(emoji_pattern.findall(reply))
         if emoji_count > 0:
-            score -= emoji_count * 5
+            score -= emoji_count * 3
+
+    # 标点符号过少（不淘汰，但影响分数）
+    punct_count = reply.count('！') + reply.count('?') + reply.count('！') + reply.count('？')
+    max_punct = rules.get("max_punctuation_marks", 5)
+    if punct_count > max_punct:
+        score -= 10
 
     score = max(0, min(100, score))
     return score, False
@@ -395,7 +388,7 @@ async def compete_reply(system_prompt: str, user_message: str,
         logger.info(f"[规则引擎] {model.split('/')[1]}: {status} | {reply[:40]}...")
 
     # 分离合格和淘汰的
-    qualified = {m: v for m, v in scored.items() if not v[1] and v[0] >= 60}
+    qualified = {m: v for m, v in scored.items() if not v[1]}
     disqualified = {m: v for m, v in scored.items() if v[1] or v[0] < 60}
 
     winning_model = None
