@@ -124,8 +124,24 @@ def register_routes(app):
     app.router.add_post('/api/user/preferred-name', api_update_preferred_name)
     app.router.add_post('/api/user/bind-telegram', api_bind_telegram)
 
-    # Static files
+    # Static files (旧版已废弃，保留 _deprecated 目录不对外暴露)
     app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'static'))
+
+    # web-v2 静态资源 (Vite 构建产物: JS/CSS/images)
+    web_v2_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'web-v2', 'dist')
+    app.router.add_static('/web-v2/assets', os.path.join(web_v2_dist, 'assets'))
+
+    # web-v2 SPA fallback: 所有未匹配路由返回 index.html (前端路由)
+    async def web_v2_fallback(request):
+        try:
+            with open(os.path.join(web_v2_dist, 'index.html'), 'r', encoding='utf-8') as f:
+                return web.Response(text=f.read(), content_type='text/html')
+        except FileNotFoundError:
+            return web.Response(text="web-v2 not found", status=404)
+
+    # 注册常见前端路由的 fallback
+    for _path in ['/game', '/chat', '/settings', '/home']:
+        app.router.add_get(_path, web_v2_fallback)
 
     # CORS middleware
     app.middlewares.append(cors_middleware)
