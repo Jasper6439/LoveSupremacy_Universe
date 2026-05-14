@@ -52,3 +52,4 @@
 - **No re-export shims:** Transient compatibility shims are prohibited. All import paths MUST resolve to the canonical module location.
 - **Root directory invariant:** `bot.py` is the SOLE Python file permitted at project root. All other modules reside in their responsibility-scoped package (`characters/`, `system/`, `game_api/`, `database/`, `packages/`, `tools/`).
 - **Version control:** Every completed task unit MUST result in a single atomic commit with a conventional message prefix (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
+- **README synchronization:** Adding a new file to any directory that contains a `README.md` MUST include a corresponding entry in that README's module table. The entry MUST specify: filename, responsibility description, and principal exports. This applies to all directories: `characters/`, `system/`, `game_api/`, `database/`, `packages/`, `tools/`.
