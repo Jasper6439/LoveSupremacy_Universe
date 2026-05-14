@@ -19,6 +19,18 @@ After completing a task:
 1. **If you created a new file** in a directory that has a `README.md`, you MUST add an entry to that README's module table (filename, responsibility, principal exports).
 2. **Verify syntax** — `python -m py_compile <file>` for every modified `.py` file.
 3. **Atomic commit** — Single commit per task unit with conventional prefix (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
+4. **Provide verification steps** — After each feature implementation, output a minimal manual test procedure (e.g., "send /command X in Telegram, observe Y") or a lightweight verification script that can be run via Bridge without restarting the entire service. The project has Bridge (port 8082) and Webhook services for remote execution.
+
+## Rollback Safety
+
+- **Before large-scale refactoring** (affecting >3 files or >50 lines of logic changes), create a rollback point:
+  1. `git tag rollback-pre-v<version>` — Tag the current state before changes.
+  2. `git checkout -b backup/pre-v<version>` — Create a backup branch.
+  3. Output the rollback command: `git checkout rollback-pre-v<version>` so the user can revert if needed.
+
+## Scope Alignment
+
+- **Direction lock:** Implementation direction MUST NOT deviate from the architecture and roadmap defined in `PROJECT_CONTEXT.md`. If a proposed change conflicts with the documented architecture, halt and flag the conflict before proceeding.
 
 ---
 
