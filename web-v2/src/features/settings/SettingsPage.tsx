@@ -235,7 +235,7 @@ export default function SettingsPage() {
         
         <GlassCard className="p-4">
           <div className="text-center text-gray-500 text-sm">
-            <p>恋爱至上主义区域 v1.6.1</p>
+            <p>恋爱至上主义区域 v1.6.2</p>
             <p className="mt-1">Made with 💕</p>
           </div>
         </GlassCard>

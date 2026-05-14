@@ -5,10 +5,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard, GlassModal } from '../../components/ui/GlassComponents';
-import { useGameStore, CROP_CONFIG, COLLAPSE_EVENTS } from '../../stores/gameStore';
+import { useGameStore } from '../../stores/gameStore';
+import { CROP_CONFIG, COLLAPSE_EVENTS } from '../../stores/constants';
 import { usePhaser } from './hooks/usePhaser';
 import RoamMode from './RoamMode';
-import type { CropType } from '../../stores/gameStore';
+import type { CropType } from '../../stores/types';
 
 export default function GamePage() {
   const gameContainerRef = useRef<HTMLDivElement>(null);

@@ -3,7 +3,10 @@
 // 农场主游戏场景 - 支持双区作物视觉差异化
 // ═══════════════════════════════════════════════════════════════════════════
 import Phaser from 'phaser';
-import { useGameStore, CROP_CONFIG, getCropStageEmoji, type CropType, type WorldZone } from '../../../stores/gameStore';
+import { useGameStore } from '../../../stores/gameStore';
+import { CROP_CONFIG } from '../../../stores/constants';
+import { getCropStageEmoji } from '../../../stores/farmStore';
+import type { CropType, WorldZone } from '../../../stores/types';
 
 // 游戏配置常量
 const GRID_SIZE = 6;
