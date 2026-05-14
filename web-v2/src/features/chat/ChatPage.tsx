@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 
 // ─── 后端 API 地址 ───────────────────────────────────────────────────────
-const API_BASE = 'https://35.212.153.179:8080';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 interface Message {
   id: string;

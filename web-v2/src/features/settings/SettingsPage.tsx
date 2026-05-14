@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { GlassCard, GlassButton, GlassModal } from '../../components/ui/GlassComponents';
 
 // API 地址
-const API_BASE = 'https://35.212.153.179:8080';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 interface UserInfo {
   id: number;
