@@ -1,0 +1,308 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   恋爱至上主义区域 - 全局样式
+   iOS Design Language + Glassmorphism
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── iOS 安全区 ────────────────────────────────────────────────────────── */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-area-all {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ─── iOS 触摸优化 ──────────────────────────────────────────────────────── */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 禁用长按选中文本 */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 启用惯性滚动 */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* ─── 玻璃拟态基础 ──────────────────────────────────────────────────────── */
+@layer components {
+  /* 浅色模式玻璃 */
+  .glass {
+    @apply bg-white/60;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    @apply border border-white/30;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  }
+
+  /* 深色模式玻璃 */
+  .glass-dark {
+    @apply bg-gray-900/70;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    @apply border border-white/10;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* 导航栏玻璃 */
+  .glass-nav {
+    @apply bg-white/80;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    @apply border-b border-gray-200/50;
+  }
+
+  /* 底部栏玻璃 */
+  .glass-tabbar {
+    @apply bg-white/90;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    @apply border-t border-gray-200/50;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 卡片玻璃 */
+  .glass-card {
+    @apply bg-white/50;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    @apply rounded-ios-md border border-white/20;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 弹窗玻璃 */
+  .glass-modal {
+    @apply bg-white/85;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    @apply rounded-ios-xl border border-white/30;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 消息气泡 */
+  .bubble-sent {
+    @apply bg-gradient-to-br from-brand-400 to-brand-500 text-white rounded-ios-lg rounded-tr-sm;
+  }
+
+  .bubble-received {
+    @apply bg-white/80 backdrop-blur-md text-gray-800 rounded-ios-lg rounded-tl-sm;
+    @apply border border-white/50;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 按钮样式 */
+  .btn-primary {
+    @apply bg-gradient-to-r from-brand-400 to-brand-500 text-white font-medium;
+    @apply px-6 py-3 rounded-ios-sm;
+    @apply shadow-lg shadow-brand-500/25;
+    @apply active:scale-95 transition-transform duration-150;
+  }
+
+  .btn-secondary {
+    @apply bg-white/60 backdrop-blur-md text-brand-500 font-medium;
+    @apply px-6 py-3 rounded-ios-sm border border-brand-200/50;
+    @apply active:scale-95 transition-transform duration-150;
+  }
+
+  /* 美拉德色点缀 - 食物/亲密度 */
+  .accent-maillard {
+    @apply bg-gradient-to-r from-morandi-maillard-caramel to-morandi-maillard-honey;
+  }
+
+  .heart-glow {
+    @apply text-morandi-maillard-love;
+    filter: drop-shadow(0 0 8px rgba(224, 122, 95, 0.5));
+  }
+}
+
+/* ─── 背景渐变 ──────────────────────────────────────────────────────────── */
+.bg-gradient-morandi {
+  background: linear-gradient(
+    135deg,
+    #FAFAFA 0%,
+    #F5F5F7 25%,
+    #EEEEEE 50%,
+    #F5F5F7 75%,
+    #FAFAFA 100%
+  );
+}
+
+.bg-gradient-farm {
+  background: linear-gradient(
+    180deg,
+    #B8E0D2 0%,  /* 天空绿 */
+    #95D5B2 40%, /* 草地绿 */
+    #74C69D 100%  /* 深草地 */
+  );
+}
+
+/* ─── 状态栏 ────────────────────────────────────────────────────────────── */
+.status-bar-light {
+  @apply bg-gray-50/80 backdrop-blur-md;
+  @apply border-b border-gray-200/30;
+}
+
+.status-bar-dark {
+  @apply bg-gray-900/90 backdrop-blur-md;
+  @apply border-b border-gray-800/50;
+}
+
+/* ─── 游戏相关 ──────────────────────────────────────────────────────────── */
+.game-grid {
+  @apply bg-morandi-grass;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.game-plot {
+  @apply bg-morandi-soil rounded-ios-lg;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-plot-planted {
+  @apply bg-morandi-soilDark;
+}
+
+/* ─── 滚动条美化 ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400/70;
+}
+
+/* ─── 输入框 ────────────────────────────────────────────────────────────── */
+.input-ios {
+  @apply w-full px-4 py-3 bg-white/50 backdrop-blur-sm;
+  @apply rounded-ios-md border border-gray-200/50;
+  @apply text-gray-800 placeholder-gray-400;
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-400/50 focus:border-brand-400;
+  @apply transition-all duration-200;
+}
+
+/* ─── 页面容器 ──────────────────────────────────────────────────────────── */
+.page-container {
+  @apply min-h-screen bg-gradient-morandi;
+  @apply safe-area-all;
+}
+
+.page-content {
+  @apply px-4 pb-24 pt-4;
+}
+
+/* ─── 隐藏元素（但保持可访问性） ───────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── 动画 ─────────────────────────────────────────────────────────────── */
+@keyframes heart-beat {
+  0%, 100% { transform: scale(1); }
+  10%, 30% { transform: scale(1.1); }
+  40%, 60% { transform: scale(1); }
+  70%, 90% { transform: scale(1.1); }
+}
+
+.heart-beat {
+  animation: heart-beat 2s ease-in-out infinite;
+}
+
+@keyframes particle-rise {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(1.5);
+  }
+}
+
+.particle-rise {
+  animation: particle-rise 0.6s ease-out forwards;
+}
+
+/* ─── 暗色模式覆盖 ─────────────────────────────────────────────────────── */
+.dark .glass {
+  @apply bg-gray-900/70;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark .glass-nav {
+  @apply bg-gray-900/90;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-tabbar {
+  @apply bg-gray-900/95;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-card {
+  @apply bg-gray-800/60;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-modal {
+  @apply bg-gray-900/95;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .bubble-received {
+  @apply bg-gray-800/90 text-gray-100;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .input-ios {
+  @apply bg-gray-800/50 border-gray-700/50 text-gray-100 placeholder-gray-500;
+  @apply focus:ring-brand-400/50 focus:border-brand-400;
+}
