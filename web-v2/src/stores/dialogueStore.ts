@@ -34,10 +34,10 @@ export const createDialogueSlice = (
     const state = get();
     const char = state.characters.find(c => c.id === charId);
     if (!char) return;
-    set({ activeCharacterId: charId, showDialogue: true });
+    set(() => ({ activeCharacterId: charId, showDialogue: true }));
   },
 
-  closeDialogue: () => set({ showDialogue: false, activeCharacterId: null, selectedDialogueType: null }),
+  closeDialogue: () => set(() => ({ showDialogue: false, activeCharacterId: null, selectedDialogueType: null })),
 
   selectDialogueOption: (type) => {
     const state = get();

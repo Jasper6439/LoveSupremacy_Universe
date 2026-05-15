@@ -8,7 +8,6 @@ import { useGameStore } from '../../stores/gameStore';
 import { MAP_AREAS } from '../../stores/constants';
 import { getCropStageEmoji } from '../../stores/farmStore';
 import { getNearbyCharacter, getAvailableDialogues } from '../../stores/characterStore';
-import { isInArea } from '../../stores/playerStore';
 import type { CharacterData, DialogueType } from '../../stores/types';
 
 // 校园世界物体渲染

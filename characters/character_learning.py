@@ -140,7 +140,7 @@ class CharacterLearning:
         db = get_db()
 
         # 获取最近聊天记录（从数据库）
-        recent_chats = db.get_recent_chat_history(user_id, self.character_id, limit=50)
+        recent_chats = db.get_chat_history(user_id, self.character_id, limit=50)
 
         if not recent_chats:
             return {"success": False, "error": "没有足够的聊天记录"}
