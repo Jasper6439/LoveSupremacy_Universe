@@ -17,14 +17,13 @@ export interface PlayerConfig {
 
 export class Player {
   private scene: Phaser.Scene;
-  private sprite: Phaser.GameObjects.Container;
-  private shadow: Phaser.GameObjects.Ellipse;
-  private body: Phaser.GameObjects.Ellipse;
-  private head: Phaser.GameObjects.Ellipse;
+  private sprite!: Phaser.GameObjects.Container;
+  private shadow!: Phaser.GameObjects.Ellipse;
+  private body!: Phaser.GameObjects.Ellipse;
+  private head!: Phaser.GameObjects.Ellipse;
   
   // 状态
   private state: PlayerState = 'idle';
-  private direction: PlayerDirection = 'down';
   private speed: number = 200;
   
   // 网格位置
@@ -35,7 +34,6 @@ export class Player {
   
   // 移动
   private isMoving: boolean = false;
-  private movePath: { x: number; y: number }[] = [];
   private moveTween: Phaser.Tweens.Tween | null = null;
   
   // 输入
@@ -109,7 +107,7 @@ export class Player {
   /**
    * 更新循环（每帧调用）
    */
-  update(delta: number): void {
+  update(_delta: number): void {
     if (this.isMoving) {
       // 正在移动中，检查是否到达目标
       this.checkArrival();
@@ -122,7 +120,7 @@ export class Player {
     this.updateDepth();
     
     // 呼吸动画
-    this.updateBreathingAnimation(delta);
+    this.updateBreathingAnimation();
   }
   
   /**
@@ -146,12 +144,6 @@ export class Player {
       
       this.targetGridX = this.gridX + (isoDx > 0 ? 1 : isoDx < 0 ? -1 : 0);
       this.targetGridY = this.gridY + (isoDy > 0 ? 1 : isoDy < 0 ? -1 : 0);
-      
-      // 更新朝向
-      if (dx > 0) this.direction = 'right';
-      else if (dx < 0) this.direction = 'left';
-      else if (dy > 0) this.direction = 'down';
-      else if (dy < 0) this.direction = 'up';
       
       this.startMove();
     }
@@ -257,7 +249,7 @@ export class Player {
   /**
    * 呼吸动画
    */
-  private updateBreathingAnimation(delta: number): void {
+  private updateBreathingAnimation(): void {
     if (this.state === 'idle') {
       // 待机时的轻微缩放
       const scale = 1 + Math.sin(Date.now() / 500) * 0.02;

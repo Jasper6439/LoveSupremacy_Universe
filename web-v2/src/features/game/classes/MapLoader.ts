@@ -64,7 +64,8 @@ export class MapLoader {
       if (layer) {
         // 设置图层深度
         layer.setDepth(index * 100);
-        this.layers.set(layerName, layer);
+        // 转换为 TilemapLayer 以兼容类型
+        this.layers.set(layerName, layer as Phaser.Tilemaps.TilemapLayer);
         console.log(`[MapLoader] 创建图层: ${layerName}`);
       } else {
         console.warn(`[MapLoader] 图层不存在: ${layerName}`);

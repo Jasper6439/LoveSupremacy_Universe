@@ -57,8 +57,8 @@ export class GameScene extends Phaser.Scene {
   private setupCamera(): void {
     this.mainCamera = this.cameras.main;
     
-    // 设置背景色
-    this.renderer.backgroundColor = Phaser.Display.Color.HexStringToColor('#87CEEB').color;
+    // 设置背景色（天空蓝）
+    this.mainCamera.setBackgroundColor('#87CEEB');
     
     // 相机跟随玩家
     this.mainCamera.startFollow(this.player.getSprite(), true, 0.1, 0.1);
@@ -150,7 +150,7 @@ export class GameScene extends Phaser.Scene {
   /**
    * 更新循环
    */
-  update(time: number, delta: number): void {
+  update(_time: number, delta: number): void {
     // 更新玩家
     this.player.update(delta);
   }

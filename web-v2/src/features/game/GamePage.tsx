@@ -13,7 +13,7 @@ import type { CropType } from '../../stores/types';
 
 export default function GamePage() {
   const gameContainerRef = useRef<HTMLDivElement>(null);
-  const { setTool, setSeed } = usePhaser({
+  const { } = usePhaser({  // TODO: 2.5D 版本 setTool/setSeed 待实现
     width: 400,
     height: 500,
     parent: gameContainerRef,
@@ -46,15 +46,16 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [tick]);
 
-  // 同步工具选择到 Phaser
-  useEffect(() => {
-    setTool(selectedTool);
-  }, [selectedTool, setTool]);
+  // TODO: 2.5D 版本 - 工具和种子同步暂时禁用
+  // // 同步工具选择到 Phaser
+  // useEffect(() => {
+  //   setTool(selectedTool);
+  // }, [selectedTool, setTool]);
 
-  // 同步种子选择到 Phaser
-  useEffect(() => {
-    setSeed(selectedSeed);
-  }, [selectedSeed, setSeed]);
+  // // 同步种子选择到 Phaser
+  // useEffect(() => {
+  //   setSeed(selectedSeed);
+  // }, [selectedSeed, setSeed]);
 
   // 显示通知
   const showNotif = useCallback((msg: string) => {

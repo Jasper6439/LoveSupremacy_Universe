@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // usePhaser - React Hook for Phaser 3 Integration
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { PreloadScene } from '../scenes/PreloadScene';
@@ -64,18 +64,20 @@ export function usePhaser({ width = 400, height = 600, parent }: UsePhaserOption
     };
   }, [width, height, parent]);
 
-  const setTool = useCallback((tool: 'plant' | 'water' | 'harvest') => {
-    sceneRef.current?.setTool(tool);
-  }, []);
+  // 工具切换 - TODO: 2.5D 版本待实现
+  // const setTool = useCallback((tool: 'plant' | 'water' | 'harvest') => {
+  //   sceneRef.current?.setTool(tool);
+  // }, []);
 
-  const setSeed = useCallback((seed: 'tomato' | 'carrot' | 'corn' | 'wheat' | 'potato' | 'strawberry') => {
-    sceneRef.current?.setSeed(seed);
-  }, []);
+  // 种子选择 - TODO: 2.5D 版本待实现
+  // const setSeed = useCallback((seed: string) => {
+  //   sceneRef.current?.setSeed(seed);
+  // }, []);
 
   return {
     gameRef,
     sceneRef,
-    setTool,
-    setSeed,
+    // setTool, // TODO: 2.5D 版本待实现
+    // setSeed, // TODO: 2.5D 版本待实现
   };
 }
