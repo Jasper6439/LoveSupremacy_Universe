@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory=/root/NxSiran-Telegram-Bot
 EnvironmentFile=/root/NxSiran-Telegram-Bot/.env
-ExecStart=/usr/bin/python3 /root/NxSiran-Telegram-Bot/webhook_server.py
+ExecStart=/usr/bin/python3 /root/NxSiran-Telegram-Bot/system/webhook_server.py
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
