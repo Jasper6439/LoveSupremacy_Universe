@@ -127,6 +127,7 @@ def register_routes(app):
     app.router.add_get('/api/characters', api_list_characters)
     app.router.add_post('/api/characters/switch', api_switch_character)
     app.router.add_get('/api/user/profile', api_user_profile)
+    app.router.add_get('/api/user/info', api_user_profile)  # 别名
     app.router.add_post('/api/user/preferred-name', api_update_preferred_name)
     app.router.add_post('/api/user/bind-telegram', api_bind_telegram)
 
