@@ -1,5 +1,5 @@
 [Unit]
-Description=NxSiran Webhook Service (独立服务)
+Description=LoveSupremacy Webhook Service (独立服务)
 After=network.target
 
 [Service]

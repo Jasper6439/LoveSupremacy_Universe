@@ -1,4 +1,4 @@
-# 🎮 NxSiran Bot - 游戏系统全景文档
+# 🎮 LoveSupremacy Bot - 游戏系统全景文档
 
 > **版本**: v1.6.5 | **更新日期**: 2026-05-15  
 > **世界观**: 韩国小说《恋爱至上主义区域》(Love Supremacy Zone)  

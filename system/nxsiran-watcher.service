@@ -1,5 +1,5 @@
 [Unit]
-Description=NxSiran Bot Auto Restart Watcher
+Description=LoveSupremacy Bot Auto Restart Watcher
 After=docker.service
 Requires=docker.service
 

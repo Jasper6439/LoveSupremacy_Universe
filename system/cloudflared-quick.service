@@ -1,5 +1,5 @@
 [Unit]
-Description=Cloudflare Quick Tunnel (NxSiran Bot)
+Description=Cloudflare Quick Tunnel (LoveSupremacy Bot)
 After=network-online.target nxsiran-bot.service
 Wants=network-online.target
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# optimize_memory.sh - NxSiran e2-micro 内存优化脚本
+# optimize_memory.sh - LoveSupremacy e2-micro 内存优化脚本
 # 
 # 功能：
 # 1. 创建 2GB Swap 文件
@@ -11,7 +11,7 @@
 set -e
 
 echo "=========================================="
-echo "NxSiran e2-micro 内存优化脚本"
+echo "LoveSupremacy e2-micro 内存优化脚本"
 echo "=========================================="
 
 # 检查 root 权限

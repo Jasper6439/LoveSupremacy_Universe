@@ -1,11 +1,11 @@
 #!/bin/bash
-# NxSiran e2-micro 内存优化脚本
+# LoveSupremacy e2-micro 内存优化脚本
 # 在 GCP VM 上以 root 或 sudo 执行
 
 set -e
 
 echo "========================================="
-echo "  NxSiran e2-micro 内存优化"
+echo "  LoveSupremacy e2-micro 内存优化"
 echo "========================================="
 
 # 1. 检查当前内存状态

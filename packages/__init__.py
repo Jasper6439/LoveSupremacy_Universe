@@ -1,5 +1,5 @@
 """
-NxSiran Telegram Bot - 模块化包
+LoveSupremacy Telegram Bot - 模块化包
 ================================
 bot.py 已拆分为以下子模块：
 - commands/    : Telegram 命令处理器

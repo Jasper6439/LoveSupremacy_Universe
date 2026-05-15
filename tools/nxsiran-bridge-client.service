@@ -1,5 +1,5 @@
 [Unit]
-Description=NxSiran Bridge Client
+Description=LoveSupremacy Bridge Client
 After=network-online.target
 Wants=network-online.target
 

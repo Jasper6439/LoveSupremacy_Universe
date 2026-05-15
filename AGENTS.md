@@ -1,4 +1,4 @@
-# 🛡️ NxSiran Bot - AI Agent 宪法 (AGENTS.md)
+# 🛡️ LoveSupremacy Bot - AI Agent 宪法 (AGENTS.md)
 
 > **核心指令**：本文件是最高行为准则。所有代码生成、修改和审查必须无条件遵守以下规则。
 

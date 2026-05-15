@@ -1,4 +1,4 @@
-# 🏗️ NxSiran Bot - 技术设计蓝图 (design.md)
+# 🏗️ LoveSupremacy Bot - 技术设计蓝图 (design.md)
 
 > **核心目标**：在 1GB RAM 环境下，通过混合检索技术实现低延迟的角色扮演聊天。
 

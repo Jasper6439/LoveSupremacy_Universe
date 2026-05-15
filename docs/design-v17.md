@@ -1,4 +1,4 @@
-# 🎮 NxSiran Universe v1.7 - 架构设计文档
+# 🎮 LoveSupremacy Universe v1.7 - 架构设计文档
 
 > **版本**: 2.0 (FastAPI + React + Phaser Hybrid)  
 > **日期**: 2026-05-15  
@@ -102,7 +102,7 @@ async def main():
 ## 2. 目录结构 (v1.7)
 
 ```
-NxSiran_Bot/
+LoveSupremacy_Bot/
 ├── main.py                     # FastAPI + Telegram 共享入口 (新)
 ├── bot.py                      # 旧入口 (保留作回滚)
 │
@@ -320,7 +320,7 @@ from api.routes_static import router as static_router
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="NxSiran Universe",
+        title="LoveSupremacy Universe",
         version="1.7.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",

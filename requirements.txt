@@ -1,4 +1,4 @@
-# NxSiran Bot - e2-micro 轻量化依赖
+# LoveSupremacy Bot - e2-micro 轻量化依赖
 # v1.6.6 优化版：移除重型依赖，极限减负
 
 # Bot 框架
@@ -29,3 +29,8 @@ numpy>=1.24.0
 # 内存监控
 psutil>=5.9.0
 APScheduler>=3.10.0
+
+# Web 框架 (v1.7 FastAPI 迁移)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0

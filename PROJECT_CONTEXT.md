@@ -1,4 +1,4 @@
-# PROJECT_CONTEXT.md — NxSiran Telegram Bot
+# PROJECT_CONTEXT.md — LoveSupremacy Telegram Bot
 
 > **Mandatory:** All AI agents MUST read this file before starting any task.
 
@@ -7,7 +7,7 @@
 - **Name:** 恋爱至上主义区域 (Love Supremacy Zone)
 - **Type:** Telegram Bot + Web Game — 恋爱模拟 RPG
 - **Current Version:** v1.6.4.1
-- **Repository:** `Jasper6439/NxSiran-Telegram-Bot`
+- **Repository:** `Jasper6439/LoveSupremacy-Telegram-Bot`
 - **Language:** Python 3.11+
 
 ## Architecture
@@ -103,7 +103,7 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 ## Deployment
 
 - **VM:** GCP e2-micro, IP: `35.212.211.245`, OS: Debian
-- **Project Dir:** `/opt/NxSiran-Telegram-Bot/`
+- **Project Dir:** `/opt/LoveSupremacy-Telegram-Bot/`
 - **systemd Services:**
   - `nxsiran-bot.service` — Telegram Bot 主进程
   - `nxsiran-webhook.service` — Webhook + Bridge (port 8082)

@@ -1,5 +1,5 @@
 [Unit]
-Description=NxSiran Bridge Service (已弃用 - 功能已合并到 webhook_server.py)
+Description=LoveSupremacy Bridge Service (已弃用 - 功能已合并到 webhook_server.py)
 After=network.target
 
 [Service]

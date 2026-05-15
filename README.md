@@ -1,4 +1,4 @@
-# NxSiran — 恋爱至上主义区域
+# LoveSupremacy — 恋爱至上主义区域
 
 > AI 角色扮演恋爱模拟 RPG，基于 Telegram Bot + Web，支持多模型竞争、语义记忆、情绪系统、农场经营。
 
@@ -171,8 +171,8 @@ bot.py                          # 唯一入口
 ### 安装
 
 ```bash
-git clone https://github.com/Jasper6439/NxSiran-Telegram-Bot.git
-cd NxSiran-Telegram-Bot
+git clone https://github.com/Jasper6439/LoveSupremacy-Telegram-Bot.git
+cd LoveSupremacy-Telegram-Bot
 pip install -r requirements.txt
 cp .env.example .env
 # 编辑 .env 填入 TELEGRAM_TOKEN, AI_API_KEY 等

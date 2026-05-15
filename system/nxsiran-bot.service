@@ -1,5 +1,5 @@
 [Unit]
-Description=NxSiran Telegram Bot
+Description=LoveSupremacy Telegram Bot
 After=network.target
 
 [Service]
