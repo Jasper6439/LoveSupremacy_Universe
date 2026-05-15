@@ -255,15 +255,40 @@ def update_config_value(key: str, value):
     save_config(config)
     return config
 
-def init_config():
-    """初始化配置（在函数定义后调用）"""
-    global TELEGRAM_TOKEN, YOUR_CHAT_ID, AI_API_BASE, AI_API_KEY
-    _config = load_config()
-    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", _config.get("telegram_token", ""))
-    chat_id_val = _config.get("chat_id", "0") or "0"
-    YOUR_CHAT_ID = int(os.environ.get("YOUR_CHAT_ID", chat_id_val))
-    AI_API_BASE = os.environ.get("AI_API_BASE", _config.get("ai_api_base", "https://openrouter.ai/api/v1"))
-    AI_API_KEY = os.environ.get("AI_API_KEY", _config.get("ai_api_key", ""))
+# ============================================================
+# e2-micro 极限优化配置 (v1.6.5)
+# ============================================================
+
+# 内存安全模式（自动清理缓存防止 OOM）
+MEMORY_SAFE_MODE = os.environ.get("MEMORY_SAFE_MODE", "true").lower() == "true"
+
+# 内存阈值
+MEMORY_WARNING_THRESHOLD = float(os.environ.get("MEMORY_WARNING_THRESHOLD", "85"))  # %
+MEMORY_CRITICAL_THRESHOLD = float(os.environ.get("MEMORY_CRITICAL_THRESHOLD", "95"))  # %
+
+# 上下文长度限制（防止 KV Cache 溢出）
+MAX_CONTEXT_TOKENS = int(os.environ.get("MAX_CONTEXT_TOKENS", "1024"))
+
+# OpenRouter API 配置
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_API_BASE = os.environ.get("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1")
+
+# Gemini API 配置（图像生成）
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# 评委模型（使用 nitro 加速）
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "openrouter/google/gemini-2.5-flash:nitro")
+
+# 竞品模型列表（使用 free 零成本）
+COMPETE_MODELS = [
+    "openrouter/deepseek/deepseek-chat-v3-0324:free",
+    "openrouter/minimax/minimax-m2.5:free",
+    "openrouter/google/gemma-4-31b-it:free",
+]
+
+# API 重试配置
+API_MAX_RETRIES = int(os.environ.get("API_MAX_RETRIES", "3"))
+API_RETRY_DELAY = float(os.environ.get("API_RETRY_DELAY", "1.0"))  # 秒
 
 # 模块加载时自动初始化配置
 init_config()

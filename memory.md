@@ -4,6 +4,51 @@
 
 ---
 
+## [2025-05-15] v1.6.5 e2-micro 极限性能优化
+
+**Context**: GCP e2-micro (1 vCPU, 1GB RAM) 极限减负，目标零崩溃稳定运行
+
+**Category**: 性能优化, 架构重构
+
+**目标**: 3 AI 竞争 + 1 评委 + LightRAG 深度记忆 + 多模态生成
+
+**开发检查表**:
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| 移除 qdrant-client | ⏳ TODO | 改用 LightRAG 自带存储 |
+| 添加 rank-bm25 | ⏳ TODO | 关键词检索补充 |
+| 内存监控脚本 | ⏳ TODO | `tools/memory_monitor.py` |
+| API Key 配置 | ⏳ TODO | `system/config.py` |
+| 系统优化脚本 | ⏳ TODO | `optimize_memory.sh` |
+| Python 语法验证 | ⏳ TODO | `python -m py_compile` |
+| 创建回滚标签 | ⏳ TODO | `git tag rollback-pre-v165` |
+
+**架构原则**:
+- LLM 核心层 → OpenRouter 云端（`:free` / `:nitro` 模型）
+- 数据存储层 → 本地硬盘（LightRAG + BM25）
+- 严禁在本地加载任何 LLM 权重
+- 所有外部 API 必须异步 (`aiohttp` / `asyncio`)
+
+**关键约束**:
+- 内存 > 85%: 自动清理缓存
+- 内存 > 95%: 告警 + 自愈重启
+- Max Context = 1024 tokens（防止 KV Cache 溢出）
+
+**执行命令**:
+```bash
+# 创建回滚点
+git tag rollback-pre-v165
+
+# 语法验证
+python -m py_compile system/*.py characters/*.py game_api/*.py
+
+# 服务器部署后执行内存优化
+bash optimize_memory.sh
+```
+
+---
+
 ## [2025-05-15] v1.6.5 版本更新
 
 **Context**: Agent 完成 v1.6.3-v1.6.5 三个版本开发
