@@ -6,15 +6,15 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/NxSiran
+WorkingDirectory=/opt/NxSiran-Telegram-Bot
 ExecStart=/usr/local/bin/cloudflared tunnel --url http://localhost:8080
 Restart=always
 RestartSec=10
 Environment=TUNNEL_URL=
 
 # 日志
-StandardOutput=append:/opt/NxSiran/data/logs/tunnel.log
-StandardError=append:/opt/NxSiran/data/logs/tunnel.log
+StandardOutput=append:/opt/NxSiran-Telegram-Bot/data/logs/tunnel.log
+StandardError=append:/opt/NxSiran-Telegram-Bot/data/logs/tunnel.log
 
 [Install]
 WantedBy=multi-user.target

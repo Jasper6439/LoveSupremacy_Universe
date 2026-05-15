@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 # ============================================================
 
 # 数据目录（支持环境变量配置，用于容器部署）
-DATA_DIR = os.environ.get("DATA_DIR", "/opt/NxSiran/data")
+DATA_DIR = os.environ.get("DATA_DIR", "/opt/NxSiran-Telegram-Bot/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # 默认时区（UTC+9，韩国时间）- 仅作为 fallback

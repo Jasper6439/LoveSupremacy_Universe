@@ -103,7 +103,7 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 ## Deployment
 
 - **VM:** GCP e2-micro, IP: `35.212.211.245`, OS: Debian
-- **Project Dir:** `/opt/NxSiran/`
+- **Project Dir:** `/opt/NxSiran-Telegram-Bot/`
 - **systemd Services:**
   - `nxsiran-bot.service` — Telegram Bot 主进程
   - `nxsiran-webhook.service` — Webhook + Bridge (port 8082)

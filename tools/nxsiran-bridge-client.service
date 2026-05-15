@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=root
 WorkingDirectory=/opt/NxSiran
-ExecStart=/usr/bin/python3 /opt/NxSiran/tools/bridge_client.py
+ExecStart=/usr/bin/python3 /opt/NxSiran-Telegram-Bot/tools/bridge_client.py
 Restart=always
 RestartSec=5
 Environment=BRIDGE_URL=http://localhost:8082

@@ -5,11 +5,11 @@
 #
 # 用法: 添加到 crontab，每分钟检查一次
 #   crontab -e
-#   * * * * * /opt/NxSiran/update-tunnel-url.sh
+#   * * * * * /opt/NxSiran-Telegram-Bot/system/update-tunnel-url.sh
 # ============================================================
 
-LOG_FILE="/opt/NxSiran/data/logs/tunnel.log"
-CONFIG_FILE="/opt/NxSiran/data/config.json"
+LOG_FILE="/opt/NxSiran-Telegram-Bot/data/logs/tunnel.log"
+CONFIG_FILE="/opt/NxSiran-Telegram-Bot/data/config.json"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 

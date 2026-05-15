@@ -5,14 +5,14 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/NxSiran
-EnvironmentFile=/opt/NxSiran/.env
-ExecStart=/usr/bin/python3 /opt/NxSiran/system/webhook_server.py
+WorkingDirectory=/opt/NxSiran-Telegram-Bot
+EnvironmentFile=/opt/NxSiran-Telegram-Bot/.env
+ExecStart=/usr/bin/python3 /opt/NxSiran-Telegram-Bot/system/webhook_server.py
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 Environment=WEBHOOK_PORT=8082
-Environment=PROJECT_DIR=/opt/NxSiran
+Environment=PROJECT_DIR=/opt/NxSiran-Telegram-Bot
 Environment=BOT_SERVICE=nxsiran-bot.service
 
 [Install]

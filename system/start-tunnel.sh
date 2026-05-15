@@ -13,9 +13,9 @@
 
 set -e
 
-PROJECT_DIR="/opt/NxSiran"
-CONFIG_FILE="/opt/NxSiran/data/config.json"
-LOG_FILE="/opt/NxSiran/data/logs/tunnel.log"
+PROJECT_DIR="/opt/NxSiran-Telegram-Bot"
+CONFIG_FILE="/opt/NxSiran-Telegram-Bot/data/config.json"
+LOG_FILE="/opt/NxSiran-Telegram-Bot/data/logs/tunnel.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -76,8 +76,8 @@ fi
 
 # 后台启动隧道（保持运行）
 nohup cloudflared tunnel --url http://localhost:8080 >> "$LOG_FILE" 2>&1 &
-echo $! > /opt/NxSiran/data/tunnel.pid
-echo "[$(date)] 隧道已在后台运行 (PID: $(cat /opt/NxSiran/data/tunnel.pid))" | tee -a "$LOG_FILE"
+echo $! > /opt/NxSiran-Telegram-Bot/data/tunnel.pid
+echo "[$(date)] 隧道已在后台运行 (PID: $(cat /opt/NxSiran-Telegram-Bot/data/tunnel.pid))" | tee -a "$LOG_FILE"
 
 # 重启 bot 使新 URL 生效
 systemctl restart nxsiran-bot.service
