@@ -106,11 +106,11 @@ export class GameScene extends Phaser.Scene {
 
   private updateBackground(): void {
     const zone = useGameStore.getState().worldZone;
-    if (zone === 'collapse') {
-      this.cameras.main.setBackgroundColor('#1E1B4B');
-    } else {
-      this.cameras.main.setBackgroundColor('#B8E0D2');
-    }
+    // Phaser 4: 使用 scene.renderer.backgroundColor 或直接绘制背景
+    const bgColor = zone === 'collapse' ? 0x1E1B4B : 0xB8E0D2;
+    this.renderer.backgroundColor = Phaser.Display.Color.HexStringToColor(
+      zone === 'collapse' ? '#1E1B4B' : '#B8E0D2'
+    ).color;
   }
 
   private createPlot(gridX: number, gridY: number): void {
@@ -181,9 +181,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     const emoji = zone === 'collapse' ? config.collapseEmoji : config.emoji;
-    const cropText = this.add.text(plot.bg.x, plot.bg.y - 5, emoji, {
-      fontSize: `${Math.floor(this.tileSize * 0.5)}px`,
-    }).setOrigin(0.5);
+    // Phaser 4: text style 需要完整配置
+    const cropText = this.add.text({
+      x: plot.bg.x,
+      y: plot.bg.y - 5,
+      text: emoji,
+      style: {
+        fontSize: `${Math.floor(this.tileSize * 0.5)}px`,
+        fontFamily: 'Arial, sans-serif',
+      }
+    });
+    cropText.setOrigin(0.5);
 
     this.tweens.add({
       targets: cropText,
@@ -276,13 +284,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   // 浮动文字
-  private showFloatingText(x: number, y: number, text: string, color: string): void {
-    const ft = this.add.text(x, y, text, {
-      fontSize: '24px',
-      color: color,
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
+  private showFloatingText(x: number, y: number, textStr: string, color: string): void {
+    // Phaser 4: 使用对象参数
+    const ft = this.add.text({
+      x: x,
+      y: y,
+      text: textStr,
+      style: {
+        fontSize: '24px',
+        color: color,
+        fontFamily: 'Arial, sans-serif',
+      }
+    });
+    ft.setOrigin(0.5);
 
     this.tweens.add({
       targets: ft,

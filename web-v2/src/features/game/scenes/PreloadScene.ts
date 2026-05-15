@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Phaser 3 - PreloadScene
+// Phaser 4 - PreloadScene
 // 资源预加载场景
 // ═══════════════════════════════════════════════════════════════════════════
 import Phaser from 'phaser';
@@ -20,21 +20,42 @@ export class PreloadScene extends Phaser.Scene {
     progressBox.fillStyle(0x222222, 0.8);
     progressBox.fillRect(width / 2 - 160, height / 2 - 30, 320, 50);
 
-    // 加载文字
-    const loadingText = this.add.text(width / 2, height / 2 - 50, '加载中...', {
-      fontSize: '20px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
+    // 加载文字 - Phaser 4 语法
+    const loadingText = this.add.text({
+      x: width / 2,
+      y: height / 2 - 50,
+      text: '加载中...',
+      style: {
+        fontSize: '20px',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+      }
+    });
+    loadingText.setOrigin(0.5);
 
-    const percentText = this.add.text(width / 2, height / 2, '0%', {
-      fontSize: '18px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
+    const percentText = this.add.text({
+      x: width / 2,
+      y: height / 2,
+      text: '0%',
+      style: {
+        fontSize: '18px',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+      }
+    });
+    percentText.setOrigin(0.5);
 
-    const assetText = this.add.text(width / 2, height / 2 + 50, '', {
-      fontSize: '14px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
+    const assetText = this.add.text({
+      x: width / 2,
+      y: height / 2 + 50,
+      text: '',
+      style: {
+        fontSize: '14px',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+      }
+    });
+    assetText.setOrigin(0.5);
 
     // 监听加载进度
     this.load.on('progress', (value: number) => {

@@ -28,7 +28,13 @@ function clearAuthToken() {
 }
 
 export default function SettingsPage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    // 从 localStorage 读取深色模式设置
+    const saved = localStorage.getItem('darkMode');
+    if (saved !== null) return saved === 'true';
+    // 默认跟随系统
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [notifications, setNotifications] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -36,16 +42,37 @@ export default function SettingsPage() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('v1.6.4.2'); // 默认版本
 
-  // 检查登录状态
+  // 检查登录状态 & 获取版本号
   useEffect(() => {
     const token = getAuthToken();
     if (token) {
       setIsLoggedIn(true);
-      // 可以在这里获取用户信息
       fetchUserInfo(token);
     }
+    // 获取后端版本号
+    fetchVersion();
+    // 应用保存的深色模式
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode === 'true') {
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  const fetchVersion = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/version`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.version) {
+          setAppVersion(`v${data.version}`);
+        }
+      }
+    } catch {
+      // 使用默认版本
+    }
+  };
 
   const fetchUserInfo = async (token: string) => {
     try {
@@ -168,14 +195,24 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`w-12 h-7 rounded-full transition-colors ${darkMode ? 'bg-brand-500' : 'bg-gray-300'}`}
-            >
-              <motion.div
-                animate={{ x: darkMode ? 20 : 0 }}
-                className="w-5 h-5 bg-white rounded-full shadow"
-              />
-            </button>
+            onClick={() => {
+              const newMode = !darkMode;
+              setDarkMode(newMode);
+              localStorage.setItem('darkMode', String(newMode));
+              // 应用/移除 dark 类到 html 元素
+              if (newMode) {
+                document.documentElement.classList.add('dark');
+              } else {
+                document.documentElement.classList.remove('dark');
+              }
+            }}
+            className={`w-12 h-7 rounded-full transition-colors ${darkMode ? 'bg-brand-500' : 'bg-gray-300'}`}
+          >
+            <motion.div
+              animate={{ x: darkMode ? 20 : 0 }}
+              className="w-5 h-5 bg-white rounded-full shadow"
+            />
+          </button>
           </div>
         </GlassCard>
 
@@ -235,7 +272,7 @@ export default function SettingsPage() {
         
         <GlassCard className="p-4">
           <div className="text-center text-gray-500 text-sm">
-            <p>恋爱至上主义区域 v1.6.2</p>
+            <p>恋爱至上主义区域 {appVersion}</p>
             <p className="mt-1">Made with 💕</p>
           </div>
         </GlassCard>

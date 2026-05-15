@@ -83,10 +83,28 @@ async def cors_middleware(request, handler):
     return response
 
 
+async def api_version(request):
+    """获取后端版本号"""
+    try:
+        from system.config import BOT_VERSION
+        return web.json_response({
+            'success': True,
+            'version': BOT_VERSION,
+            'app_name': '恋爱至上主义区域'
+        })
+    except Exception as e:
+        return web.json_response({
+            'success': False,
+            'version': 'unknown',
+            'error': str(e)
+        })
+
+
 def register_routes(app):
     """Register all web routes"""
     app.router.add_get('/', serve_index)
     app.router.add_get('/health', health_check)
+    app.router.add_get('/api/version', api_version)
     app.router.add_post('/api/chat', api_chat)
     app.router.add_get('/api/stats', api_stats)
     app.router.add_get('/api/messages/history', api_messages_history)
