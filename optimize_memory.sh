@@ -94,8 +94,8 @@ echo ""
 echo "[附加] 检查可选优化..."
 
 # 禁用不必要的服务（如果存在）
-for svc in postgresql mysql apache2 nginx 2>/dev/null; do
-    if systemctl list-unit-files | grep -q "^$svc.service"; then
+for svc in postgresql mysql apache2 nginx; do
+    if systemctl list-unit-files 2>/dev/null | grep -q "^$svc.service"; then
         echo "⚠️ 发现 $svc，可能占用内存，考虑禁用"
     fi
 done
