@@ -290,5 +290,19 @@ COMPETE_MODELS = [
 API_MAX_RETRIES = int(os.environ.get("API_MAX_RETRIES", "3"))
 API_RETRY_DELAY = float(os.environ.get("API_RETRY_DELAY", "1.0"))  # 秒
 
+# ============================================================
+# 初始化配置
+# ============================================================
+
+def init_config():
+    """初始化配置（在函数定义后调用）"""
+    global TELEGRAM_TOKEN, YOUR_CHAT_ID, AI_API_BASE, AI_API_KEY
+    _config = load_config()
+    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", _config.get("telegram_token", ""))
+    chat_id_val = _config.get("chat_id", "0") or "0"
+    YOUR_CHAT_ID = int(os.environ.get("YOUR_CHAT_ID", chat_id_val))
+    AI_API_BASE = os.environ.get("AI_API_BASE", _config.get("ai_api_base", "https://openrouter.ai/api/v1"))
+    AI_API_KEY = os.environ.get("AI_API_KEY", _config.get("ai_api_key", ""))
+
 # 模块加载时自动初始化配置
 init_config()
