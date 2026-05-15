@@ -1,355 +1,175 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Phaser 3 - GameScene v1.6.0
-// 农场主游戏场景 - 支持双区作物视觉差异化
+// GameScene - 2.5D 等轴测 RPG 游戏场景
+// 支持 Tiled 地图、Y-Sorting、点击移动
 // ═══════════════════════════════════════════════════════════════════════════
 import Phaser from 'phaser';
-import { useGameStore } from '../../../stores/gameStore';
-import { CROP_CONFIG } from '../../../stores/constants';
-import { getCropStageEmoji } from '../../../stores/farmStore';
-import type { CropType, WorldZone } from '../../../stores/types';
-
-// 游戏配置常量
-const GRID_SIZE = 6;
-const GAP = 6;
-
-interface CropData {
-  id: string;
-  type: CropType;
-  plantedAt: number;
-  growthStage: 0 | 1 | 2 | 3;
-  waterLevel: number;
-}
-
-interface PlotInfo {
-  bg: Phaser.GameObjects.Rectangle;
-  gridX: number;
-  gridY: number;
-  cropText?: Phaser.GameObjects.Text;
-  cropType?: CropType;
-}
+import { MapLoader } from '../classes/MapLoader';
+import { Player } from '../classes/Player';
+import { IsometricUtils } from '../utils/IsometricUtils';
 
 export class GameScene extends Phaser.Scene {
-  private plots: PlotInfo[] = [];
-  private selectedTool: 'plant' | 'water' | 'harvest' = 'plant';
-  private selectedSeed: CropType = 'tomato';
-  private tileSize = 64;
-  private gridOffsetX = 0;
-  private gridOffsetY = 0;
-  private unsubscribe!: () => void;
-  private unsubscribeZone!: () => void;
-
+  // 核心组件
+  private mapLoader!: MapLoader;
+  private player!: Player;
+  
+  // 相机
+  private mainCamera!: Phaser.Cameras.Scene2D.Camera;
+  
+  // 交互
+  private clickMarker!: Phaser.GameObjects.Graphics;
+  
   constructor() {
     super({ key: 'GameScene' });
   }
-
+  
   create(): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-
-    // 动态计算 tile 尺寸
-    const maxGridWidth = width * 0.9;
-    const maxGridHeight = height * 0.85;
-    this.tileSize = Math.max(
-      Math.floor(Math.min(maxGridWidth / GRID_SIZE, maxGridHeight / GRID_SIZE) - GAP),
-      24
+    console.log('[GameScene] create: 2.5D Isometric RPG');
+    
+    // 初始化地图加载器
+    this.mapLoader = new MapLoader(this);
+    
+    // 创建占位符地图（10x10 等轴测网格）
+    this.mapLoader.createPlaceholderMap(10, 10);
+    
+    // 创建玩家角色（初始位置在地图中心）
+    this.player = new Player(this, {
+      x: 5,
+      y: 5,
+      speed: 200,
+      color: 0xE07A5F, // 珊瑚色
+    });
+    
+    // 设置相机
+    this.setupCamera();
+    
+    // 设置点击交互
+    this.setupClickInteraction();
+    
+    // 创建点击标记
+    this.createClickMarker();
+    
+    console.log('[GameScene] 2.5D 等轴测世界初始化完成');
+  }
+  
+  /**
+   * 设置相机
+   */
+  private setupCamera(): void {
+    this.mainCamera = this.cameras.main;
+    
+    // 设置背景色
+    this.renderer.backgroundColor = Phaser.Display.Color.HexStringToColor('#87CEEB').color;
+    
+    // 相机跟随玩家
+    this.mainCamera.startFollow(this.player.getSprite(), true, 0.1, 0.1);
+    
+    // 设置相机边界（根据地图大小）
+    const mapWidth = 10 * IsometricUtils.TILE_WIDTH * 2;
+    const mapHeight = 10 * IsometricUtils.TILE_HEIGHT * 2;
+    this.mainCamera.setBounds(-mapWidth, -mapHeight, mapWidth * 2, mapHeight * 2);
+    
+    // 设置缩放
+    this.mainCamera.setZoom(1);
+  }
+  
+  /**
+   * 设置点击交互
+   */
+  private setupClickInteraction(): void {
+    // 监听鼠标点击
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // 将屏幕坐标转换为世界坐标
+      const worldPoint = this.mainCamera.getWorldPoint(pointer.x, pointer.y);
+      
+      // 将世界坐标转换为网格坐标
+      const gridPos = IsometricUtils.screenToGrid(
+        worldPoint.x,
+        worldPoint.y,
+        this.cameras.main.width / 2,
+        100
+      );
+      
+      // 检查网格范围
+      if (gridPos.x >= 0 && gridPos.x < 10 && gridPos.y >= 0 && gridPos.y < 10) {
+        console.log(`[GameScene] 点击移动: (${gridPos.x}, ${gridPos.y})`);
+        
+        // 显示点击标记
+        this.showClickMarker(gridPos.x, gridPos.y);
+        
+        // 移动玩家
+        this.player.moveTo(gridPos.x, gridPos.y);
+      }
+    });
+  }
+  
+  /**
+   * 创建点击标记
+   */
+  private createClickMarker(): void {
+    this.clickMarker = this.add.graphics();
+    this.clickMarker.setDepth(1000);
+  }
+  
+  /**
+   * 显示点击位置标记
+   */
+  private showClickMarker(gridX: number, gridY: number): void {
+    const pos = IsometricUtils.gridToScreen(
+      gridX,
+      gridY,
+      this.cameras.main.width / 2,
+      100
     );
-
-    // 计算网格居中偏移
-    const gridWidth = GRID_SIZE * (this.tileSize + GAP) - GAP;
-    const gridHeight = GRID_SIZE * (this.tileSize + GAP) - GAP;
-    this.gridOffsetX = (width - gridWidth) / 2;
-    this.gridOffsetY = (height - gridHeight) / 2;
-
-    console.log('[GameScene] create:', { width, height, tileSize: this.tileSize });
-
-    // 绘制背景（根据世界区）
-    this.updateBackground();
-
-    // 创建地块
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        this.createPlot(x, y);
-      }
-    }
-
-    console.log('[GameScene] plots created:', this.plots.length);
-
-    // 同步 Zustand 状态
-    this.syncWithStore();
-
-    // 监听作物状态变化
-    this.unsubscribe = useGameStore.subscribe((state) => {
-      this.updateCropsFromState(state.crops, state.worldZone);
-    });
-
-    // 监听世界区变化 - 使用全量 subscribe
-    let lastZone = useGameStore.getState().worldZone;
-    this.unsubscribeZone = useGameStore.subscribe((state) => {
-      if (state.worldZone === lastZone) return;
-      lastZone = state.worldZone;
-      this.updateBackground();
-      this.refreshAllCropVisuals(state.worldZone);
-    });
-
-    // 定时更新作物生长
-    this.time.addEvent({
-      delay: 1000,
-      callback: () => {
-        useGameStore.getState().tick();
-      },
-      loop: true,
-    });
-
-    // 处理窗口大小变化
-    this.scale.on('resize', this.handleResize, this);
-  }
-
-  private updateBackground(): void {
-    const zone = useGameStore.getState().worldZone;
-    // Phaser 4: 使用 scene.renderer.backgroundColor 或直接绘制背景
-    const bgColor = zone === 'collapse' ? 0x1E1B4B : 0xB8E0D2;
-    this.renderer.backgroundColor = Phaser.Display.Color.HexStringToColor(
-      zone === 'collapse' ? '#1E1B4B' : '#B8E0D2'
-    ).color;
-  }
-
-  private createPlot(gridX: number, gridY: number): void {
-    const ts = this.tileSize;
-    const px = this.gridOffsetX + gridX * (ts + GAP);
-    const py = this.gridOffsetY + gridY * (ts + GAP);
-    const zone = useGameStore.getState().worldZone;
-
-    // 地块背景
-    const bgColor = zone === 'collapse' ? 0x312E81 : 0xDDB892;
-    const borderColor = zone === 'collapse' ? 0x6366F1 : 0xC9A67A;
-    const bg = this.add.rectangle(px + ts / 2, py + ts / 2, ts, ts, bgColor);
-    bg.setStrokeStyle(2, borderColor);
-    bg.setInteractive({ useHandCursor: true });
-
-    // 点击事件
-    bg.on('pointerdown', () => {
-      this.handlePlotClick(gridX, gridY);
-    });
-
-    // 悬停效果
-    bg.on('pointerover', () => {
-      bg.setFillStyle(zone === 'collapse' ? 0x4338CA : 0xE8D4B8);
-    });
-    bg.on('pointerout', () => {
-      const plot = this.plots.find(p => p.gridX === gridX && p.gridY === gridY);
-      bg.setFillStyle(plot?.cropText ? (zone === 'collapse' ? 0x4338CA : 0xC9A67A) : (zone === 'collapse' ? 0x312E81 : 0xDDB892));
-    });
-
-    this.plots.push({ bg, gridX, gridY });
-  }
-
-  private handlePlotClick(gridX: number, gridY: number): void {
-    const store = useGameStore.getState();
-    const plot = this.plots.find(p => p.gridX === gridX && p.gridY === gridY);
-    if (!plot) return;
-
-    switch (this.selectedTool) {
-      case 'plant':
-        if (store.plantCrop(gridX, gridY, this.selectedSeed)) {
-          this.createCropSprite(plot, this.selectedSeed);
-          this.showFloatingText(plot.bg.x, plot.bg.y - 30, '🌱', '#95D5B2');
-        }
-        break;
-
-      case 'water':
-        if (store.waterCrop(gridX, gridY)) {
-          this.showFloatingText(plot.bg.x, plot.bg.y - 30, '💧', '#87CEEB');
-        }
-        break;
-
-      case 'harvest':
-        const harvested = store.harvestCrop(gridX, gridY);
-        if (harvested) {
-          this.removeCropSprite(plot);
-          this.showFloatingText(plot.bg.x, plot.bg.y - 50, `+💰${harvested.money}`, '#C68E17');
-        }
-        break;
-    }
-  }
-
-  private createCropSprite(plot: PlotInfo, type: CropType): void {
-    const config = CROP_CONFIG[type];
-    const zone = useGameStore.getState().worldZone;
-
-    if (plot.cropText) {
-      plot.cropText.destroy();
-    }
-
-    const emoji = zone === 'collapse' ? config.collapseEmoji : config.emoji;
-    // Phaser 4: text style 需要完整配置
-    const cropText = this.add.text({
-      x: plot.bg.x,
-      y: plot.bg.y - 5,
-      text: emoji,
-      style: {
-        fontSize: `${Math.floor(this.tileSize * 0.5)}px`,
-        fontFamily: 'Arial, sans-serif',
-      }
-    });
-    cropText.setOrigin(0.5);
-
+    
+    this.clickMarker.clear();
+    
+    // 绘制菱形标记
+    const size = 20;
+    this.clickMarker.lineStyle(2, 0xFFD700, 1);
+    this.clickMarker.beginPath();
+    this.clickMarker.moveTo(pos.x, pos.y - size);
+    this.clickMarker.lineTo(pos.x + size, pos.y);
+    this.clickMarker.lineTo(pos.x, pos.y + size);
+    this.clickMarker.lineTo(pos.x - size, pos.y);
+    this.clickMarker.closePath();
+    this.clickMarker.strokePath();
+    
+    // 闪烁动画
     this.tweens.add({
-      targets: cropText,
-      scale: { from: 0, to: 1 },
-      duration: 400,
-      ease: 'Back.out',
-    });
-
-    plot.cropText = cropText;
-    plot.cropType = type;
-    const bgColor = zone === 'collapse' ? 0x4338CA : 0xC9A67A;
-    plot.bg.setFillStyle(bgColor);
-  }
-
-  private removeCropSprite(plot: PlotInfo): void {
-    if (plot.cropText) {
-      this.tweens.add({
-        targets: plot.cropText,
-        scale: 1.5,
-        alpha: 0,
-        y: plot.cropText.y - 30,
-        duration: 300,
-        ease: 'Power2',
-        onComplete: () => {
-          plot.cropText?.destroy();
-          plot.cropText = undefined;
-          plot.cropType = undefined;
-        },
-      });
-    }
-    const zone = useGameStore.getState().worldZone;
-    plot.bg.setFillStyle(zone === 'collapse' ? 0x312E81 : 0xDDB892);
-  }
-
-  private updateCropsFromState(crops: Record<string, CropData>, zone?: WorldZone): void {
-    const currentZone = zone ?? useGameStore.getState().worldZone;
-
-    for (const [key, cropData] of Object.entries(crops)) {
-      const [gx, gy] = key.split(',').map(Number);
-      const plot = this.plots.find(p => p.gridX === gx && p.gridY === gy);
-      if (!plot) continue;
-
-      if (plot.cropText && plot.cropType === cropData.type) {
-        const newEmoji = getCropStageEmoji(cropData.type, cropData.growthStage, currentZone);
-        if (plot.cropText.text !== newEmoji) {
-          plot.cropText.setText(newEmoji);
-          this.tweens.add({
-            targets: plot.cropText,
-            scale: { from: 0.5, to: 1 },
-            duration: 300,
-            ease: 'Back.out',
-          });
-        }
-      } else if (!plot.cropText) {
-        this.createCropSprite(plot, cropData.type);
-      }
-    }
-
-    // 清理已收获的作物
-    for (const plot of this.plots) {
-      const key = `${plot.gridX},${plot.gridY}`;
-      if (!crops[key] && plot.cropText) {
-        this.removeCropSprite(plot);
-      }
-    }
-  }
-
-  // 世界区切换时刷新所有作物视觉
-  private refreshAllCropVisuals(zone: WorldZone): void {
-    const state = useGameStore.getState();
-
-    // 更新所有地块背景色
-    for (const plot of this.plots) {
-      const key = `${plot.gridX},${plot.gridY}`;
-      const hasCrop = !!state.crops[key];
-      const bgColor = hasCrop
-        ? (zone === 'collapse' ? 0x4338CA : 0xC9A67A)
-        : (zone === 'collapse' ? 0x312E81 : 0xDDB892);
-      plot.bg.setFillStyle(bgColor);
-      plot.bg.setStrokeStyle(2, zone === 'collapse' ? 0x6366F1 : 0xC9A67A);
-    }
-
-    // 更新所有作物 emoji
-    this.updateCropsFromState(state.crops, zone);
-  }
-
-  private syncWithStore(): void {
-    const state = useGameStore.getState();
-    this.updateCropsFromState(state.crops, state.worldZone);
-  }
-
-  // 浮动文字
-  private showFloatingText(x: number, y: number, textStr: string, color: string): void {
-    // Phaser 4: 使用对象参数
-    const ft = this.add.text({
-      x: x,
-      y: y,
-      text: textStr,
-      style: {
-        fontSize: '24px',
-        color: color,
-        fontFamily: 'Arial, sans-serif',
-      }
-    });
-    ft.setOrigin(0.5);
-
-    this.tweens.add({
-      targets: ft,
-      y: ft.y - 40,
+      targets: this.clickMarker,
       alpha: 0,
-      duration: 800,
-      ease: 'Power2',
-      onComplete: () => ft.destroy(),
+      duration: 500,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        this.clickMarker.clear();
+      },
     });
   }
-
-  // 工具选择
-  public setTool(tool: 'plant' | 'water' | 'harvest'): void {
-    this.selectedTool = tool;
+  
+  /**
+   * 更新循环
+   */
+  update(time: number, delta: number): void {
+    // 更新玩家
+    this.player.update(delta);
   }
-
-  public setSeed(seed: CropType): void {
-    this.selectedSeed = seed;
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 公共 API（供外部调用）
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 获取玩家当前位置
+   */
+  getPlayerPosition(): { x: number; y: number } {
+    return this.player.getGridPosition();
   }
-
-  // 窗口大小变化处理
-  private handleResize(gameSize: Phaser.Structs.Size): void {
-    const width = gameSize.width;
-    const height = gameSize.height;
-
-    const maxGridWidth = width * 0.9;
-    const maxGridHeight = height * 0.85;
-    this.tileSize = Math.max(
-      Math.floor(Math.min(maxGridWidth / GRID_SIZE, maxGridHeight / GRID_SIZE) - GAP),
-      24
-    );
-
-    const gridWidth = GRID_SIZE * (this.tileSize + GAP) - GAP;
-    const gridHeight = GRID_SIZE * (this.tileSize + GAP) - GAP;
-    this.gridOffsetX = (width - gridWidth) / 2;
-    this.gridOffsetY = (height - gridHeight) / 2;
-
-    for (const plot of this.plots) {
-      const ts = this.tileSize;
-      const px = this.gridOffsetX + plot.gridX * (ts + GAP);
-      const py = this.gridOffsetY + plot.gridY * (ts + GAP);
-      plot.bg.setPosition(px + ts / 2, py + ts / 2);
-      plot.bg.setSize(ts, ts);
-      if (plot.cropText) {
-        plot.cropText.setPosition(px + ts / 2, py + ts / 2 - 5);
-        plot.cropText.setFontSize(`${Math.floor(ts * 0.5)}px`);
-      }
-    }
-  }
-
-  shutdown(): void {
-    if (this.unsubscribe) this.unsubscribe();
-    if (this.unsubscribeZone) this.unsubscribeZone();
-    this.scale.off('resize', this.handleResize, this);
+  
+  /**
+   * 移动玩家到指定位置
+   */
+  movePlayerTo(gridX: number, gridY: number): void {
+    this.player.moveTo(gridX, gridY);
   }
 }
