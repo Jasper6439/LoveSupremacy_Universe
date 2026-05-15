@@ -140,10 +140,12 @@ def register_routes(app):
     app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'static'))
 
     # web-v2 静态资源 (Vite 构建产物: JS/CSS/images)
+    # 注意：Vite 构建的 index.html 中资源路径是 /assets/...，需要映射到 web-v2/dist/assets
     web_v2_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'web-v2', 'dist')
     web_v2_assets = os.path.join(web_v2_dist, 'assets')
     if os.path.isdir(web_v2_assets):
-        app.router.add_static('/web-v2/assets', web_v2_assets)
+        app.router.add_static('/assets', web_v2_assets)
+        app.router.add_static('/icons', web_v2_dist)
     else:
         import logging
         logging.warning(f"[Routes] web-v2/assets 目录不存在: {web_v2_assets}")
