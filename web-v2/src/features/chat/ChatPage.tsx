@@ -97,10 +97,11 @@ export default function ChatPage() {
 
   // 检查登录状态 & 加载历史
   useEffect(() => {
-    const token = getAuthToken();
-    if (token) {
-      setIsLoggedIn(true);
-      loadChatHistory(30).then(hist => {
+    const checkAuthAndLoad = async () => {
+      const token = getAuthToken();
+      if (token) {
+        setIsLoggedIn(true);
+        const hist = await loadChatHistory(30);
         if (hist.length > 0) {
           setMessages(hist);
         } else {
@@ -113,16 +114,41 @@ export default function ChatPage() {
           }]);
         }
         setIsLoadingHistory(false);
-      });
-    } else {
-      setIsLoadingHistory(false);
-      setMessages([{
-        id: 'welcome',
-        type: 'received',
-        content: '你好呀！我是小樱 🌸\n\n请先在设置中登录账号，这样我才能记住你哦～',
-        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      }]);
-    }
+      } else {
+        setIsLoadingHistory(false);
+        setMessages([{
+          id: 'welcome',
+          type: 'received',
+          content: '你好呀！我是小樱 🌸\n\n请先在设置中登录账号，这样我才能记住你哦～',
+          time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        }]);
+      }
+    };
+    
+    checkAuthAndLoad();
+    
+    // 监听 storage 变化（跨页面登录状态同步）
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        if (e.newValue) {
+          setIsLoggedIn(true);
+          loadChatHistory(30).then(hist => {
+            if (hist.length > 0) setMessages(hist);
+          });
+        } else {
+          setIsLoggedIn(false);
+          setMessages([{
+            id: 'welcome',
+            type: 'received',
+            content: '你好呀！我是小樱 🌸\n\n请先在设置中登录账号，这样我才能记住你哦～',
+            time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+          }]);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // 自动滚动到底部
@@ -179,7 +205,6 @@ export default function ChatPage() {
           selfie: result.selfie,
         };
         setMessages(prev => [...prev, replyMsg]);
-        // 对话增加好感（使用第一个角色的心级）
       } else {
         // API 调用失败，使用 fallback
         setMessages(prev => [...prev, {
@@ -195,16 +220,16 @@ export default function ChatPage() {
   }, [inputValue, isLoggedIn]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-white dark:bg-morandi-gray900">
       {/* 聊天头部 */}
-      <div className="glass-nav safe-area-top px-4 py-3">
+      <div className="glass-nav safe-area-top px-4 py-3 bg-white/80 dark:bg-morandi-gray800/80">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-300 to-brand-500 flex items-center justify-center text-xl">
             🌸
           </div>
           <div className="flex-1">
-            <h2 className="font-semibold text-gray-800">小樱</h2>
-            <p className="text-xs text-gray-500">
+            <h2 className="font-semibold text-gray-800 dark:text-gray-100">小樱</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {isLoadingHistory ? '加载中...' : isLoggedIn ? '在线' : '未登录'}
             </p>
           </div>
@@ -220,7 +245,7 @@ export default function ChatPage() {
       </div>
 
       {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto scroll-touch px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto scroll-touch px-4 py-4 space-y-3 bg-gray-50 dark:bg-morandi-gray900">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
@@ -229,7 +254,10 @@ export default function ChatPage() {
             className={`flex ${msg.type === 'sent' ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-[80%] ${msg.type === 'sent' ? 'order-2' : 'order-1'}`}>
-              <div className={msg.type === 'sent' ? 'bubble-sent' : 'bubble-received'}>
+              <div className={msg.type === 'sent' 
+                ? 'bg-brand-500 text-white rounded-2xl rounded-tr-sm' 
+                : 'bg-white dark:bg-morandi-gray800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-tl-sm shadow-sm'
+              }>
                 <p className="px-4 py-2 whitespace-pre-wrap">{msg.content}</p>
               </div>
               {/* AI 自拍图片 */}
@@ -254,7 +282,7 @@ export default function ChatPage() {
               exit={{ opacity: 0, y: 20 }}
               className="flex justify-start"
             >
-              <div className="bubble-received px-4 py-3">
+              <div className="bg-white dark:bg-morandi-gray800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                 <div className="flex gap-1">
                   <motion.span animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-2 h-2 bg-gray-400 rounded-full" />
                   <motion.span animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-2 h-2 bg-gray-400 rounded-full" />
@@ -269,9 +297,9 @@ export default function ChatPage() {
       </div>
 
       {/* 输入框 */}
-      <div className="glass-nav safe-area-bottom px-4 py-3">
+      <div className="glass-nav safe-area-bottom px-4 py-3 bg-white/80 dark:bg-morandi-gray800/80 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-end gap-3">
-          <button className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-xl">
+          <button className="w-10 h-10 rounded-full bg-white/50 dark:bg-morandi-gray700/50 flex items-center justify-center text-xl">
             😊
           </button>
           <div className="flex-1">
@@ -286,13 +314,14 @@ export default function ChatPage() {
               }}
               placeholder={isLoggedIn ? '输入消息...' : '请先登录账号'}
               rows={1}
-              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+              disabled={!isLoggedIn}
+              className="w-full px-4 py-3 bg-white/50 dark:bg-morandi-gray700/50 rounded-ios-lg border border-gray-200/50 dark:border-gray-600/50 resize-none focus:outline-none focus:ring-2 focus:ring-brand-400/50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 dark:text-gray-100"
             />
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleSend}
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || !isLoggedIn}
             className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center text-white disabled:opacity-50"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
