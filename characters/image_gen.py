@@ -107,6 +107,107 @@ async def send_selfie_to_chat(bot, chat_id, caption=None):
 
 
 # ============================================================
+# SDXL 1.0 LoRA 专属生图 (v1.9.3 新增)
+# ============================================================
+
+async def generate_lora_selfie(
+    prompt: str = None,
+    chat_id: int = None,
+) -> Optional[str]:
+    """
+    使用 SDXL LoRA 路由池生成角色专属图片
+
+    Args:
+        prompt: 自定义提示词（None 则使用随机自拍提示词）
+        chat_id: 用户 ID（用于保存）
+
+    Returns:
+        图片文件路径，失败返回 None
+    """
+    from services.image_service import get_image_service
+
+    if prompt is None:
+        prompt = random.choice(SELFIE_PROMPTS)
+
+    svc = get_image_service()
+    image_path = await svc.generate_and_save(prompt)
+
+    if image_path and chat_id:
+        # 保存到用户自拍目录
+        try:
+            selfie_dir = get_user_selfie_dir(chat_id)
+            os.makedirs(selfie_dir, exist_ok=True)
+            import shutil
+            dest = os.path.join(selfie_dir, os.path.basename(image_path))
+            shutil.copy2(image_path, dest)
+            logging.info(f"LoRA 自拍已保存: {dest}")
+        except Exception as e:
+            logging.warning(f"保存 LoRA 自拍失败: {e}")
+
+    return image_path
+
+
+async def send_lora_selfie_to_chat(
+    bot,
+    chat_id: int,
+    prompt: str = None,
+    loading_msg: str = None,
+    error_msg: str = None,
+):
+    """
+    使用 SDXL LoRA 生成并发送自拍
+
+    Args:
+        bot: Telegram Bot 实例
+        chat_id: 聊天 ID
+        prompt: 自定义提示词
+        loading_msg: 加载提示（None 则使用默认）
+        error_msg: 错误提示（None 则使用角色性格化回复）
+    """
+    # 立即反馈
+    if loading_msg is None:
+        loading_msg = "*稍等一下让我打开手机自拍... (首次加载可能需要 1-2 分钟)*"
+    await bot.send_chat_action(chat_id=chat_id, action="upload_photo")
+
+    try:
+        # 尝试发送加载提示（如果支持 Markdown）
+        try:
+            await bot.send_message(chat_id=chat_id, text=loading_msg, parse_mode="Markdown")
+        except Exception:
+            await bot.send_message(chat_id=chat_id, text=loading_msg.replace("*", ""))
+
+        # 调用 SDXL LoRA 路由
+        image_path = await generate_lora_selfie(prompt=prompt, chat_id=chat_id)
+
+        if image_path and os.path.exists(image_path):
+            caption = random.choice(SELFIE_CAPTIONS) if prompt is None else None
+            with open(image_path, "rb") as f:
+                await bot.send_photo(chat_id=chat_id, photo=f, caption=caption)
+            logging.info(f"[LoRA] 自拍发送成功: chat_id={chat_id}")
+
+            # 更新统计
+            try:
+                from stats import load_stats, save_stats
+                stats = load_stats()
+                stats["selfies_sent"] = stats.get("selfies_sent", 0) + 1
+                save_stats(stats)
+            except Exception:
+                pass
+            return
+
+    except Exception as e:
+        logging.error(f"[LoRA] 生图失败: {e}")
+
+    # 所有路由失败 — 角色性格化错误回复
+    if error_msg is None:
+        error_msg = "...（沉默）...学长，我现在不想拍照。"
+    try:
+        await bot.send_message(chat_id=chat_id, text=error_msg)
+    except Exception:
+        pass
+
+
+# ============================================================
 # [Skill: slack-gif-creator] 表情包生成系统
 # ============================================================
 

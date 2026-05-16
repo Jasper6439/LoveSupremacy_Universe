@@ -33,6 +33,7 @@ from packages.commands.misc import anniversary_cmd
 from services.tts_service import get_tts_service, send_voice_to_telegram
 from services.image_service import get_image_service, send_image_to_telegram, check_and_generate_image
 from services.evolution_service import analyze_and_evolve, get_context_for_reply
+from services.llm_service import get_llm_service
 
 # Lazy import for bot.call_ai (the high-level AI function with character/memory/emotion integration)
 from packages.commands.utils import _get_call_ai

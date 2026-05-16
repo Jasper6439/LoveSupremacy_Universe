@@ -1,69 +1,363 @@
 """
-图像生成服务模块 - 意图驱动的多模态生图
+图像生成服务模块 — SDXL 1.0 LoRA 专属生图路由池
 =====================================
-当用户发送带有视觉意图的消息时（如"想看看你在干嘛"、"发张照片"），
-自动理解语境并生成符合场景的图片。
+多平台兜底生图，保证角色一致性。
 
-三级路由架构:
-1. OpenRouter 免费模型 (flux-1-schnell:free)
-2. 商汤 SenseNova U1 Fast (兜底)
-3. SiliconFlow (备选)
+路由策略:
+1. Hugging Face Spaces (主力，挂载专属 LoRA)
+2. SiliconFlow SDXL (兜底，LoRA 未生效)
+3. OpenRouter SD3 (备选，LoRA 未生效)
 
 用法:
-    from services.image_service import generate_image_from_context
-    
-    image_path = await generate_image_from_context(chat_history, user_id)
+    from services.image_service import ImageGenerationService, get_image_service
+
+    svc = get_image_service()
+    image_bytes = await svc.generate(prompt)
 """
 
 import os
 import logging
-import base64
-import asyncio
-import re
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
-import aiohttp
+import httpx
 
-from system.config import (
-    DATA_DIR, 
-    AI_API_BASE, 
-    AI_API_KEY,
-)
+from system.config import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# 配置区域
+# 配置 — 从环境变量读取
 # ============================================================
+
+# SDXL LoRA 配置
+HF_SPACE_API_URL = os.environ.get("HF_SPACE_API_URL", "")
+LORA_TRIGGER_WORD = os.environ.get("LORA_TRIGGER_WORD", "")
+LORA_FILE_NAME = os.environ.get("LORA_FILE_NAME", "")
+
+# API Keys
+SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
+SILICONFLOW_API_BASE = "https://api.siliconflow.cn/v1"
+SILICONFLOW_IMAGE_MODEL = os.environ.get(
+    "SILICONFLOW_IMAGE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0"
+)
+
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+OPENROUTER_IMAGE_MODEL = os.environ.get(
+    "OPENROUTER_IMAGE_MODEL", "stabilityai/stable-diffusion-3-medium"
+)
+
+# 项目信息
+PROJECT_GITHUB = "https://github.com/Jasper6439/LoveSupremacy_Universe"
+PROJECT_NAME = "LoveSupremacy Universe"
 
 # 图像缓存目录
 IMAGE_CACHE_DIR = os.path.join(DATA_DIR, "generated_images")
 os.makedirs(IMAGE_CACHE_DIR, exist_ok=True)
 
-# 三级路由配置
-IMAGE_MODELS = {
-    "primary": {
-        "provider": "openrouter",
-        "model": "black-forest-labs/flux-1-schnell:free",
-        "api_base": "https://openrouter.ai/api/v1",
-        "api_key": AI_API_KEY,  # 使用主 API Key
-    },
-    "fallback": {
-        "provider": "sensenova",
-        "model": "SenseNova U1 Fast",
-        "api_base": "https://api.siliconflow.cn/v1",  # 商汤 API
-        "api_key": os.environ.get("SENSENOVA_API_KEY", ""),
-    },
-    "backup": {
-        "provider": "siliconflow",
-        "model": "black-forest-labs/FLUX.1-schnell",
-        "api_base": "https://api.siliconflow.cn/v1",
-        "api_key": os.environ.get("SILICONFLOW_API_KEY", ""),
-    }
-}
+# 超时配置
+HF_SPACE_TIMEOUT = 120.0  # HuggingFace Spaces 冷启动可能很慢
+IMAGE_TIMEOUT = 60.0
 
-# 意图识别关键词
+
+class ImageGenerationService:
+    """
+    SDXL 1.0 LoRA 专属生图路由服务
+
+    路由策略:
+    1. HuggingFace Spaces (主力，挂载 LoRA，角色一致性)
+    2. SiliconFlow SDXL (兜底，LoRA 未生效)
+    3. OpenRouter SD3 (备选，LoRA 未生效)
+    """
+
+    def __init__(self):
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self, timeout: float = IMAGE_TIMEOUT) -> httpx.AsyncClient:
+        """获取或创建 httpx 异步客户端"""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=httpx.Timeout(timeout))
+        return self._client
+
+    async def close(self):
+        """关闭 HTTP 客户端"""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+
+    # ============================================================
+    # 统一入口
+    # ============================================================
+
+    async def generate(
+        self,
+        prompt: str,
+        width: int = 512,
+        height: int = 512,
+    ) -> Optional[bytes]:
+        """
+        多平台降级生图，返回图片二进制流
+
+        Args:
+            prompt: 图像提示词
+            width: 图片宽度
+            height: 图片高度
+
+        Returns:
+            图片二进制流 (bytes)，全部失败返回 None
+        """
+        routes = [
+            ("hf_space", self._generate_hf_space),
+            ("siliconflow", self._generate_siliconflow),
+            ("openrouter", self._generate_openrouter),
+        ]
+
+        last_error = None
+        for source, handler in routes:
+            try:
+                image_bytes = await handler(prompt, width, height)
+                if image_bytes:
+                    logger.info(f"[ImageGen] ✅ 成功调用 {source}")
+                    return image_bytes
+            except Exception as e:
+                last_error = e
+                logger.warning(f"[ImageGen] ⚠️ {source} 失败: {e}")
+
+        logger.error(f"[ImageGen] ❌ 所有生图路由均失败，最后错误: {last_error}")
+        return None
+
+    async def generate_and_save(
+        self,
+        prompt: str,
+        width: int = 512,
+        height: int = 512,
+    ) -> Optional[str]:
+        """
+        生成图片并保存到缓存
+
+        Returns:
+            图片文件路径，失败返回 None
+        """
+        image_bytes = await self.generate(prompt, width, height)
+        if not image_bytes:
+            return None
+
+        output_path = self._get_cache_path()
+        with open(output_path, "wb") as f:
+            f.write(image_bytes)
+
+        logger.info(f"[ImageGen] 图片已保存: {output_path} ({len(image_bytes)} bytes)")
+        return output_path
+
+    # ============================================================
+    # 第一策略：Hugging Face Spaces (主力，挂载 LoRA)
+    # ============================================================
+
+    def _build_lora_prompt(self, user_prompt: str) -> str:
+        """
+        构建 LoRA 注入的提示词
+
+        在用户描述前强制前置 LoRA 触发词与权重。
+        """
+        if LORA_TRIGGER_WORD and LORA_FILE_NAME:
+            # LoRA 触发词 + 权重 + 质量标签 + 用户描述
+            lora_tag = f"<lora:{LORA_FILE_NAME}:1.0>"
+            return f"{lora_tag}, {LORA_TRIGGER_WORD}, (best quality, masterpiece), {user_prompt}"
+        return user_prompt
+
+    async def _generate_hf_space(
+        self,
+        prompt: str,
+        width: int,
+        height: int,
+    ) -> Optional[bytes]:
+        """Hugging Face Spaces — 主力路由，挂载专属 LoRA"""
+        if not HF_SPACE_API_URL:
+            raise ValueError("HF_SPACE_API_URL 未配置")
+
+        # 注入 LoRA
+        full_prompt = self._build_lora_prompt(prompt)
+
+        # 使用较长超时应对冷启动
+        client = self._get_client(timeout=HF_SPACE_TIMEOUT)
+
+        payload = {
+            "data": [full_prompt, width, height],
+        }
+
+        logger.info(f"[ImageGen] 调用 HF Spaces: {HF_SPACE_API_URL}")
+        logger.info(f"[ImageGen] LoRA Prompt: {full_prompt[:100]}...")
+
+        response = await client.post(
+            f"{HF_SPACE_API_URL}/api/predict",
+            json=payload,
+        )
+
+        if response.status_code == 429:
+            raise RuntimeError("HF Spaces 限流 (429)")
+        if response.status_code >= 500:
+            raise RuntimeError(f"HF Spaces 服务错误 ({response.status_code})")
+        response.raise_for_status()
+
+        data = response.json()
+
+        # 解析返回 — HF Spaces 可能返回不同格式
+        image_url = None
+
+        # 格式1: {"data": [{"url": "..."}]} 或 {"data": ["url"]}
+        if "data" in data:
+            data_field = data["data"]
+            if isinstance(data_field, list) and len(data_field) > 0:
+                first = data_field[0]
+                if isinstance(first, str):
+                    image_url = first
+                elif isinstance(first, dict) and "url" in first:
+                    image_url = first["url"]
+                elif isinstance(first, dict) and "path" in first:
+                    # 相对路径，拼接为完整 URL
+                    image_url = f"{HF_SPACE_API_URL}/file={first['path']}"
+
+        # 格式2: {"url": "..."}
+        if not image_url and "url" in data:
+            image_url = data["url"]
+
+        if not image_url:
+            logger.error(f"[ImageGen] HF Spaces 返回格式无法解析: {list(data.keys())}")
+            raise ValueError("无法解析 HF Spaces 返回的图片 URL")
+
+        # 使用 httpx 下载图片二进制流
+        img_response = await client.get(image_url)
+        img_response.raise_for_status()
+
+        return img_response.content
+
+    # ============================================================
+    # 第二策略：SiliconFlow SDXL (兜底)
+    # ============================================================
+
+    async def _generate_siliconflow(
+        self,
+        prompt: str,
+        width: int,
+        height: int,
+    ) -> Optional[bytes]:
+        """SiliconFlow SDXL — 兜底路由（LoRA 未生效）"""
+        if not SILICONFLOW_API_KEY:
+            raise ValueError("SILICONFLOW_API_KEY 未配置")
+
+        client = self._get_client()
+        payload = {
+            "model": SILICONFLOW_IMAGE_MODEL,
+            "prompt": prompt,
+            "width": width,
+            "height": height,
+            "n": 1,
+        }
+        headers = {
+            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        logger.warning("[ImageGen] ⚠️ SiliconFlow 兜底 — LoRA 未生效")
+
+        response = await client.post(
+            f"{SILICONFLOW_API_BASE}/images/generations",
+            json=payload,
+            headers=headers,
+        )
+
+        if response.status_code == 429:
+            raise RuntimeError("SiliconFlow 限流 (429)")
+        response.raise_for_status()
+
+        data = response.json()
+
+        if "data" in data and len(data["data"]) > 0:
+            image_data = data["data"][0]
+
+            if "url" in image_data:
+                img_response = await client.get(image_data["url"])
+                img_response.raise_for_status()
+                return img_response.content
+            elif "b64_json" in image_data:
+                import base64
+                return base64.b64decode(image_data["b64_json"])
+
+        raise ValueError("SiliconFlow 返回无图片数据")
+
+    # ============================================================
+    # 第三策略：OpenRouter SD3 (备选)
+    # ============================================================
+
+    async def _generate_openrouter(
+        self,
+        prompt: str,
+        width: int,
+        height: int,
+    ) -> Optional[bytes]:
+        """OpenRouter SD3 — 备选路由（LoRA 未生效）"""
+        if not OPENROUTER_API_KEY:
+            raise ValueError("OPENROUTER_API_KEY 未配置")
+
+        client = self._get_client()
+        payload = {
+            "model": OPENROUTER_IMAGE_MODEL,
+            "prompt": prompt,
+            "width": width,
+            "height": height,
+            "n": 1,
+        }
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": PROJECT_GITHUB,
+            "X-Title": PROJECT_NAME,
+        }
+
+        logger.warning("[ImageGen] ⚠️ OpenRouter 兜底 — LoRA 未生效")
+
+        response = await client.post(
+            f"{OPENROUTER_API_BASE}/images/generations",
+            json=payload,
+            headers=headers,
+        )
+
+        if response.status_code == 429:
+            raise RuntimeError("OpenRouter 限流 (429)")
+        response.raise_for_status()
+
+        data = response.json()
+
+        if "data" in data and len(data["data"]) > 0:
+            image_data = data["data"][0]
+
+            if "url" in image_data:
+                img_response = await client.get(image_data["url"])
+                img_response.raise_for_status()
+                return img_response.content
+            elif "b64_json" in image_data:
+                import base64
+                return base64.b64decode(image_data["b64_json"])
+
+        raise ValueError("OpenRouter 返回无图片数据")
+
+    # ============================================================
+    # 工具方法
+    # ============================================================
+
+    def _get_cache_path(self, provider: str = "img") -> str:
+        """生成缓存文件路径"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = f"img_{provider}_{timestamp}.png"
+        return os.path.join(IMAGE_CACHE_DIR, filename)
+
+
+# ============================================================
+# 意图检测（保留原有功能）
+# ============================================================
+
+import re
+
 VISUAL_INTENT_KEYWORDS = [
     r"想看.*你在.*干嘛",
     r"发张.*照片",
@@ -77,10 +371,8 @@ VISUAL_INTENT_KEYWORDS = [
     r"你在哪",
     r"你在干什么",
     r"想看.*表情",
-    r"发.*自拍",
 ]
 
-# 场景-提示词映射
 SCENE_PROMPTS = {
     "daily_life": "A cute anime girl in casual clothes, doing daily activities at home, warm lighting, cozy atmosphere, high quality, detailed",
     "cooking": "A cute anime girl in an apron, cooking in a kitchen, delicious food on the counter, warm kitchen lighting, detailed",
@@ -91,340 +383,98 @@ SCENE_PROMPTS = {
     "default": "A cute anime girl with a warm smile, beautiful detailed eyes, soft lighting, high quality anime style illustration",
 }
 
-# 请求超时
-IMAGE_TIMEOUT = 60
+
+def detect_visual_intent(message: str) -> Tuple[bool, str]:
+    """检测消息中的视觉意图"""
+    message = message.lower().strip()
+    for pattern in VISUAL_INTENT_KEYWORDS:
+        if re.search(pattern, message):
+            if any(kw in message for kw in ["做饭", "煮", "cook"]):
+                return True, "cooking"
+            elif any(kw in message for kw in ["农场", "种", "farm"]):
+                return True, "farming"
+            elif any(kw in message for kw in ["自拍", "selfie"]):
+                return True, "selfie"
+            elif any(kw in message for kw in ["休息", "躺", "relax"]):
+                return True, "relaxing"
+            elif any(kw in message for kw in ["外面", "公园", "outdoor"]):
+                return True, "outdoor"
+            else:
+                return True, "daily_life"
+    return False, ""
 
 
-class ImageService:
-    """
-    意图驱动的图像生成服务
-    
-    功能:
-    1. 检测用户消息中的视觉意图
-    2. 根据对话上下文生成合适的 Prompt
-    3. 调用生图模型生成图片
-    4. 支持三级路由降级
-    """
-    
-    def __init__(self):
-        self._session: Optional[aiohttp.ClientSession] = None
-    
-    async def _get_session(self) -> aiohttp.ClientSession:
-        """获取或创建 HTTP 会话"""
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=IMAGE_TIMEOUT)
-            )
-        return self._session
-    
-    def detect_visual_intent(self, message: str) -> Tuple[bool, str]:
-        """
-        检测消息中是否包含视觉意图
-        
-        Args:
-            message: 用户消息
-        
-        Returns:
-            (是否包含视觉意图, 匹配的场景类型)
-        """
-        message = message.lower().strip()
-        
-        for pattern in VISUAL_INTENT_KEYWORDS:
-            if re.search(pattern, message):
-                # 根据关键词判断场景
-                if any(kw in message for kw in ["做饭", "煮", "cook"]):
-                    return True, "cooking"
-                elif any(kw in message for kw in ["农场", "种", "farm"]):
-                    return True, "farming"
-                elif any(kw in message for kw in ["自拍", "selfie"]):
-                    return True, "selfie"
-                elif any(kw in message for kw in ["休息", "躺", "relax"]):
-                    return True, "relaxing"
-                elif any(kw in message for kw in ["外面", "公园", "outdoor"]):
-                    return True, "outdoor"
-                else:
-                    return True, "daily_life"
-        
-        return False, ""
-    
-    def generate_prompt_from_context(
-        self, 
-        chat_history: List[Dict[str, Any]],
-        scene: str = "default"
-    ) -> str:
-        """
-        根据对话上下文生成图像提示词
-        
-        Args:
-            chat_history: 对话历史
-            scene: 场景类型
-        
-        Returns:
-            生成的提示词
-        """
-        # 基础提示词
-        base_prompt = SCENE_PROMPTS.get(scene, SCENE_PROMPTS["default"])
-        
-        # 尝试从上下文提取额外信息
-        context_hints = []
-        
-        for msg in chat_history[-5:]:  # 最近 5 条消息
-            content = msg.get("content", "").lower()
-            
-            # 检测情感状态
-            if any(kw in content for kw in ["开心", "高兴", "happy", "喜欢"]):
-                context_hints.append("happy expression, smiling")
-            elif any(kw in content for kw in ["难过", "伤心", "sad", "哭"]):
-                context_hints.append("slightly sad expression")
-            
-            # 检测活动
-            if any(kw in content for kw in ["做饭", "煮"]):
-                context_hints.append("cooking")
-            elif any(kw in content for kw in ["看书", "读书"]):
-                context_hints.append("reading a book")
-        
-        # 组合提示词
-        if context_hints:
-            return f"{base_prompt}, {', '.join(context_hints[-2:])}"
-        
-        return base_prompt
-    
-    async def generate_image(
-        self,
-        prompt: str,
-        model_tier: str = "primary"
-    ) -> Optional[str]:
-        """
-        调用生图模型生成图片
-        
-        Args:
-            prompt: 图像提示词
-            model_tier: 模型层级 (primary, fallback, backup)
-        
-        Returns:
-            图片文件路径，失败返回 None
-        """
-        config = IMAGE_MODELS.get(model_tier)
-        if not config:
-            logger.error(f"[Image] 未知的模型层级: {model_tier}")
-            return None
-        
-        api_key = config["api_key"]
-        if not api_key:
-            logger.warning(f"[Image] {config['provider']} API Key 未配置")
-            # 尝试降级
-            if model_tier == "primary":
-                return await self.generate_image(prompt, "fallback")
-            elif model_tier == "fallback":
-                return await self.generate_image(prompt, "backup")
-            return None
-        
-        try:
-            session = await self._get_session()
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-            
-            # OpenRouter / SiliconFlow API 格式
-            payload = {
-                "model": config["model"],
-                "prompt": prompt,
-                "width": 512,
-                "height": 512,
-                "steps": 4,  # flux-schnell 只需 4 步
-                "n": 1,
-            }
-            
-            logger.info(f"[Image] 调用 {config['provider']}: {config['model']}")
-            
-            async with session.post(
-                f"{config['api_base']}/images/generations",
-                headers=headers,
-                json=payload
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    
-                    # 解析响应
-                    if "data" in data and len(data["data"]) > 0:
-                        image_data = data["data"][0]
-                        
-                        # 可能是 base64 或 URL
-                        if "b64_json" in image_data:
-                            image_bytes = base64.b64decode(image_data["b64_json"])
-                        elif "url" in image_data:
-                            # 下载图片
-                            async with session.get(image_data["url"]) as img_resp:
-                                image_bytes = await img_resp.read()
-                        else:
-                            logger.error(f"[Image] 未知的响应格式: {image_data.keys()}")
-                            return None
-                        
-                        # 保存图片
-                        output_path = self._get_cache_path(config["provider"])
-                        with open(output_path, "wb") as f:
-                            f.write(image_bytes)
-                        
-                        logger.info(f"[Image] 生成成功: {output_path}")
-                        return output_path
-                    else:
-                        logger.error(f"[Image] 响应无图片数据: {data}")
-                        return None
-                        
-                elif resp.status == 429:
-                    # 限流，尝试降级
-                    logger.warning(f"[Image] {config['provider']} 限流，尝试降级")
-                    if model_tier == "primary":
-                        return await self.generate_image(prompt, "fallback")
-                    elif model_tier == "fallback":
-                        return await self.generate_image(prompt, "backup")
-                    return None
-                    
-                else:
-                    error_text = await resp.text()
-                    logger.error(f"[Image] API 错误 {resp.status}: {error_text}")
-                    return None
-                    
-        except aiohttp.ClientError as e:
-            logger.error(f"[Image] 连接失败: {e}")
-            # 尝试降级
-            if model_tier == "primary":
-                return await self.generate_image(prompt, "fallback")
-            return None
-            
-        except Exception as e:
-            logger.error(f"[Image] 生成异常: {e}")
-            return None
-    
-    def _get_cache_path(self, provider: str) -> str:
-        """生成缓存文件路径"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        filename = f"img_{provider}_{timestamp}.png"
-        return os.path.join(IMAGE_CACHE_DIR, filename)
-    
-    async def close(self):
-        """关闭 HTTP 会话"""
-        if self._session and not self._session.closed:
-            await self._session.close()
+def generate_prompt_from_context(
+    chat_history: List[Dict[str, Any]],
+    scene: str = "default",
+) -> str:
+    """根据对话上下文生成图像提示词"""
+    base_prompt = SCENE_PROMPTS.get(scene, SCENE_PROMPTS["default"])
+    context_hints = []
+    for msg in chat_history[-5:]:
+        content = msg.get("content", "").lower()
+        if any(kw in content for kw in ["开心", "高兴", "happy", "喜欢"]):
+            context_hints.append("happy expression, smiling")
+        elif any(kw in content for kw in ["难过", "伤心", "sad"]):
+            context_hints.append("slightly sad expression")
+        if any(kw in content for kw in ["做饭", "煮"]):
+            context_hints.append("cooking")
+        elif any(kw in content for kw in ["看书", "读书"]):
+            context_hints.append("reading a book")
+    if context_hints:
+        return f"{base_prompt}, {', '.join(context_hints[-2:])}"
+    return base_prompt
 
 
 # ============================================================
-# 便捷函数
+# 全局单例 + 便捷函数
 # ============================================================
 
-_image_service: Optional[ImageService] = None
+_image_service: Optional[ImageGenerationService] = None
 
 
-def get_image_service() -> ImageService:
-    """获取全局图像服务实例"""
+def get_image_service() -> ImageGenerationService:
+    """获取全局图像生成服务实例"""
     global _image_service
     if _image_service is None:
-        _image_service = ImageService()
+        _image_service = ImageGenerationService()
     return _image_service
 
 
 async def generate_image_from_context(
     chat_history: List[Dict[str, Any]],
-    user_message: str = ""
+    user_message: str = "",
 ) -> Optional[str]:
-    """
-    根据对话上下文生成图片（便捷函数）
-    
-    Args:
-        chat_history: 对话历史
-        user_message: 用户最新消息
-    
-    Returns:
-        图片文件路径
-    """
-    service = get_image_service()
-    
-    # 检测视觉意图
-    has_intent, scene = service.detect_visual_intent(user_message)
-    
+    """根据对话上下文生成图片（便捷函数）"""
+    has_intent, scene = detect_visual_intent(user_message)
     if not has_intent:
         return None
-    
-    # 生成提示词
-    prompt = service.generate_prompt_from_context(chat_history, scene)
-    
-    logger.info(f"[Image] 检测到视觉意图，场景: {scene}")
-    logger.info(f"[Image] 生成提示词: {prompt}")
-    
-    # 生成图片
-    return await service.generate_image(prompt)
 
+    prompt = generate_prompt_from_context(chat_history, scene)
+    logger.info(f"[ImageGen] 检测到视觉意图，场景: {scene}")
 
-async def check_and_generate_image(
-    message: str,
-    chat_history: List[Dict[str, Any]]
-) -> Tuple[bool, Optional[str]]:
-    """
-    检查消息是否需要生成图片，并生成
-    
-    Args:
-        message: 用户消息
-        chat_history: 对话历史
-    
-    Returns:
-        (是否生成, 图片路径)
-    """
-    service = get_image_service()
-    
-    has_intent, scene = service.detect_visual_intent(message)
-    
-    if not has_intent:
-        return False, None
-    
-    prompt = service.generate_prompt_from_context(chat_history, scene)
-    image_path = await service.generate_image(prompt)
-    
-    return True, image_path
+    svc = get_image_service()
+    return await svc.generate_and_save(prompt)
 
-
-# ============================================================
-# FastAPI 集成
-# ============================================================
 
 async def send_image_to_telegram(
     bot,
     chat_id: int,
     image_path: str,
-    caption: str = "📸"
+    caption: str = "",
 ) -> bool:
-    """
-    发送图片到 Telegram
-    
-    Args:
-        bot: Telegram Bot 实例
-        chat_id: 聊天 ID
-        image_path: 图片路径
-        caption: 图片说明
-    
-    Returns:
-        是否发送成功
-    """
+    """发送图片到 Telegram"""
     if not os.path.exists(image_path):
-        logger.error(f"[Image] 图片不存在: {image_path}")
+        logger.error(f"[ImageGen] 图片不存在: {image_path}")
         return False
-    
     try:
         await bot.send_chat_action(chat_id=chat_id, action="upload_photo")
-        
         with open(image_path, "rb") as f:
-            await bot.send_photo(
-                chat_id=chat_id,
-                photo=f,
-                caption=caption
-            )
-        
-        logger.info(f"[Image] 图片发送成功: chat_id={chat_id}")
+            await bot.send_photo(chat_id=chat_id, photo=f, caption=caption or None)
+        logger.info(f"[ImageGen] 图片发送成功: chat_id={chat_id}")
         return True
-        
     except Exception as e:
-        logger.error(f"[Image] 发送图片失败: {e}")
+        logger.error(f"[ImageGen] 发送图片失败: {e}")
         return False
 
 
@@ -434,34 +484,20 @@ async def send_image_to_telegram(
 
 async def test_image_service():
     """测试图像生成服务"""
-    service = ImageService()
-    
+    svc = ImageGenerationService()
+
+    # 测试 LoRA Prompt 构建
+    prompt = svc._build_lora_prompt("a girl smiling")
+    print(f"LoRA Prompt: {prompt}")
+
     # 测试意图检测
-    test_messages = [
-        "想看看你在干嘛",
-        "发张照片给我",
-        "你在干什么呀",
-        "想看你的自拍",
-    ]
-    
-    for msg in test_messages:
-        has_intent, scene = service.detect_visual_intent(msg)
+    for msg in ["想看看你在干嘛", "发张照片", "你好"]:
+        has_intent, scene = detect_visual_intent(msg)
         print(f"'{msg}' -> 意图: {has_intent}, 场景: {scene}")
-    
-    # 测试生成
-    prompt = SCENE_PROMPTS["selfie"]
-    print(f"\n测试生成图片: {prompt}")
-    
-    result = await service.generate_image(prompt)
-    
-    if result:
-        print(f"✅ 生成成功: {result}")
-        print(f"   文件大小: {os.path.getsize(result)} bytes")
-    else:
-        print("❌ 生成失败")
-    
-    await service.close()
+
+    await svc.close()
 
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(test_image_service())
