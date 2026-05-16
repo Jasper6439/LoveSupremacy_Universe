@@ -12,6 +12,7 @@ import random
 import re
 import urllib.parse
 from datetime import datetime
+from typing import Optional
 
 import httpx
 import aiohttp
