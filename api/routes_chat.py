@@ -176,9 +176,9 @@ async def _handle_non_stream_chat(req: ChatRequest, user_id: int) -> dict:
 async def stream_chat_response(req: ChatRequest, user_id: int):
     """SSE 流式响应生成器。
 
-    使用 characters/ai_client.py 的 stream_chat_completion 进行流式输出。
+    使用 characters/ai_client.py 的 stream_chat_completion_generator 进行真正的逐 token 流式输出。
     """
-    from characters.ai_client import stream_chat_completion
+    from characters.ai_client import stream_chat_completion_generator
 
     # 获取用户显示名
     user_name = '学长'
@@ -212,17 +212,19 @@ async def stream_chat_response(req: ChatRequest, user_id: int):
     history = load_chat_history(user_id)
 
     try:
-        full_content = await stream_chat_completion(
+        full_content = ""
+        
+        # 使用真正的生成器逐 token 输出
+        async for token in stream_chat_completion_generator(
             system_prompt=system_prompt,
             user_message=req.message,
             chat_history=history,
-            on_chunk=lambda text: None,  # SSE 模式下不需要回调
-        )
+        ):
+            full_content += token
+            # 立即发送每个 token 到前端
+            yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
-        # 流式输出完整内容（逐字符或逐词发送）
-        if full_content:
-            yield f"data: {json.dumps({'type': 'token', 'content': full_content})}\n\n"
-
+        # 流结束标记
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         # 保存到聊天历史
@@ -230,6 +232,34 @@ async def stream_chat_response(req: ChatRequest, user_id: int):
         history.append({"role": "user", "content": req.message, "timestamp": timestamp})
         history.append({"role": "assistant", "content": full_content, "timestamp": timestamp})
         save_chat_history(user_id, history)
+
+        # 双向同步到 Telegram（异步，不阻塞）
+        try:
+            from system.auth import get_user_info, get_character_bot_token
+            user_info = get_user_info(user_id)
+            telegram_chat_id = user_info.get('telegram_chat_id') if user_info else None
+
+            if telegram_chat_id:
+                character_id = req.character_id or 'chayewoon'
+                bot_token = get_character_bot_token(user_id, character_id)
+
+                if bot_token:
+                    async def send_to_telegram():
+                        try:
+                            import telegram
+                            from telegram.request import HTTPXRequest
+                            bot = telegram.Bot(token=bot_token, request=HTTPXRequest())
+                            await bot.send_message(
+                                chat_id=telegram_chat_id,
+                                text=full_content,
+                            )
+                            logger.info(f"[双向同步] 流式消息已通过角色 {character_id} 的 Bot 发送到 Telegram")
+                        except Exception as e:
+                            logger.error(f"[双向同步] 发送流式消息到 Telegram 失败: {e}")
+
+                    asyncio.create_task(send_to_telegram())
+        except Exception as e:
+            logger.error(f"[双向同步] 初始化流式发送失败: {e}")
 
     except Exception as e:
         logger.error(f"[WebChat Stream] 流式对话错误: {e}")
