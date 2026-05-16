@@ -204,6 +204,126 @@ async def _make_api_request(
         return content
 
 
+# ============================================================
+# 图像生成功能（v1.9.3 新增）
+# ============================================================
+
+async def generate_image(
+    prompt: str,
+    model: str = "black-forest-labs/flux-1-schnell:free",
+    width: int = 512,
+    height: int = 512,
+    timeout: float = 60.0,
+) -> Optional[str]:
+    """
+    调用图像生成模型生成图片
+    
+    Args:
+        prompt: 图像提示词
+        model: 图像生成模型
+        width: 图片宽度
+        height: 图片高度
+        timeout: 请求超时
+    
+    Returns:
+        图片的 base64 编码，失败返回 None
+    """
+    import base64
+    
+    api_key, api_base = _load_api_config()
+    
+    if not api_key:
+        raise ValueError("AI_API_KEY not set")
+    
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "width": width,
+        "height": height,
+        "n": 1,
+    }
+    
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
+        try:
+            response = await client.post(
+                f"{api_base}/images/generations",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if "data" in data and len(data["data"]) > 0:
+                image_data = data["data"][0]
+                
+                # 可能是 base64 或 URL
+                if "b64_json" in image_data:
+                    return image_data["b64_json"]
+                elif "url" in image_data:
+                    # 下载图片并转为 base64
+                    async with client.get(image_data["url"]) as img_resp:
+                        img_data = img_resp.content
+                        return base64.b64encode(img_data).decode('utf-8')
+                else:
+                    logger.warning(f"Unknown image response format: {image_data.keys()}")
+                    return None
+            else:
+                logger.warning(f"Image generation returned no data: {data}")
+                return None
+                
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Image generation HTTP error: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Image generation failed: {e}")
+            return None
+
+
+async def generate_image_from_context(
+    chat_history: List[Dict],
+    user_message: str,
+) -> Optional[str]:
+    """
+    根据对话上下文生成图片（意图驱动）
+    
+    Args:
+        chat_history: 对话历史
+        user_message: 用户消息
+    
+    Returns:
+        图片的 base64 编码，如果用户没有视觉意图则返回 None
+    """
+    # 检测视觉意图
+    visual_keywords = [
+        "想看", "发张", "照片", "自拍", "看看", 
+        "你在干嘛", "你在干什么", "让我看看",
+    ]
+    
+    has_intent = any(kw in user_message.lower() for kw in visual_keywords)
+    
+    if not has_intent:
+        return None
+    
+    # 根据上下文生成提示词
+    # 默认场景
+    base_prompt = "A cute anime girl with a warm smile, beautiful detailed eyes, soft lighting, high quality anime style illustration"
+    
+    # 根据关键词判断场景
+    if any(kw in user_message for kw in ["做饭", "煮", "cook"]):
+        base_prompt = "A cute anime girl in an apron, cooking in a kitchen, delicious food on the counter, warm kitchen lighting"
+    elif any(kw in user_message for kw in ["自拍", "selfie"]):
+        base_prompt = "A cute anime girl taking a selfie, phone in hand, making a sweet expression, soft lighting, close-up"
+    elif any(kw in user_message for kw in ["休息", "躺"]):
+        base_prompt = "A cute anime girl relaxing on a sofa, reading a book, cozy living room, soft lighting"
+    
+    logger.info(f"[Image] Generating image with prompt: {base_prompt}")
+    
+    return await generate_image(base_prompt)
+
+
 async def stream_chat_completion(
     system_prompt: str,
     user_message: str,
