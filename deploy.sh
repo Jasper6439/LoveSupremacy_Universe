@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# deploy.sh - NxSiran Bot 部署脚本
-# ================================
+# deploy.sh - LoveSupremacy Bot 部署脚本
+# ======================================
 # 一键部署 Systemd 服务
 #
 # 使用方法:
@@ -21,7 +21,7 @@ SERVICE_NAME="nx_siran"
 PROJECT_DIR="/opt/LoveSupremacy-Telegram-Bot"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  NxSiran Bot 部署脚本${NC}"
+echo -e "${GREEN}  LoveSupremacy Bot 部署脚本${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
@@ -31,31 +31,50 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 1. 复制 service 文件
-echo -e "${YELLOW}[1/5] 复制 Systemd 服务文件...${NC}"
+# 1. 进入项目目录并拉取最新代码
+echo -e "${YELLOW}[1/8] 进入项目目录...${NC}"
+cd "${PROJECT_DIR}"
+
+# 配置 git pull 策略（解决分支分叉问题）
+git config pull.rebase false
+
+echo -e "${YELLOW}[2/8] 拉取最新代码...${NC}"
+# 丢弃本地更改，强制同步远程
+git fetch origin
+git reset --hard origin/master
+
+echo -e "${GREEN}  ✓ 代码已同步到最新版本${NC}"
+
+# 3. 复制 service 文件
+echo -e "${YELLOW}[3/8] 复制 Systemd 服务文件...${NC}"
 cp "${PROJECT_DIR}/nx_siran.service" /etc/systemd/system/
 chmod 644 /etc/systemd/system/nx_siran.service
 echo -e "${GREEN}  ✓ 已复制到 /etc/systemd/system/${NC}"
 
-# 2. 配置 journal 限制（防止磁盘撑爆）
-echo -e "${YELLOW}[2/5] 配置 Journal 日志限制...${NC}"
+# 4. 配置 journal 限制（防止磁盘撑爆）
+echo -e "${YELLOW}[4/8] 配置 Journal 日志限制...${NC}"
 mkdir -p /etc/systemd/journald.conf.d/
 cp "${PROJECT_DIR}/journald.conf" /etc/systemd/journald.conf.d/nx-siran.conf
 chmod 644 /etc/systemd/journald.conf.d/nx-siran.conf
 echo -e "${GREEN}  ✓ Journal 配置已更新${NC}"
 
-# 3. 重载 Systemd
-echo -e "${YELLOW}[3/5] 重载 Systemd...${NC}"
+# 5. 安装/更新依赖
+echo -e "${YELLOW}[5/8] 安装 Python 依赖...${NC}"
+pip install -r "${PROJECT_DIR}/requirements.txt" --break-system-packages -q
+echo -e "${GREEN}  ✓ 依赖安装完成${NC}"
+
+# 6. 重载 Systemd
+echo -e "${YELLOW}[6/8] 重载 Systemd...${NC}"
 systemctl daemon-reload
 echo -e "${GREEN}  ✓ daemon-reload 完成${NC}"
 
-# 4. 设置开机自启
-echo -e "${YELLOW}[4/5] 设置开机自启...${NC}"
+# 7. 设置开机自启
+echo -e "${YELLOW}[7/8] 设置开机自启...${NC}"
 systemctl enable ${SERVICE_NAME}.service
 echo -e "${GREEN}  ✓ 开机自启已启用${NC}"
 
-# 5. 启动服务
-echo -e "${YELLOW}[5/5] 启动服务...${NC}"
+# 8. 启动服务
+echo -e "${YELLOW}[8/8] 启动服务...${NC}"
 systemctl restart ${SERVICE_NAME}.service
 sleep 2
 
