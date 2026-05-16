@@ -1,12 +1,12 @@
 # LoveSupremacy Bot - e2-micro 轻量化依赖
-# v1.6.6 优化版：移除重型依赖，极限减负
+# v1.9.2 优化版：统一 FastAPI，移除废弃依赖
 
 # Bot 框架
 python-telegram-bot==22.7
 
 # HTTP 客户端（异步）
 httpx>=0.27.0
-aiohttp>=3.9.0
+aiohttp>=3.9.0  # 用于 webhook_server (独立服务) + HTTP 客户端
 
 # 图片处理
 Pillow>=10.0.0
@@ -30,13 +30,13 @@ numpy>=1.24.0
 psutil>=5.9.0
 APScheduler>=3.10.0
 
-# Web 框架 (v1.7 FastAPI 迁移)
+# Web 框架 (v1.9.2 FastAPI 统一)
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.0.0
 
-# 压力测试 (v1.7 Phase 5)
+# 压力测试
 locust>=2.20.0
 
-# 短期记忆 - Redis (v1.7 Phase 7)
+# 短期记忆 - Redis
 redis>=5.0.0
