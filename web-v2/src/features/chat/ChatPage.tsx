@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Image as ImageIcon, Settings, Sparkles, X } from 'lucide-react';
+import { Send, User, Settings, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,12 +13,6 @@ interface Message {
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
-}
-
-interface ChatResponse {
-  response: string;
-  character_id: string;
-  selfie?: string;
 }
 
 interface SSEEvent {
@@ -35,7 +29,6 @@ export function ChatPage() {
   const [showSelfie, setShowSelfie] = useState(false);
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Check login status
   useEffect(() => {
@@ -65,15 +58,6 @@ export function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -187,8 +171,8 @@ export function ChatPage() {
                 )
               );
             }
-          } catch (e) {
-            console.error('Failed to parse SSE event:', e);
+          } catch {
+            console.error('Failed to parse SSE event');
           }
         }
       }
@@ -365,7 +349,7 @@ export function ChatPage() {
             <div className="flex gap-2">
               <Input
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="输入消息..."
                 disabled={isLoading}
@@ -391,3 +375,6 @@ export function ChatPage() {
     </div>
   );
 }
+
+// Default export for route compatibility
+export default ChatPage;
