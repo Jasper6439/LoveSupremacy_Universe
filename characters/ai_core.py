@@ -198,9 +198,9 @@ async def call_ai(user_message: str, chat_history: list = None, use_memory: bool
         if gemini_result:
             gemini_result = humanize_text(gemini_result)
             logging.info("[Skill: gemini] Gemini fallback成功")
-                return gemini_result
-        except Exception as e:
-            logging.error(f"[Skill: gemini] Gemini fallback失败: {e}")
+            return gemini_result
+    except Exception as e:
+        logging.error(f"[Skill: gemini] Gemini fallback失败: {e}")
 
     return "...（低头不说话）"
 
