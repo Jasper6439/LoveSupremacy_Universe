@@ -31,7 +31,7 @@ from packages.commands.misc import anniversary_cmd
 
 # [Services Integration] 导入服务模块
 from services.tts_service import get_tts_service, send_voice_to_telegram
-from services.image_service import get_image_service, send_image_to_telegram, check_and_generate_image
+from services.image_service import get_image_service, send_image_to_telegram, detect_visual_intent, generate_prompt_from_context
 from services.evolution_service import analyze_and_evolve, get_context_for_reply
 from services.llm_service import get_llm_service
 
@@ -238,7 +238,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # [Service: Image] 检测视觉意图（新的图像生成服务）
     image_service = get_image_service()
-    has_visual_intent, scene_type = image_service.detect_visual_intent(user_text)
+    has_visual_intent, scene_type = detect_visual_intent(user_text)
 
     # [Skill: 打字模拟] 人类打字延迟
     await human_typing_delay(chat_id, update.get_bot(), len(user_text))
@@ -416,7 +416,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": msg["role"], "content": msg["content"]}
                 for msg in history[-10:]
             ]
-            prompt = image_service.generate_prompt_from_context(chat_history_for_image, scene_type)
+            prompt = generate_prompt_from_context(chat_history_for_image, scene_type)
             # 生成图片
             image_path = await image_service.generate_image(prompt)
             if image_path:
