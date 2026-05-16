@@ -356,12 +356,19 @@ async def main():
         ]
     )
 
+    from system.config import BOT_VERSION, APP_NAME
+    print(f"{APP_NAME} v{BOT_VERSION} 启动中...")
+
+    # 配置 uvicorn（Web 服务始终启动，不依赖 Telegram Token）
+    uv_config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=PORT, log_level="info")
+    server = uvicorn.Server(uv_config)
+
     if not TELEGRAM_TOKEN:
-        print("请设置 TELEGRAM_TOKEN 环境变量")
+        print("⚠️  未设置 TELEGRAM_TOKEN，仅启动 Web 服务（Telegram Bot 已跳过）")
+        print(f"🌐 Web 界面: http://0.0.0.0:{PORT}")
+        await server.serve()
         return
 
-    from system.config import BOT_VERSION, APP_NAME
-    print(f"{APP_NAME} Telegram Bot v{BOT_VERSION} 启动中...")
     print(f"v{BOT_VERSION}: 角色扮演 + 游戏系统 + Web 界面 (FastAPI)")
 
     memory_count = len(load_json(get_user_memory_file(YOUR_CHAT_ID or 1), []))
@@ -389,10 +396,6 @@ async def main():
     count = get_selfie_count()
     print(f"已加载 {count} 张自拍照片")
     print(f"AI模型: {AI_MODEL}")
-
-    # 配置 uvicorn
-    uv_config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=PORT, log_level="info")
-    server = uvicorn.Server(uv_config)
 
     # 后台加载小说知识库（独立线程，不阻塞主循环）
     def _init_knowledge_thread():
@@ -422,13 +425,6 @@ async def main():
 
     # ============================================================
     # 共享事件循环：FastAPI + Telegram Bot 并行运行
-    # ============================================================
-    # 使用 PTB v22 推荐的 async with 模式：
-    #   async with app → initialize() + shutdown()
-    #   app.start()    → 启动 updater/job_queue + 调用 post_init
-    #   updater.start_polling() → 开始拉取 Telegram 更新
-    #   server.serve() → uvicorn Web 服务器（阻塞直到关闭）
-    #   app.stop()     → 优雅关闭
     # ============================================================
     async with tg_app:
         await tg_app.start()
