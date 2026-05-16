@@ -308,13 +308,13 @@ html {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v1.8 阶段八 - 双域色彩系统
-   剧本区（彩色/强制扮演）↔ 空白区（黑白/真实自我）
+   v1.9.5 双域色彩反转 — 电影级视觉特效
+   剧本区（彩色/过度曝光）↔ 空白区（黑白/纸张质感）
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── CSS 自定义属性：双域主题 ──────────────────────────────────────────── */
 :root {
-  /* 剧本区主题 - 高饱和马卡龙色 */
+  /* 剧本区 - 马卡龙色系 */
   --script-bg: #FAFAFA;
   --script-surface: rgba(255, 255, 255, 0.6);
   --script-text: #1a1a2e;
@@ -322,59 +322,300 @@ html {
   --script-warm: #E07A5F;
   --script-sky: #B8E0D2;
   --script-grass: #95D5B2;
+  --script-border: #FFB6C1;
 
-  /* 空白区主题 - 米白与深灰 */
-  --void-bg: #F0EDE8;
-  --void-surface: rgba(240, 237, 232, 0.7);
+  /* 空白区 - 米白与深灰 */
+  --void-bg: #FDFBF7;
+  --void-surface: rgba(253, 251, 247, 0.7);
   --void-text: #2C2C2C;
   --void-muted: #8A8A8A;
   --void-accent: #660874;
   --void-warm: #D4A574;
   --void-highlight: #FF69B4;
 
-  /* 动态色彩反转参数（由 JS 动态设置） */
+  /* 动态滤镜参数（由 JS 通过 requestAnimationFrame 设置） */
   --awakening-level: 0;
+  --script-brightness: 1.1;
+  --script-saturate: 1.2;
+  --script-contrast: 0.9;
   --script-grayscale: 0%;
-  --script-contrast: 1;
+  --script-sepia: 0%;
   --void-grayscale: 100%;
   --void-color-opacity: 0;
+  --lens-flare-x: 50%;
+  --lens-flare-y: 30%;
 }
 
-/* ─── 剧本区样式 ────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. 剧本区（彩色世界）— 虚假的完美
+   过度曝光 · 柔光 · 马卡龙 · 边缘模糊
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .scripted-world {
   background-color: var(--script-bg);
   color: var(--script-text);
-  /* 觉醒度越高，剧本区越灰暗 */
-  filter: grayscale(var(--script-grayscale)) contrast(var(--script-contrast));
-  transition: filter 0.8s ease;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.04em;
+  /* 动态滤镜：基础梦幻 + 觉醒惩罚 */
+  filter:
+    brightness(var(--script-brightness))
+    saturate(var(--script-saturate))
+    contrast(var(--script-contrast))
+    grayscale(var(--script-grayscale))
+    sepia(var(--script-sepia));
+  transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: filter;
+  backface-visibility: hidden;
 }
 
-/* ─── 空白区样式 ────────────────────────────────────────────────────────── */
+/* 镜头光晕 — 全屏径向渐变遮罩 */
+.scripted-world::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(
+    ellipse 600px 400px at var(--lens-flare-x) var(--lens-flare-y),
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.08) 30%,
+    transparent 70%
+  );
+  animation: lens-flare-drift 12s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes lens-flare-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.7;
+  }
+  25% {
+    transform: translate(5vw, 3vh) scale(1.1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(-3vw, -2vh) scale(0.95);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(8vw, 5vh) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-2vw, -4vh) scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+/* 剧本区对话框 — 毛玻璃 */
+.scripted-dialogue {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid var(--script-border);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(255, 182, 193, 0.15);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. 空白区（黑白世界）— 真实的温度
+   纸张质感 · 铅笔线条 · 水彩晕染 · 硬边阴影
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .void-world {
   background-color: var(--void-bg);
   color: var(--void-text);
+  font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+  letter-spacing: 0.02em;
   filter: grayscale(var(--void-grayscale));
-  transition: filter 0.8s ease;
+  transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: filter;
+  backface-visibility: hidden;
 }
 
-/* 空白区水彩晕染背景遮罩 */
+/* 纸张纹理 — Base64 内嵌噪点，零 HTTP 请求 */
 .void-world::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(255, 105, 180, calc(var(--void-color-opacity) * 0.15)) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(155, 89, 182, calc(var(--void-color-opacity) * 0.12)) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(244, 208, 63, calc(var(--void-color-opacity) * 0.1)) 0%, transparent 50%);
-  opacity: var(--void-color-opacity);
-  transition: opacity 0.8s ease;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
 }
 
-/* ─── 空白区特效类 ──────────────────────────────────────────────────────── */
+/* 水彩晕染 — 动态 SVG 渐变色块 */
+.void-world::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: multiply;
+  opacity: var(--void-color-opacity);
+  background:
+    radial-gradient(ellipse 40% 50% at 20% 50%, rgba(255, 105, 180, 0.2) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 45% at 80% 20%, rgba(155, 89, 182, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 40% at 50% 80%, rgba(244, 208, 63, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 55% at 60% 30%, rgba(100, 200, 180, 0.12) 0%, transparent 55%);
+  animation: watercolor-flow 20s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+  transition: opacity 1.2s ease;
+}
 
-/* 飞舞的纸张效果 */
+@keyframes watercolor-flow {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(2vw, -1vh) scale(1.05) rotate(1deg);
+  }
+  66% {
+    transform: translate(-1.5vw, 2vh) scale(0.98) rotate(-0.5deg);
+  }
+  100% {
+    transform: translate(1vw, -0.5vh) scale(1.02) rotate(0.5deg);
+  }
+}
+
+/* 空白区对话框 — 手绘虚线边框 */
+.void-dialogue {
+  border: 2px dashed rgba(44, 44, 44, 0.3);
+  border-radius: 4px;
+  /* 硬边漫画阴影：无模糊，纯偏移 */
+  box-shadow: none;
+  transform: translate(4px, 4px);
+  filter: contrast(200%) brightness(80%);
+  transition: filter 0.5s ease, transform 0.3s ease;
+  will-change: transform, filter;
+  backface-visibility: hidden;
+}
+
+/* 空白区 UI 边框 — 墨水干透效果 */
+.void-border-ink {
+  filter: contrast(200%) brightness(80%);
+  border: 1px solid rgba(44, 44, 44, 0.4);
+  box-shadow: none;
+  transform: translate(2px, 2px);
+  will-change: transform, filter;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. 转场特效 — 世界的撕裂
+   故障艺术 · 撕裂 · 重影
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 剧本 → 空白：垂直撕裂 + 纸张卷曲 */
+.transition-script-to-void {
+  animation: tear-vertically 0.8s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes tear-vertically {
+  0% {
+    clip-path: inset(0 0 0 0);
+    filter: brightness(1) saturate(1);
+  }
+  20% {
+    clip-path: inset(0 0 0 50%);
+    filter: brightness(1.5) contrast(1.2);
+  }
+  40% {
+    clip-path: inset(0 50% 0 50%);
+    filter: brightness(2) contrast(0.5);
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+    filter: grayscale(100%) brightness(1.1);
+  }
+  80% {
+    filter: grayscale(100%) brightness(1);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    filter: grayscale(var(--void-grayscale)) brightness(1);
+  }
+}
+
+/* 空白 → 剧本：照片显影 + 色彩跳变 */
+.transition-void-to-script {
+  animation: photo-develop 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes photo-develop {
+  0% {
+    filter: grayscale(100%) brightness(0.3) blur(6px) contrast(0.5);
+  }
+  30% {
+    filter: grayscale(80%) brightness(0.6) blur(3px) contrast(0.8);
+  }
+  60% {
+    filter: grayscale(30%) brightness(1.1) blur(1px) contrast(1.1);
+  }
+  85% {
+    filter: grayscale(5%) brightness(1.15) saturate(1.3) contrast(0.95);
+  }
+  100% {
+    filter:
+      brightness(var(--script-brightness))
+      saturate(var(--script-saturate))
+      contrast(var(--script-contrast))
+      grayscale(var(--script-grayscale))
+      sepia(var(--script-sepia));
+  }
+}
+
+/* 觉醒崩坏 — RGB Split 故障效果 */
+.glitch-rgb-split {
+  animation: rgb-split 0.1s steps(2) forwards;
+}
+
+@keyframes rgb-split {
+  0% {
+    text-shadow: -2px 0 rgba(255, 0, 0, 0.7), 2px 0 rgba(0, 255, 255, 0.7);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    text-shadow: 3px 0 rgba(255, 0, 0, 0.9), -3px 0 rgba(0, 255, 255, 0.9);
+    filter: hue-rotate(90deg) saturate(2);
+  }
+  100% {
+    text-shadow: none;
+    filter: none;
+  }
+}
+
+/* 画面错位 — 整体偏移 */
+.glitch-offset {
+  animation: frame-offset 0.1s steps(3) forwards;
+}
+
+@keyframes frame-offset {
+  0% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+  33% {
+    transform: translate(-3px, 2px);
+    clip-path: inset(2px 0 0 0);
+  }
+  66% {
+    transform: translate(4px, -1px);
+    clip-path: inset(0 0 2px 0);
+  }
+  100% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. 空白区粒子特效
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 飞舞的纸张 */
 .void-papers {
   position: fixed;
   inset: 0;
@@ -399,19 +640,15 @@ html {
     transform: translateY(110vh) rotate(0deg) translateX(0);
     opacity: 0;
   }
-  10% {
-    opacity: 0.7;
-  }
-  90% {
-    opacity: 0.7;
-  }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
   100% {
     transform: translateY(-10vh) rotate(720deg) translateX(100px);
     opacity: 0;
   }
 }
 
-/* 漂浮的分镜框效果 */
+/* 漂浮分镜框 */
 .void-frames {
   position: fixed;
   inset: 0;
@@ -433,55 +670,18 @@ html {
     transform: translateY(100vh) rotate(-5deg);
     opacity: 0;
   }
-  20% {
-    opacity: 0.4;
-  }
-  80% {
-    opacity: 0.4;
-  }
+  20% { opacity: 0.4; }
+  80% { opacity: 0.4; }
   100% {
     transform: translateY(-20vh) rotate(5deg);
     opacity: 0;
   }
 }
 
-/* 失重漂浮感 */
-.float-anim {
-  animation: float-gentle 3s ease-in-out infinite;
-  will-change: transform;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. 真实色彩锚点
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-@keyframes float-gentle {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateY(-6px) rotate(0.5deg);
-  }
-  75% {
-    transform: translateY(4px) rotate(-0.5deg);
-  }
-}
-
-/* 对话框漂浮（空白区专用） */
-.void-dialogue-float {
-  animation: dialogue-float 4s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes dialogue-float {
-  0%, 100% {
-    transform: translateY(0) translateX(0);
-  }
-  33% {
-    transform: translateY(-8px) translateX(3px);
-  }
-  66% {
-    transform: translateY(4px) translateX(-2px);
-  }
-}
-
-/* ─── 真实色彩锚点 ──────────────────────────────────────────────────────── */
 .real-color {
   filter: grayscale(0%) !important;
   box-shadow: 0 0 12px rgba(255, 105, 180, calc(var(--void-color-opacity) * 0.5)),
@@ -489,7 +689,6 @@ html {
   transition: filter 0.5s ease, box-shadow 0.5s ease;
 }
 
-/* 真实作物高亮 */
 .real-crop {
   filter: grayscale(0%) !important;
   animation: real-crop-glow 2s ease-in-out infinite alternate;
@@ -497,57 +696,59 @@ html {
 }
 
 @keyframes real-crop-glow {
-  0% {
-    box-shadow: 0 0 8px rgba(255, 105, 180, 0.3);
-  }
+  0% { box-shadow: 0 0 8px rgba(255, 105, 180, 0.3); }
   100% {
     box-shadow: 0 0 20px rgba(255, 105, 180, 0.6),
                 0 0 40px rgba(155, 89, 182, 0.3);
   }
 }
 
-/* 救赎料理高亮 */
 .redemption-dish {
   filter: grayscale(0%) !important;
-  background: linear-gradient(135deg,
-    rgba(255, 105, 180, 0.1),
-    rgba(155, 89, 182, 0.1));
+  background: linear-gradient(135deg, rgba(255, 105, 180, 0.1), rgba(155, 89, 182, 0.1));
   box-shadow: 0 0 16px rgba(255, 105, 180, 0.4);
   animation: dish-shimmer 3s ease-in-out infinite;
   will-change: box-shadow;
 }
 
 @keyframes dish-shimmer {
-  0%, 100% {
-    box-shadow: 0 0 16px rgba(255, 105, 180, 0.4);
-  }
+  0%, 100% { box-shadow: 0 0 16px rgba(255, 105, 180, 0.4); }
   50% {
     box-shadow: 0 0 28px rgba(255, 105, 180, 0.7),
                 0 0 48px rgba(155, 89, 182, 0.3);
   }
 }
 
-/* ─── 世界切换过渡动画 ──────────────────────────────────────────────────── */
-.world-transition {
-  animation: world-shift 0.8s ease-in-out;
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. 漂浮动画
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.float-anim {
+  animation: float-gentle 3s ease-in-out infinite;
+  will-change: transform;
 }
 
-@keyframes world-shift {
-  0% {
-    filter: blur(0) brightness(1);
-  }
-  30% {
-    filter: blur(8px) brightness(1.5);
-  }
-  70% {
-    filter: blur(4px) brightness(0.8);
-  }
-  100% {
-    filter: blur(0) brightness(1);
-  }
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(0.5deg); }
+  75% { transform: translateY(4px) rotate(-0.5deg); }
 }
 
-/* ─── 觉醒度进度条 ──────────────────────────────────────────────────────── */
+.void-dialogue-float {
+  animation: dialogue-float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes dialogue-float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  33% { transform: translateY(-8px) translateX(3px); }
+  66% { transform: translateY(4px) translateX(-2px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. 觉醒度进度条
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .awakening-bar {
   height: 6px;
   border-radius: 3px;
@@ -556,17 +757,36 @@ html {
   will-change: width;
 }
 
-/* ─── 性能优化 ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. 性能优化 — GPU 加速 + will-change
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .scripted-world,
-.void-world {
-  will-change: filter;
+.void-world,
+.scripted-dialogue,
+.void-dialogue,
+.void-border-ink {
+  will-change: transform, filter, opacity;
   backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .float-anim,
 .void-dialogue-float,
 .real-crop,
-.redemption-dish {
-  will-change: transform, box-shadow;
+.redemption-dish,
+.void-papers .paper,
+.void-frames .frame {
+  will-change: transform, box-shadow, opacity;
   backface-visibility: hidden;
+}
+
+/* GPU 层提升 — 转场动画 */
+.transition-script-to-void,
+.transition-void-to-script,
+.glitch-rgb-split,
+.glitch-offset {
+  will-change: transform, filter, clip-path;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
