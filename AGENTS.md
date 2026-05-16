@@ -1,4 +1,4 @@
-# 🛡️ LoveSupremacy Bot - AI Agent 宪法 (AGENTS.md)
+# 🛡️ LoveSupremacy Universe - AI Agent 宪法 (AGENTS.md)
 
 > **核心指令**：本文件是最高行为准则。所有代码生成、修改和审查必须无条件遵守以下规则。
 
@@ -19,7 +19,8 @@
 - **极简主义 (YAGNI)**：只实现明确需求的功能。严禁过度设计（如 Factory/Strategy 模式），除非显式要求。
 - **变更最小化**：每次提交只包含与需求直接相关的变更。不要顺手格式化无关代码或修改注释。
 - **绝对导入**：使用 `from system.config import X` 格式。禁止 `from . import` 除非在包内部。
-- **配置中心化**：所有配置（路径、Token、阈值）必须写在 `system/config.py` 或环境变量中，严禁硬编码。
+- **配置中心化**：所有配置（路径、Token、阈值）必须写在 `system/config.py` 或 `.env` 环境变量中，严禁硬编码。
+- **Web 独立性**：Web 服务（FastAPI）不依赖 Telegram Token。未配置 Token 时仅启动 Web，不启动 Telegram Bot。
 
 ---
 
@@ -46,15 +47,17 @@
 
 - **回滚机制**：在进行大规模重构前，必须创建 Git Tag 和 Backup 分支，并告知用户回滚命令。
 - **冲突处理**：如果用户需求与 `design.md` 架构冲突，必须优先遵守 `design.md` 并提示用户，或者要求用户修改 `design.md` 后再执行。
+- **回滚入口**：`bot.py` 是旧版入口（aiohttp），保留作为紧急回滚。当前生产入口为 `main.py`。
 
 ---
 
 ## 📐 代码规范 (Code Standards)
 
 - **导入精度**：禁止 `from xxx import *`，必须显式命名导入符号。
-- **根目录不变量**：`bot.py` 是唯一允许在项目根目录的 Python 文件。所有其他模块必须放在职责划分的包内（`characters/`, `system/`, `game_api/`, `database/`, `packages/`, `tools/`）。
+- **根目录文件**：`main.py`（当前生产入口）和 `bot.py`（回滚入口）是仅有的两个根目录 Python 文件。所有其他模块必须放在职责划分的包内（`api/`, `characters/`, `system/`, `game_api/`, `database/`, `packages/`, `core/`, `tools/`）。
 - **算法上限**：热路径操作算法复杂度上限 O(n log n)，禁止 O(n²)。
-- **进程模型**：单进程、单线程事件循环（python-telegram-bot + aiohttp）。Fork/Thread 仅限于隔离任务。
+- **进程模型**：单进程、单线程事件循环（FastAPI + python-telegram-bot）。Fork/Thread 仅限于隔离任务（如知识库加载）。
+- **数据库操作**：使用 `database/` 模块的 Mixin 模式，通过 `get_db()` 获取单例。严禁直接操作 `sqlite3` 连接。
 
 ---
 
@@ -66,4 +69,4 @@
 
 ---
 
-*最后更新：2026-05-15 v1.6.5-hotfix*
+*最后更新：2026-05-16 v1.9.1*
