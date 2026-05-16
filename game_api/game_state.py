@@ -220,7 +220,7 @@ def _deep_diff(old: any, new: any, path: str, diff: dict):
 
 
 def notify_state_change(user_id: int, changed_keys: Optional[List[str]] = None):
-    """通知状态变更，向所有订阅者推送"""
+    """通知状态变更，向所有订阅者推送 + 桥接到 Telegram"""
     new_version = _bump_version(user_id)
 
     # 更新快照
@@ -234,11 +234,8 @@ def notify_state_change(user_id: int, changed_keys: Optional[List[str]] = None):
         logger.error(f"[GameState] 序列化快照失败: {e}")
         return
 
-    # 推送给订阅者
+    # 推送给 SSE 订阅者
     queues = _subscribers.get(user_id, [])
-    if not queues:
-        return
-
     message = json.dumps({
         'version': new_version,
         'changed_keys': changed_keys or [],
@@ -257,6 +254,16 @@ def notify_state_change(user_id: int, changed_keys: Optional[List[str]] = None):
         queues.remove(q)
 
     logger.debug(f"[GameState] 用户 {user_id} 状态变更 v{new_version}, 推送给 {len(queues)} 个订阅者")
+
+    # 桥接到 Telegram 通知（异步，不阻塞主流程）
+    if changed_keys:
+        try:
+            from core.notification import bridge_web_to_telegram
+            asyncio.get_event_loop().create_task(
+                bridge_web_to_telegram(user_id, changed_keys)
+            )
+        except Exception as e:
+            logger.debug(f"[GameState] Telegram 通知桥接跳过: {e}")
 
 
 async def subscribe_state_changes(user_id: int) -> asyncio.Queue:

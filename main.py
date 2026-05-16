@@ -131,6 +131,10 @@ async def post_init(tg_app: Application):
     await tg_app.bot.set_my_commands(commands)
     logging.info("Bot 命令菜单已设置")
 
+    # 保存 tg_app 实例到通知模块（用于 Web->Telegram 通知桥接）
+    from core.notification import set_tg_app
+    set_tg_app(tg_app)
+
     asyncio.create_task(scheduler(tg_app))
 
     # 主动行为后台任务

@@ -125,6 +125,17 @@ def get_intimacy_context(stats: dict) -> str:
 _last_user_active_time = {}  # chat_id -> datetime
 
 
+def update_user_active_time(user_id: int):
+    """更新用户最后活跃时间。
+
+    在用户发送消息时调用，用于主动行为系统判断用户是否长时间未活跃。
+
+    Args:
+        user_id: 用户的 chat_id
+    """
+    _last_user_active_time[user_id] = datetime.now(get_default_tz())
+
+
 async def check_proactive_actions(app):
     """主动行为定时任务：检查是否需要主动发起对话"""
     while True:

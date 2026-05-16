@@ -17,8 +17,7 @@ from system.prompts import (
 )
 from characters.memory_legacy import detect_correction, learn_from_correction, save_semantic_memory, parse_memory_tags
 from characters.stats import record_request, update_stats_on_message
-from characters.emotion import detect_emotion, add_reaction
-from characters import emotion  # needed for emotion._last_user_active_time
+from characters.emotion import detect_emotion, add_reaction, update_user_active_time
 from characters.chat_history import (
     get_history, save_chat_history, chat_histories, append_bot_message, human_typing_delay,
 )
@@ -191,7 +190,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emotion = detect_emotion(user_text)
 
     # [Skill: self-improving] 更新用户最后活跃时间（用于主动行为）
-    emotion._last_user_active_time[chat_id] = datetime.now(get_default_tz())
+    update_user_active_time(chat_id)
 
     # [Skill: self-improving] 检测用户纠正，从上一条 bot 回复中学习
     history = get_history(chat_id)
