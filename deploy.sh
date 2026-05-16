@@ -37,7 +37,7 @@ if [ ! -d "${PROJECT_DIR}" ]; then
     echo -e "${YELLOW}  项目目录不存在，正在克隆...${NC}"
     # 确保父目录存在
     mkdir -p "$(dirname "${PROJECT_DIR}")"
-    git clone https://github.com/Jasper6439/NxSiran-Telegram-Bot.git "${PROJECT_DIR}"
+    git clone https://github.com/Jasper6439/LoveSupremacy_Universe.git "${PROJECT_DIR}"
     echo -e "${GREEN}  ✓ 项目克隆完成${NC}"
 fi
 

@@ -16,7 +16,7 @@ from characters.chat_history import (
     load_chat_history, save_chat_history, get_history, append_bot_message,
 )
 from database import get_db
-from game_api import authenticate_request
+from api.deps import get_current_user
 
 
 async def api_messages_history(request):

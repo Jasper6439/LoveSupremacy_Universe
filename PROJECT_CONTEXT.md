@@ -6,14 +6,27 @@
 
 - **Name:** 恋爱至上主义区域 (Love Supremacy Zone)
 - **Type:** Telegram Bot + Web Game — 恋爱模拟 RPG
-- **Current Version:** v1.6.4.1
-- **Repository:** `Jasper6439/LoveSupremacy-Telegram-Bot`
+- **Current Version:** v1.9.2
+- **Repository:** `Jasper6439/LoveSupremacy_Universe`
 - **Language:** Python 3.11+
 
 ## Architecture
 
 ```
-bot.py                          # 唯一入口，python-telegram-bot Application
+main.py                          # 生产入口 (FastAPI + Telegram)
+├── api/                        # FastAPI 路由层
+│   ├── __init__.py             # 应用工厂 (create_app)
+│   ├── deps.py                 # 依赖注入 (认证/数据库)
+│   ├── routes_game.py          # 游戏路由 (农场/角色/地图/同步/媒体/学习/上传)
+│   ├── routes_user.py          # 用户路由
+│   ├── routes_chat.py          # 聊天路由
+│   ├── routes_character.py     # 角色路由
+│   ├── routes_sync.py          # SSE 同步路由
+│   ├── routes_media.py         # 媒体路由
+│   ├── routes_world.py         # 世界路由
+│   ├── routes_static.py        # 静态文件 + SPA Fallback
+│   ├── game_state.py           # 游戏状态序列化 + 版本管理
+│   └── awakening_detector.py   # 觉醒检测模块
 ├── system/                     # 系统级模块
 │   ├── config.py               # 全局配置、环境变量、版本号、路径
 │   ├── prompts.py              # 系统提示词、模板、文本处理函数
@@ -30,31 +43,23 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 │   ├── ai_core.py              # call_ai + summarize_and_save_memory
 │   ├── ai_compete.py           # 多模型并行竞争选优
 │   ├── chat_engine.py          # Web/Telegram 统一对话引擎
-│   ├── chat_history.py         # 聊天历史持久化
 │   ├── emotion.py              # 情绪识别、表情反应、亲密度
 │   ├── emotion_analyzer.py     # 关键词情感分析
 │   ├── image_gen.py            # 图片生成（自拍/场景/贴纸）
-│   ├── memory_legacy.py        # JSON 文件长期记忆
-│   ├── qdrant_memory.py        # Qdrant Cloud 向量记忆
 │   ├── tts_engine.py           # TTS 语音合成（Edge TTS / SoVITS / Fish Speech）
 │   ├── weather.py              # 首尔天气查询
 │   ├── music_skill.py          # YouTube Music 搜索
 │   ├── novel_knowledge.py      # LightRAG 小说知识库
 │   ├── anniversary.py          # 纪念日系统
 │   └── stats.py                # 统计、额度、报告
-├── game_api/                   # 游戏 HTTP API（aiohttp 路由）
-│   ├── auth.py                 # 统一认证中间件
-│   ├── farm_routes.py          # 农场种植/收获/浇水/售卖
-│   ├── character_routes.py     # 角色互动/送礼/同步
-│   ├── map_routes.py           # 多地图系统（6地图）
-│   ├── sync_routes.py          # 游戏事件同步 + SSE 实时推送 + 增量 diff
-│   ├── game_state.py           # 状态序列化 + 版本号管理 + 变更通知
-│   ├── cooking_routes.py       # 烹饪 + 每日签到
-│   ├── heart_routes.py         # 心级事件
-│   ├── media_routes.py         # 自拍/贴纸/场景图生成 API
-│   └── awakening_detector.py   # 觉醒阶段检测
+├── core/                       # 统一核心模块
+│   ├── chat_engine.py          # 聊天引擎
+│   ├── farming_cooking.py      # 农场/料理
+│   ├── memory.py               # 记忆管理
+│   └── notification.py         # 通知系统
 ├── database/                   # SQLite 数据库（Mixin 模式）
 │   ├── base.py                 # 连接管理、用户管理、Schema 初始化
+│   ├── auth.py                 # API Token 管理
 │   ├── farm.py                 # 农场 CRUD
 │   ├── maps.py                 # 6 地图定义
 │   ├── inventory.py            # 背包系统
@@ -66,7 +71,6 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 ├── packages/                   # Telegram Bot 子包
 │   ├── handlers/               # Update 分发（text/photo/callback/voice）
 │   ├── commands/               # Bot 命令（basic/skills/extra/quota 等）
-│   ├── web/                    # Web HTTP API 路由注册
 │   ├── bridge/                 # VM 远程命令/文件桥接
 │   ├── analysis/               # 聊天记录统计分析
 │   └── importers/              # 外部数据导入（视频/聊天记录）
@@ -75,8 +79,8 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 │   ├── create_character.py     # 新角色模板生成
 │   ├── version_manager.py      # 角色版本备份/回滚
 │   ├── init_admin.py           # 管理员初始化
-│   └── _archive/               # 归档文件（bot_instance/manager 等）
-├── web-v2/                     # React + TypeScript + Vite 前端
+│   └── _archive/               # 归档文件（bot_legacy.py 等）
+├── web-v2/                     # React 19 + TypeScript + Vite 前端
 ├── characters/chayewoon/       # 角色数据（车如云）
 │   ├── config.json             # 角色配置
 │   ├── persona.md              # 角色详细设定
@@ -92,9 +96,9 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 | Layer | Technology |
 |-------|-----------|
 | Bot Framework | python-telegram-bot (async) |
-| Web Server | aiohttp |
+| Web Server | FastAPI |
 | Database | SQLite (stdlib) |
-| Frontend | React + TypeScript + Vite + Tailwind + Zustand + Phaser.js |
+| Frontend | React 19 + TypeScript + Vite + Tailwind + Zustand + Phaser 4 |
 | AI | OpenRouter API (多模型 fallback) |
 | Memory | Qdrant Cloud (向量) + JSON 文件 (长期) |
 | TTS | Edge TTS / GPT-SoVITS / Fish Speech |
@@ -117,7 +121,7 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 - **Absolute imports only:** `from system.config import X`, `from characters.ai_client import Y`
 - **Relative imports only within-package:** `from .sibling import Z` (inside characters/, database/, etc.)
 - **No re-export shims:** All imports resolve to canonical module location
-- **Root directory:** Only `bot.py` is permitted at project root
+- **Root directory:** Only `main.py` is permitted at project root. `bot.py` archived to `tools/_archive/bot_legacy.py`.
 
 ## Database
 
@@ -143,3 +147,5 @@ bot.py                          # 唯一入口，python-telegram-bot Application
 3. **Web + Telegram dual interface** — `chat_engine.py` provides unified chat processing for both web and Telegram.
 4. **Qdrant for semantic memory** — Replaces ChromaDB. Remote Qdrant Cloud with LRU cache (500 entries).
 5. **Config-driven** — All paths, tokens, model lists in `system/config.py` via environment variables.
+6. **FastAPI unification (v1.9.2)** — 废弃 aiohttp，全项目统一使用 FastAPI 作为唯一 Web 框架。原 `game_api/` 目录的所有路由已迁移至 `api/routes_game.py`。原因：消除双框架维护成本，统一认证/依赖注入/错误处理模式。
+7. **Web independence** — Web 服务不依赖 Telegram Token。未配置 TOKEN 时仅启动 Web 服务，Telegram Bot 功能跳过。

@@ -5,8 +5,8 @@ v1.6.5 — 为移动端游戏提供触控操作适配端点
 
 import logging
 from aiohttp import web
-from game_api.auth import authenticate_request
-from game_api.game_state import notify_state_change
+from api.deps import get_current_user
+from api.game_state import notify_state_change
 from database import get_db
 
 logger = logging.getLogger(__name__)

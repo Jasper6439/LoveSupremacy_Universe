@@ -45,16 +45,15 @@
 
 ## 🛠️ 错误处理与回滚
 
-- **回滚机制**：在进行大规模重构前，必须创建 Git Tag 和 Backup 分支，并告知用户回滚命令。
+- **回滚机制**：在进行大规模重构前，必须创建 Git Tag 和 Backup 分支，并告知用户回滚命令。旧版入口归档在 `tools/_archive/bot_legacy.py`。
 - **冲突处理**：如果用户需求与 `design.md` 架构冲突，必须优先遵守 `design.md` 并提示用户，或者要求用户修改 `design.md` 后再执行。
-- **回滚入口**：`bot.py` 是旧版入口（aiohttp），保留作为紧急回滚。当前生产入口为 `main.py`。
 
 ---
 
 ## 📐 代码规范 (Code Standards)
 
 - **导入精度**：禁止 `from xxx import *`，必须显式命名导入符号。
-- **根目录文件**：`main.py`（当前生产入口）和 `bot.py`（回滚入口）是仅有的两个根目录 Python 文件。所有其他模块必须放在职责划分的包内（`api/`, `characters/`, `system/`, `game_api/`, `database/`, `packages/`, `core/`, `tools/`）。
+- **根目录文件**：`main.py` 是唯一的生产入口。所有其他模块必须放在职责划分的包内（`api/`, `characters/`, `system/`, `database/`, `packages/`, `core/`, `tools/`）。旧版入口 `bot.py` 已归档至 `tools/_archive/bot_legacy.py`。
 - **算法上限**：热路径操作算法复杂度上限 O(n log n)，禁止 O(n²)。
 - **进程模型**：单进程、单线程事件循环（FastAPI + python-telegram-bot）。Fork/Thread 仅限于隔离任务（如知识库加载）。
 - **数据库操作**：使用 `database/` 模块的 Mixin 模式，通过 `get_db()` 获取单例。严禁直接操作 `sqlite3` 连接。

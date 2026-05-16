@@ -1,5 +1,5 @@
 """
-api/__init__.py - FastAPI 应用工厂 (v1.7)
+api/__init__.py - FastAPI 应用工厂 (v1.9.2)
 ==========================================
 创建并配置 FastAPI 应用实例，注册所有路由和中间件。
 """
@@ -16,7 +16,7 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(
         title="LoveSupremacy Universe",
-        version="1.7.0",
+        version="1.9.2",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     from api.routes_chat import router as chat_router
     from api.routes_static import router as static_router, SPAFallbackMiddleware
     from api.routes_game import router as game_router
+    from api.routes_game import learning_router, upload_router
     from api.routes_character import router as character_router
     from api.routes_sync import router as sync_router
     from api.routes_media import router as media_router
@@ -48,6 +49,8 @@ def create_app() -> FastAPI:
     app.include_router(user_router)
     app.include_router(chat_router)
     app.include_router(game_router)
+    app.include_router(learning_router)
+    app.include_router(upload_router)
     app.include_router(character_router)
     app.include_router(sync_router)
     app.include_router(media_router)

@@ -1,7 +1,7 @@
 """
 api/routes_sync.py - 同步 + 全量状态 API + SSE 实时推送
 ======================================================
-从 game_api/sync_routes.py 迁移至 FastAPI APIRouter 格式。
+从 api/routes_game.py 迁移至独立模块。
 
 包含 11 条路由：
 - GET  /api/game/events          获取未同步的游戏事件
@@ -30,7 +30,7 @@ from pydantic import BaseModel
 from api.deps import get_current_user
 from database import get_db
 from characters import get_current_character
-from game_api.game_state import (
+from api.game_state import (
     serialize_game_state, get_state_version, notify_state_change,
     compute_state_diff, get_snapshot, subscribe_state_changes,
     unsubscribe_state_changes,

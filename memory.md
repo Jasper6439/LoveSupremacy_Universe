@@ -4,6 +4,29 @@
 
 ---
 
+## [2026-05-16] v1.9.2 Project Unity 架构重构
+
+**Context**: 消除技术债，统一技术栈，确保生产环境稳定性
+
+**Category**: 架构重构
+
+**变更内容**:
+
+| 步骤 | 变更 |
+|------|------|
+| 版本标准化 | 全项目版本号统一为 1.9.2 |
+| FastAPI 迁移 | game_api/ (aiohttp) 迁移至 api/routes_game.py (FastAPI) |
+| 入口清洗 | bot.py 归档至 tools/_archive/bot_legacy.py |
+| 部署优化 | deploy.sh 和 nx_siran.service 路径统一 |
+| 文档同步 | README/PROJECT_CONTEXT/AGENTS/design.md 全部更新 |
+
+**核心架构变更**:
+- 废弃 aiohttp，全项目统一 FastAPI
+- main.py 为唯一生产入口
+- Web 服务独立于 Telegram Token
+
+---
+
 ## [2026-05-15] v1.6.5-hotfix 核心文件更新
 
 **Context**: 紧急更新项目宪法文件，确立 e2-micro 极限优化规范

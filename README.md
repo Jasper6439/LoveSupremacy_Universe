@@ -102,18 +102,31 @@ Phaser.js 渲染的农场经营小游戏，与角色互动：
 
 | 组件 | 技术 |
 |------|------|
-| 后端 | Python 3.11+ / python-telegram-bot / aiohttp |
+| 后端 | Python 3.11+ / FastAPI / python-telegram-bot |
 | AI | OpenRouter（多模型）/ Gemini 2.5 Flash |
 | 向量数据库 | Qdrant Cloud |
 | 关系数据库 | SQLite |
-| 前端 | React + TypeScript + Vite + Tailwind + Zustand + Phaser.js |
+| 前端 | React 19 + TypeScript + Vite + Tailwind + Zustand + Phaser 4 |
 | 部署 | GCP e2-micro / systemd / Cloudflare Tunnel |
 | CI/CD | GitHub Webhook → git pull + systemctl restart |
 
 ## 项目结构
 
 ```
-bot.py                          # 唯一入口
+main.py                          # 生产入口 (FastAPI + Telegram)
+├── api/                        # FastAPI 路由层
+│   ├── __init__.py             # 应用工厂 (create_app)
+│   ├── deps.py                 # 依赖注入 (认证/数据库)
+│   ├── routes_game.py          # 游戏路由 (农场/角色/地图/同步/媒体/学习/上传)
+│   ├── routes_user.py          # 用户路由
+│   ├── routes_chat.py          # 聊天路由
+│   ├── routes_character.py     # 角色路由
+│   ├── routes_sync.py          # SSE 同步路由
+│   ├── routes_media.py         # 媒体路由
+│   ├── routes_world.py         # 世界路由
+│   ├── routes_static.py        # 静态文件 + SPA Fallback
+│   ├── game_state.py           # 游戏状态序列化 + 版本管理
+│   └── awakening_detector.py   # 觉醒检测模块
 ├── system/                     # 系统级模块
 │   ├── config.py               # 全局配置、环境变量、版本号
 │   ├── prompts.py              # 系统提示词、模板、文本处理
@@ -129,33 +142,30 @@ bot.py                          # 唯一入口
 │   ├── ai_core.py              # call_ai + 记忆提取
 │   ├── ai_compete.py           # 多模型竞争选优
 │   ├── chat_engine.py          # 统一对话引擎
-│   ├── chat_history.py         # 聊天历史
 │   ├── emotion.py              # 情绪系统
 │   ├── image_gen.py            # 图片生成
-│   ├── memory_legacy.py        # JSON 长期记忆
-│   ├── qdrant_memory.py        # Qdrant 向量记忆
 │   ├── tts_engine.py           # TTS 语音合成
 │   └── ...                     # weather, music, novel, anniversary, stats
-├── game_api/                   # 游戏 HTTP API
-│   ├── farm_routes.py          # 农场种植/收获
-│   ├── map_routes.py           # 多地图系统
-│   ├── character_routes.py     # 角色互动
-│   ├── sync_routes.py          # 游戏同步
-│   └── ...                     # cooking, heart, media, auth, awakening
+├── core/                       # 统一核心模块
+│   ├── chat_engine.py          # 聊天引擎
+│   ├── farming_cooking.py      # 农场/料理
+│   ├── memory.py               # 记忆管理
+│   └── notification.py         # 通知系统
 ├── database/                   # SQLite（Mixin 模式）
 │   ├── base.py                 # 连接管理 + Schema
+│   ├── auth.py                 # API Token 管理
 │   ├── farm.py                 # 农场 CRUD
 │   ├── relationship.py         # 关系/情感/觉醒
 │   └── ...                     # maps, inventory, cooking, chat, player, events
 ├── packages/                   # Telegram Bot 子包
 │   ├── handlers/               # 消息处理（text/photo/callback/voice）
 │   ├── commands/               # Bot 命令
-│   ├── web/                    # Web HTTP API 路由
 │   ├── bridge/                 # VM 桥接
 │   ├── analysis/               # 聊天记录分析
 │   └── importers/              # 数据导入
-├── web-v2/                     # React 前端
+├── web-v2/                     # React 19 前端
 ├── tools/                      # 工具脚本
+│   └── _archive/               # 归档文件 (bot_legacy.py 等)
 ├── knowledge/                  # LightRAG 知识库
 └── data/                       # 运行时数据
 ```
@@ -165,19 +175,21 @@ bot.py                          # 唯一入口
 ### 环境要求
 
 - Python 3.10+
-- Telegram Bot Token（从 [@BotFather](https://t.me/BotFather) 获取）
 - OpenRouter API Key（从 [openrouter.ai](https://openrouter.ai) 获取，免费）
+- Telegram Bot Token（可选，从 [@BotFather](https://t.me/BotFather) 获取）
 
 ### 安装
 
 ```bash
-git clone https://github.com/Jasper6439/LoveSupremacy-Telegram-Bot.git
-cd LoveSupremacy-Telegram-Bot
+git clone https://github.com/Jasper6439/LoveSupremacy_Universe.git
+cd LoveSupremacy_Universe
 pip install -r requirements.txt
 cp .env.example .env
-# 编辑 .env 填入 TELEGRAM_TOKEN, AI_API_KEY 等
-python bot.py
+# 编辑 .env 填入 OPENROUTER_API_KEY（TELEGRAM_TOKEN 为可选）
+python main.py
 ```
+
+> 未配置 `TELEGRAM_TOKEN` 时，仅启动 Web 服务（端口 8080），Telegram Bot 功能跳过。
 
 ### Docker 部署
 

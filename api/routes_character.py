@@ -16,7 +16,7 @@ from api.deps import get_current_user
 from database import get_db
 from system.config import get_default_tz
 from characters import get_current_character
-from game_api.game_state import notify_state_change
+from api.game_state import notify_state_change
 from characters.character_learning import evolve_character, get_learning
 
 logger = logging.getLogger(__name__)
