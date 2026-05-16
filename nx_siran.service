@@ -9,8 +9,8 @@ User=root
 # 工作目录
 WorkingDirectory=/opt/LoveSupremacy-Telegram-Bot
 
-# 自动检测 Python 路径（优先使用虚拟环境）
-ExecStart=/bin/bash -c 'PYTHON=$(which python3); if [ -f "/opt/LoveSupremacy-Telegram-Bot/venv/bin/python" ]; then PYTHON="/opt/LoveSupremacy-Telegram-Bot/venv/bin/python"; fi; exec ${PYTHON} /opt/LoveSupremacy-Telegram-Bot/main.py'
+# 直接使用 python3 启动（systemd 环境中 which 不可靠）
+ExecStart=/usr/bin/python3 /opt/LoveSupremacy-Telegram-Bot/main.py
 
 # 环境变量文件
 EnvironmentFile=/opt/LoveSupremacy-Telegram-Bot/.env
