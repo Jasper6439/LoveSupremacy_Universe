@@ -29,6 +29,11 @@ from packages.commands.basic import selfie_cmd, reset, memory_cmd
 from packages.commands.skills import sticker_cmd, stats_cmd
 from packages.commands.misc import anniversary_cmd
 
+# [Services Integration] 导入服务模块
+from services.tts_service import get_tts_service, send_voice_to_telegram
+from services.image_service import get_image_service, send_image_to_telegram, check_and_generate_image
+from services.evolution_service import analyze_and_evolve, get_context_for_reply
+
 # Lazy import for bot.call_ai (the high-level AI function with character/memory/emotion integration)
 from packages.commands.utils import _get_call_ai
 
@@ -230,14 +235,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # [Skill: Music] 检测音乐搜索请求
     want_music, song_name = detect_music_request(user_text)
 
+    # [Service: Image] 检测视觉意图（新的图像生成服务）
+    image_service = get_image_service()
+    has_visual_intent, scene_type = image_service.detect_visual_intent(user_text)
+
     # [Skill: 打字模拟] 人类打字延迟
     await human_typing_delay(chat_id, update.get_bot(), len(user_text))
 
     # [Skill: 更新统计]
     update_stats_on_message(chat_id)
 
-    # AI回复（带情绪上下文）
-    reply = await _get_call_ai()(user_text, history, emotion=emotion)
+    # [Service: Evolution] 获取用户专属上下文（记忆+角色状态）
+    user_id = update.effective_user.id
+    character_id = "chayewoon"  # 当前默认角色
+    try:
+        evolution_context = await get_context_for_reply(user_id, character_id)
+        if evolution_context.get("memories"):
+            logging.info(f"[Evolution] 加载 {len(evolution_context['memories'])} 条记忆用于回复")
+    except Exception as e:
+        logging.error(f"[Evolution] 获取上下文失败: {e}")
+        evolution_context = {}
+
+    # AI回复（带情绪上下文和进化记忆）
+    # 将记忆添加到历史上下文中
+    history_with_context = history.copy()
+    if evolution_context.get("memories"):
+        memory_prompt = "以下是你记住的关于学长的事：\n" + "\n".join([f"- {m}" for m in evolution_context["memories"][:3]])
+        history_with_context.insert(0, {"role": "system", "content": memory_prompt})
+    if evolution_context.get("system_prompt_additions"):
+        history_with_context.insert(0, {"role": "system", "content": evolution_context["system_prompt_additions"]})
+
+    reply = await _get_call_ai()(user_text, history_with_context, emotion=emotion)
 
     # v0.3: 解析对话选项
     parsed = parse_dialogue_options(reply)
@@ -295,6 +323,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if count >= 10:
         message_count[chat_id] = 0
         asyncio.create_task(_get_summarize_func()(chat_id))
+
+    # [Service: Evolution] 对话结束后分析并保存记忆（后台异步执行）
+    async def _evolve_after_conversation():
+        try:
+            # 准备对话历史
+            chat_history_for_evolution = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in history[-20:]  # 最近20条消息
+            ]
+            result = await analyze_and_evolve(user_id, character_id, chat_history_for_evolution)
+            logging.info(f"[Evolution] 分析完成: 新增 {result.get('memories_added', 0)} 条记忆, "
+                        f"获得 {result.get('evolution_points', 0)} 进化点, "
+                        f"情绪状态: {result.get('emotion_state', 'neutral')}")
+        except Exception as e:
+            logging.error(f"[Evolution] 对话分析失败: {e}")
+
+    # 每5条消息触发一次进化分析
+    if count % 5 == 0:
+        asyncio.create_task(_evolve_after_conversation())
 
     # 发送回复 + 附加内容
     if want_selfie:
@@ -357,6 +404,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logging.error(f"[Music] 自然语言触发失败: {e}")
             await update.message.reply_text("...（搜索失败）网络问题。")
+    elif has_visual_intent and not want_selfie and not want_scene:
+        # [Service: Image] 检测到视觉意图，生成并发送图片
+        await update.message.reply_text(reply_text)
+        await asyncio.sleep(1)
+        await update.message.chat.send_action("upload_photo")
+        try:
+            # 生成提示词
+            chat_history_for_image = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in history[-10:]
+            ]
+            prompt = image_service.generate_prompt_from_context(chat_history_for_image, scene_type)
+            # 生成图片
+            image_path = await image_service.generate_image(prompt)
+            if image_path:
+                # 发送图片
+                caption = await _get_call_ai()(f"学长让我发照片，用一句话害羞地回应，不超过10个字")
+                success = await send_image_to_telegram(context.bot, chat_id, image_path, caption)
+                if success:
+                    append_bot_message(chat_id, f"[发送了一张照片] {caption}")
+                else:
+                    await update.message.reply_text("...（发送图片失败）")
+            else:
+                await update.message.reply_text("...（图片生成失败）")
+        except Exception as e:
+            logging.error(f"[Image] 生成/发送图片失败: {e}")
+            await update.message.reply_text("...（图片生成失败）")
     else:
         # v0.3: 如果有选项，渲染 InlineKeyboard
         if has_options and options:
@@ -406,22 +480,41 @@ async def send_active_message(app, msg):
         logging.error(f"发送主动消息失败: {e}")
 
 async def send_smart_reply(update: Update, text: str):
-    """智能回复: 根据用户设置选择文字/语音"""
+    """智能回复: 根据用户设置选择文字/语音（集成 services/tts_service）"""
     if not text:
         return
-    from packages.handlers.voice import tts, user_voice_enabled, TTSEngine
+    from packages.handlers.voice import user_voice_enabled
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
     if user_voice_enabled.get(user_id, False):
-        voice_path = await tts.synthesize(text)
-        if voice_path:
-            try:
-                with open(voice_path, "rb") as f:
-                    await update.message.reply_voice(f)
-                await update.message.reply_text(f"🎤 {text}")
-            except Exception as e:
-                logging.error(f"发送语音失败: {e}")
-                await update.message.reply_text(text)
-            finally:
-                TTSEngine._safe_delete(voice_path)
-            return
+        # [Service: TTS] 使用新的 TTS 服务生成语音
+        try:
+            tts_service = get_tts_service()
+            voice_path = await tts_service.synthesize(text, character_id="chayewoon", emotion="neutral")
+            if voice_path and os.path.exists(voice_path):
+                try:
+                    with open(voice_path, "rb") as f:
+                        await update.message.reply_voice(f)
+                    await update.message.reply_text(f"🎤 {text}")
+                except Exception as e:
+                    logging.error(f"[TTS] 发送语音失败: {e}")
+                    await update.message.reply_text(text)
+                return
+            else:
+                logging.warning("[TTS] 语音合成失败，回退到文字")
+        except Exception as e:
+            logging.error(f"[TTS] 语音合成异常: {e}")
+
     await update.message.reply_text(text)
+
+
+# [Service: TTS] 便捷函数：发送语音消息到指定聊天
+async def send_voice_reply(bot, chat_id: int, text: str, character_id: str = "chayewoon") -> bool:
+    """使用 TTS 服务发送语音消息"""
+    try:
+        success = await send_voice_to_telegram(bot, chat_id, text, character_id)
+        return success
+    except Exception as e:
+        logging.error(f"[TTS] 发送语音消息失败: {e}")
+        return False
