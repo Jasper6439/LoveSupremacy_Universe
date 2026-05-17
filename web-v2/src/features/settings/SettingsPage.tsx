@@ -238,9 +238,9 @@ export default function SettingsPage() {
   };
 
   const handleExportData = () => {
-    const data = localStorage.getItem('nxsiran-game-storage');
+    const data = localStorage.getItem('auth_token');
     if (data) {
-      const blob = new Blob([data], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ auth_token: data })], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -251,7 +251,7 @@ export default function SettingsPage() {
   };
 
   const handleClearCache = () => {
-    localStorage.removeItem('nxsiran-game-storage');
+    localStorage.clear();
     window.location.reload();
   };
 

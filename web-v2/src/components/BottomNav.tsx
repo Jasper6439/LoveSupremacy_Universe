@@ -5,7 +5,6 @@ export function BottomNav() {
   
   const navItems = [
     { path: '/', label: '首页', icon: '🏠' },
-    { path: '/game', label: '农场', icon: '🌱' },
     { path: '/chat', label: '聊天', icon: '💬' },
     { path: '/settings', label: '设置', icon: '⚙️' },
   ];

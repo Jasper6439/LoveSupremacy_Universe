@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// 路由配置 v1.9.5 - 游戏模块完全隔离
-// 农场 /farm 和校园 /campus 独立路由，互斥渲染
+// 路由配置 - 核心页面路由
 // ═══════════════════════════════════════════════════════════════════════════
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
@@ -11,10 +10,10 @@ import MainLayout from '../layouts/MainLayout';
 // 页面 - 使用懒加载优化性能
 const HomePage = lazy(() => import('../features/home/HomePage'));
 const ChatPage = lazy(() => import('../features/chat/ChatPage'));
-const GameHubPage = lazy(() => import('../features/game/GameHubPage'));
-const FarmPage = lazy(() => import('../features/game/FarmPage'));
-const CampusPage = lazy(() => import('../features/game/CampusPage'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
+
+// 游戏容器 (dual-world layout)
+const GameContainer = lazy(() => import('../features/game/GameContainer'));
 
 // 加载占位
 const PageLoader = () => (
@@ -37,20 +36,17 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: withSuspense(HomePage) },
       { path: 'chat', element: withSuspense(ChatPage) },
-      
-      // 游戏中心 - 选择入口
-      { path: 'game', element: withSuspense(GameHubPage) },
-      
-      // 农场游戏 - 完全独立路由
-      { path: 'farm', element: withSuspense(FarmPage) },
-      
-      // 校园漫游 - 完全独立路由  
-      { path: 'campus', element: withSuspense(CampusPage) },
-      
       { path: 'settings', element: withSuspense(SettingsPage) },
-      
-      // 旧路由重定向
-      { path: 'miniapp', element: <Navigate to="/game" replace /> },
+      // Game routes - GameContainer acts as layout with dual-world effects
+      {
+        path: 'game',
+        element: withSuspense(GameContainer),
+        children: [
+          { index: true, element: <Navigate to="/game/farm" replace /> },
+          { path: 'farm', element: <div className="p-4 text-center text-gray-500">Farm Scene - Coming Soon</div> },
+          { path: 'action', element: <div className="p-4 text-center text-gray-500">Action Scene - Coming Soon</div> },
+        ],
+      },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
@@ -61,8 +57,6 @@ export const ROUTE_META = {
   home: { path: '/', label: '首页', icon: '🏠' },
   chat: { path: '/chat', label: '聊天', icon: '💬' },
   game: { path: '/game', label: '游戏', icon: '🎮' },
-  farm: { path: '/farm', label: '农场', icon: '🌾' },
-  campus: { path: '/campus', label: '校园', icon: '🏫' },
   settings: { path: '/settings', label: '设置', icon: '⚙️' },
 } as const;
 
