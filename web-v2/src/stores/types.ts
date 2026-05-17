@@ -54,15 +54,15 @@ export interface CharacterData {
   dialogues: DialogueEntry[];
   currentDialogueIndex: number;
   // 行为
-  mood: 'happy' | 'neutral' | 'sad' | 'awakening';
-  wanderArea: { x: number; y: number; width: number; height: number };
+  mood?: 'happy' | 'neutral' | 'sad' | 'awakening';
+  wanderArea?: { x: number; y: number; width: number; height: number };
   wanderTarget?: { x: number; y: number };
-  lastWanderTime: number;
+  lastWanderTime?: number;
   // 日程
-  schedule: Record<string, { x: number; y: number; activity: string }>;
+  schedule?: Record<string, { x: number; y: number; activity: string }>;
   // 喜好
-  likedGifts: string[];
-  dislikedGifts: string[];
+  likedGifts?: string[];
+  dislikedGifts?: string[];
 }
 
 export interface DialogueEntry {
