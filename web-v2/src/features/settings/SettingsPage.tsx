@@ -46,9 +46,17 @@ export default function SettingsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
+  const [forgotForm, setForgotForm] = useState({ email: '' });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState<string>('v1.6.5');
 
   // ===== Telegram 配置相关状态 =====
@@ -85,7 +93,7 @@ export default function SettingsPage() {
       const res = await fetch(`${API_BASE}/api/version`);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.version) {
+        if (data.version) {
           setAppVersion(`v${data.version}`);
         }
       }
@@ -421,6 +429,23 @@ export default function SettingsPage() {
             />
           </div>
 
+          {/* 记住账号 */}
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={localStorage.getItem('rememberUsername') !== null}
+              onChange={(e) => {
+                if (e.target.checked && loginForm.username) {
+                  localStorage.setItem('rememberUsername', loginForm.username);
+                } else {
+                  localStorage.removeItem('rememberUsername');
+                }
+              }}
+              className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-400"
+            />
+            记住账号
+          </label>
+
           {loginError && (
             <p className="text-sm text-red-500 text-center">{loginError}</p>
           )}
@@ -434,8 +459,202 @@ export default function SettingsPage() {
             {isLoggingIn ? '登录中...' : '登录'}
           </GlassButton>
 
+          {/* 注册 & 找回密码 */}
+          <div className="flex justify-center gap-4 text-sm">
+            <button
+              className="text-brand-500 hover:underline"
+              onClick={() => {
+                setShowLoginModal(false);
+                setShowRegisterModal(true);
+              }}
+            >
+              新用户注册
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              className="text-gray-500 hover:text-brand-500"
+              onClick={() => {
+                setShowLoginModal(false);
+                setShowForgotModal(true);
+              }}
+            >
+              忘记密码？
+            </button>
+          </div>
+
           <p className="text-xs text-gray-400 text-center">
-            登录后可保存游戏进度并与小樱聊天
+            登录后可保存游戏进度并与车如云聊天
+          </p>
+        </div>
+      </GlassModal>
+
+      {/* 注册弹窗 */}
+      <GlassModal isOpen={showRegisterModal} onClose={() => setShowRegisterModal(false)} title="注册账号" position="center">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+            <input
+              type="text"
+              value={registerForm.username}
+              onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
+              placeholder="请输入用户名"
+              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+            <input
+              type="email"
+              value={registerForm.email}
+              onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+              placeholder="请输入邮箱"
+              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">密码</label>
+            <input
+              type="password"
+              value={registerForm.password}
+              onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+              placeholder="请输入密码（至少6位）"
+              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+            <input
+              type="password"
+              value={registerForm.confirmPassword}
+              onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+              placeholder="请再次输入密码"
+              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+            />
+          </div>
+
+          {registerError && (
+            <p className="text-sm text-red-500 text-center">{registerError}</p>
+          )}
+
+          <GlassButton
+            variant="primary"
+            className="w-full py-3"
+            onClick={async () => {
+              if (registerForm.password !== registerForm.confirmPassword) {
+                setRegisterError('两次输入的密码不一致');
+                return;
+              }
+              if (registerForm.password.length < 6) {
+                setRegisterError('密码至少需要6位');
+                return;
+              }
+              setIsRegistering(true);
+              setRegisterError(null);
+              try {
+                const res = await fetch(`${API_BASE}/api/register`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    username: registerForm.username,
+                    email: registerForm.email,
+                    password: registerForm.password,
+                  }),
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                  setShowRegisterModal(false);
+                  setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
+                  setShowLoginModal(true);
+                } else {
+                  setRegisterError(data.error || '注册失败');
+                }
+              } catch {
+                setRegisterError('网络错误，请稍后重试');
+              } finally {
+                setIsRegistering(false);
+              }
+            }}
+            disabled={isRegistering}
+          >
+            {isRegistering ? '注册中...' : '注册'}
+          </GlassButton>
+
+          <p className="text-xs text-gray-400 text-center">
+            已有账号？{' '}
+            <button
+              className="text-brand-500 hover:underline"
+              onClick={() => {
+                setShowRegisterModal(false);
+                setShowLoginModal(true);
+              }}
+            >
+              立即登录
+            </button>
+          </p>
+        </div>
+      </GlassModal>
+
+      {/* 找回密码弹窗 */}
+      <GlassModal isOpen={showForgotModal} onClose={() => setShowForgotModal(false)} title="找回密码" position="center">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 text-center">
+            请输入注册时使用的邮箱，我们将发送重置链接。
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+            <input
+              type="email"
+              value={forgotForm.email}
+              onChange={(e) => setForgotForm({ ...forgotForm, email: e.target.value })}
+              placeholder="请输入邮箱"
+              className="w-full px-4 py-3 bg-white/50 rounded-ios-lg border border-gray-200/50 focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+            />
+          </div>
+
+          {forgotSuccess && (
+            <p className="text-sm text-green-500 text-center">{forgotSuccess}</p>
+          )}
+
+          <GlassButton
+            variant="primary"
+            className="w-full py-3"
+            onClick={async () => {
+              setIsSendingReset(true);
+              setForgotSuccess(null);
+              try {
+                const res = await fetch(`${API_BASE}/api/forgot-password`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: forgotForm.email }),
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                  setForgotSuccess('重置链接已发送到您的邮箱，请查收');
+                } else {
+                  setForgotSuccess(data.error || '发送失败，请检查邮箱地址');
+                }
+              } catch {
+                setForgotSuccess('网络错误，请稍后重试');
+              } finally {
+                setIsSendingReset(false);
+              }
+            }}
+            disabled={isSendingReset}
+          >
+            {isSendingReset ? '发送中...' : '发送重置链接'}
+          </GlassButton>
+
+          <p className="text-xs text-gray-400 text-center">
+            想起密码了？{' '}
+            <button
+              className="text-brand-500 hover:underline"
+              onClick={() => {
+                setShowForgotModal(false);
+                setShowLoginModal(true);
+              }}
+            >
+              返回登录
+            </button>
           </p>
         </div>
       </GlassModal>

@@ -259,7 +259,7 @@ export function ChatPage() {
                 开始和车如云聊天吧
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-                她是《恋爱至上主义区域》中的傲娇女主角，试着和她聊聊看？
+                他是《恋爱至上主义区域》中的傲娇男主角，试着和他聊聊看？
               </p>
             </div>
           ) : (
