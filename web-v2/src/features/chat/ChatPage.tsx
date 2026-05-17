@@ -33,16 +33,17 @@ export function ChatPage() {
   // Check login status
   useEffect(() => {
     const checkLogin = () => {
+      const authToken = localStorage.getItem('auth_token');
       const sessionToken = localStorage.getItem('session_token');
       const apiToken = localStorage.getItem('api_token');
-      setIsLoggedIn(!!(sessionToken || apiToken));
+      setIsLoggedIn(!!(authToken || sessionToken || apiToken));
     };
 
     checkLogin();
 
     // Listen for login/logout events from other tabs/pages
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'session_token' || e.key === 'api_token') {
+      if (e.key === 'auth_token' || e.key === 'session_token' || e.key === 'api_token') {
         checkLogin();
       }
     };
@@ -85,9 +86,10 @@ export function ChatPage() {
     setMessages(prev => [...prev, assistantMessage]);
 
     // Get auth token
+    const authToken = localStorage.getItem('auth_token');
     const sessionToken = localStorage.getItem('session_token');
     const apiToken = localStorage.getItem('api_token');
-    const token = sessionToken || apiToken;
+    const token = authToken || sessionToken || apiToken;
 
     if (!token) {
       setMessages(prev =>

@@ -82,22 +82,52 @@ export function GlassModal({ isOpen, onClose, title, children, position = 'cente
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
+  if (position === 'bottom') {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 rounded-t-ios-2xl bg-white/85 backdrop-blur-xl border border-white/30 shadow-modal-heavy safe-area-bottom"
+            >
+              {title && <div className="px-5 py-4 border-b border-gray-200/30"><h2 className="text-lg font-semibold text-gray-800">{title}</h2></div>}
+              <div className="p-5 max-h-[70vh] overflow-y-auto scroll-touch">{children}</div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // center 模式：使用 flexbox 居中，避免内容溢出视口
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 safe-area-bottom">
           <motion.div
-            initial={{ opacity: 0, y: position === 'bottom' ? '100%' : 0, scale: position === 'center' ? 0.9 : 1 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: position === 'bottom' ? '100%' : 0, scale: position === 'center' ? 0.9 : 1 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`fixed z-50 ${position === 'center' ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md' : 'bottom-0 left-0 right-0 rounded-t-ios-2xl'} bg-white/85 backdrop-blur-xl rounded-ios-xl border border-white/30 shadow-modal-heavy safe-area-bottom`}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative z-10 w-11/12 max-w-md max-h-[85vh] flex flex-col bg-white/85 backdrop-blur-xl rounded-ios-xl border border-white/30 shadow-modal-heavy overflow-hidden"
           >
-            {title && <div className="px-5 py-4 border-b border-gray-200/30"><h2 className="text-lg font-semibold text-gray-800">{title}</h2></div>}
-            <div className="p-5 max-h-[70vh] overflow-y-auto scroll-touch">{children}</div>
+            {title && <div className="px-5 py-4 border-b border-gray-200/30 shrink-0"><h2 className="text-lg font-semibold text-gray-800">{title}</h2></div>}
+            <div className="p-5 overflow-y-auto scroll-touch">{children}</div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
