@@ -306,3 +306,20 @@
   box-shadow: none;
   background: linear-gradient(90deg, #666666, #000000);
 }
+
+/* ─── Canvas Filter (Phaser) ──────────────────────────────────────────── */
+/* CSS filter on Phaser canvas parent transforms canvas output */
+.script-canvas canvas,
+.void-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.script-canvas {
+  filter: brightness(1.1) saturate(1.2) contrast(0.9);
+}
+
+.void-canvas {
+  filter: grayscale(100%) contrast(1.5) brightness(0.9);
+}

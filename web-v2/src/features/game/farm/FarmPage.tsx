@@ -27,9 +27,12 @@ export default function FarmPage() {
   ).reduce((sum: number, i: any) => sum + i.quantity, 0);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
-      {/* Phaser canvas container */}
-      <div ref={containerRef} className="absolute inset-0" />
+    <div className={`relative w-full h-screen overflow-hidden ${isAwakened ? 'void-world' : 'scripted-world'}`}>
+      {/* Phaser canvas container - CSS filter applied here propagates to canvas */}
+      <div
+        ref={containerRef}
+        className={`absolute inset-0 w-full h-full ${isAwakened ? 'void-canvas' : 'script-canvas'}`}
+      />
 
       {/* Floating overlay - pointer-events-none so clicks pass through to Phaser */}
       <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3">
