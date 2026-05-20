@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle, Swords, Sparkles } from 'lucide-react'
+import { MessageCircle, Swords, Sparkles, X } from 'lucide-react'
 import { useGameStore } from '../stores'
 import { gameApi } from '../api/gameApi'
 import ModeToggle from '../components/ModeToggle'
@@ -105,17 +104,18 @@ function ActionZone() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function GamePage() {
-  const navigate = useNavigate()
   const worldMode = useGameStore((s) => s.worldMode)
   const awakeningLevel = useGameStore((s) => s.awakeningLevel)
   const setWorldMode = useGameStore((s) => s.setWorldMode)
   const addAwakening = useGameStore((s) => s.addAwakening)
   const [activeMode, setActiveMode] = useState<GameMode>('chat')
+  const [isGuest, setIsGuest] = useState(false)
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false)
 
-  // 从后端加载
+  // 检测访客 / 从后端加载
   useEffect(() => {
     const token = localStorage.getItem('ls_token')
-    if (!token) { navigate('/login'); return }
+    if (!token) { setIsGuest(true); return }
     gameApi.getState()
       .then(({ data }) => {
         const { state } = data
@@ -160,6 +160,48 @@ export default function GamePage() {
         </div>
       </div>
 
+      {/* ── Guest 提示条 ──────────────────────────────────────────── */}
+      {isGuest && !guestBannerDismissed && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          style={{
+            margin: '0 16px 8px',
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, var(--realm-accent), var(--realm-secondary))',
+            color: 'white',
+            fontSize: 13,
+            lineHeight: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            登录后体验完整剧情 💫
+          </span>
+          <button
+            onClick={() => setGuestBannerDismissed(true)}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: 20,
+              width: 24,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'white',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </motion.div>
+      )}
+
       {/* ── 药丸切换器 ──────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 16px 10px' }}>
         <div className="ios-pill-group">
@@ -192,7 +234,7 @@ export default function GamePage() {
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <ChatInterface />
+              <ChatInterface isGuest={isGuest} />
             </motion.div>
           )}
 

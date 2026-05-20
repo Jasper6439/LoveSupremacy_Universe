@@ -219,14 +219,40 @@ export default function LoginPage() {
 
             {/* 记住账号 —— 仅登录模式显示 */}
             {mode === 'login' && (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-500">记住账号</span>
+              <label className="flex items-center gap-3 cursor-pointer select-none py-1">
+                {/* 自定义 iOS 风格 checkbox — 确保在任何浏览器中都可点击 */}
+                <div className="relative flex items-center justify-center w-5 h-5">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div
+                    className={`w-5 h-5 rounded-[4px] flex items-center justify-center transition-all ${
+                      rememberMe
+                        ? 'bg-purple-600 border-purple-600'
+                        : 'bg-white border-2 border-gray-300'
+                    }`}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {rememberMe && (
+                      <svg
+                        width="12" height="12" viewBox="0 0 12 12" fill="none"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <path
+                          d="M2.5 6L5 8.5L9.5 3.5"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-gray-500 select-none">记住账号</span>
               </label>
             )}
 

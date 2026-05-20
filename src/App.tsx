@@ -6,6 +6,7 @@ import FarmPage from './pages/FarmPage'
 import MediaPage from './pages/MediaPage'
 import MonitorPage from './pages/MonitorPage'
 import SettingsPage from './pages/SettingsPage'
+import NotFoundPage from './pages/NotFoundPage'
 import TabBar from './components/TabBar'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ function AppLayout() {
         <Route path="/media" element={<MediaPage />} />
         <Route path="/monitor" element={<MonitorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       {!hideTabBar && <TabBar />}
     </>

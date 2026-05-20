@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sprout, Info } from 'lucide-react'
+import { Sprout, Info, Lock, LogIn } from 'lucide-react'
 import { useGameStore, useFarmStore } from '../stores'
 import FarmScene from '../features/farm/FarmScene'
+import { useNavigate } from 'react-router-dom'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 农场页
@@ -12,6 +13,9 @@ export default function FarmPage() {
   const worldMode = useGameStore((s) => s.worldMode)
   const matureCount = useFarmStore((s) => s.plots.filter(p => p.cropId && p.stage === 3).length)
   const plantedCount = useFarmStore((s) => s.plots.filter(p => p.cropId !== null).length)
+  const navigate = useNavigate()
+
+  const [isGuest] = useState(() => !localStorage.getItem('ls_token'))
 
   return (
     <div className="ios-page">
@@ -74,6 +78,7 @@ export default function FarmPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '0 16px 16px',
+          position: 'relative',
         }}
       >
         <div
@@ -85,9 +90,72 @@ export default function FarmPage() {
             alignItems: 'center',
             justifyContent: 'center',
             padding: 8,
+            position: 'relative',
+            overflow: 'hidden',
           }}
         >
           <FarmScene />
+
+          {/* 访客遮罩 */}
+          {isGuest && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.55)',
+                backdropFilter: 'blur(6px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                zIndex: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  background: 'rgba(255,255,255,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Lock size={28} style={{ color: 'white' }} />
+              </div>
+              <p style={{ color: 'white', fontSize: 15, fontWeight: 600, margin: 0 }}>
+                登录后进入农场
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: 0 }}>
+                种植 → 收获 → 烹饪 → 赠送角色
+              </p>
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => navigate('/login')}
+                style={{
+                  marginTop: 4,
+                  padding: '10px 24px',
+                  borderRadius: 24,
+                  background: 'white',
+                  border: 'none',
+                  color: 'var(--realm-text)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                <LogIn size={16} />
+                登录
+              </motion.button>
+            </motion.div>
+          )}
         </div>
       </div>
 

@@ -1,31 +1,31 @@
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'love-supremacy-secret-key-2024'
+const JWT_SECRETT = process.env.JWT_SECRET || 'chajoo_bot_2026_secret_key'
 
-/**
- * JWT 鉴权中间件
- * 从 Authorization: Bearer <token> 提取 userId，写入 req.userId
- */
-export function authMiddleware(req, res, next) {
-  const authHeader = req.headers['authorization']
-  const token = authHeader && authHeader.split(' ')[1]
+export function signToken(payload) {
+  return jwt.sign(payload, JWT_SECRETT, { expiresIn: '30d' })
+}
 
-  if (!token) {
-    return res.status(401).json({ error: '未提供认证令牌' })
-  }
-
+export function verifyToken(token) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET)
-    req.userId = decoded.userId
-    next()
+    return jwt.verify(token, JWT_SECRETT)
   } catch {
-    return res.status(403).json({ error: '令牌无效或已过期' })
+    return null
   }
 }
 
-/** 生成 JWT */
-export function signToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' })
+export function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid token' })
+  }
+  const token = authHeader.slice(7)
+  const decoded = verifyToken(token)
+  if (!decoded) {
+    return res.status(401).json({ error: 'Invalid or expired token' })
+  }
+  req.user = decoded
+  req.userId = decoded.userId || decoded.id
+  next()
 }
-
-export { JWT_SECRET }

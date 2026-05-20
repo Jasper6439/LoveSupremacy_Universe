@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Heart,
@@ -7,8 +8,10 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  LogIn,
 } from 'lucide-react'
 import { useGameStore, useFarmStore } from '../stores'
+import { useNavigate } from 'react-router-dom'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Widget 定义
@@ -44,6 +47,9 @@ export default function HomePage() {
   const awakeningLevel = useGameStore((s) => s.awakeningLevel)
   const toggleWorldMode = useGameStore((s) => s.toggleWorldMode)
   const farmPlots = useFarmStore((s) => s.plots)
+  const navigate = useNavigate()
+
+  const [isGuest] = useState(() => !localStorage.getItem('ls_token'))
 
   const matureCount = farmPlots.filter((p) => p.cropId && p.stage === 3).length
   const plantedCount = farmPlots.filter((p) => p.cropId !== null).length
@@ -56,7 +62,7 @@ export default function HomePage() {
         恋爱至上主义
       </h1>
       <p style={{ padding: '0 16px', fontSize: 14, color: 'var(--ios-gray)', marginBottom: 12 }}>
-        欢迎回来，继续你的故事
+        {isGuest ? '探索恋爱至上主义的世界' : '欢迎回来，继续你的故事'}
       </p>
 
       {/* ── Widget 网格 ──────────────────────────────────────────────── */}
@@ -106,7 +112,7 @@ export default function HomePage() {
         </Widget>
 
         {/* 最近聊天 Widget */}
-        <Widget onClick={() => window.location.href = '/game'}>
+        <Widget onClick={() => isGuest ? navigate('/login') : window.location.href = '/game'}>
           <div style={{ padding: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
               <MessageCircle size={16} style={{ color: 'var(--ios-blue)' }} />
@@ -128,11 +134,20 @@ export default function HomePage() {
               ☁️
             </div>
             <p style={{ fontSize: 13, color: 'var(--ios-gray)', lineHeight: 1.4 }}>
-              车如云在等你
+              {isGuest ? '登录后与车如云相遇' : '车如云在等你'}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--ios-blue)' }}>继续聊天</span>
-              <ChevronRight size={12} style={{ color: 'var(--ios-blue)' }} />
+              {isGuest ? (
+                <>
+                  <LogIn size={12} style={{ color: 'var(--ios-blue)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--ios-blue)' }}>登录</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 12, color: 'var(--ios-blue)' }}>继续聊天</span>
+                  <ChevronRight size={12} style={{ color: 'var(--ios-blue)' }} />
+                </>
+              )}
             </div>
           </div>
         </Widget>

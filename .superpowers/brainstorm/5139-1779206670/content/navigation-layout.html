@@ -1,0 +1,58 @@
+<h2>iOS 底部导航结构</h2>
+<p class="subtitle">6个Tab还是5+1？两种方案，选一个方向</p>
+
+<div class="options">
+  <div class="option" data-choice="6tab" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>标准 iOS 6Tab</h3>
+      <p>底部 TabBar 显示6个图标：首页、游戏、农场、多媒体、设置、监控</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros">
+          <h4>✅</h4>
+          <ul>
+            <li>全部一键直达</li>
+            <li>标准 iOS 模式</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>⚠️</h4>
+          <ul>
+            <li>6Tab 略拥挤</li>
+            <li>监控页对普通用户无用</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="5plus1" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>5+1 隐藏式</h3>
+      <p>普通用户看到5个Tab（首页/游戏/农场/多媒体/设置），管理员多一个【监控】固定在设置旁</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros">
+          <h4>✅</h4>
+          <ul>
+            <li>普通用户界面清爽</li>
+            <li>管理员专用入口</li>
+            <li>符合 iOS ≤5Tab 规范</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>⚠️</h4>
+          <ul>
+            <li>管理员需切换角色才显示</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>参考：iOS TabBar 样式</h3>
+  <p style="opacity:0.7;font-size:14px">
+    毛玻璃背景 · SF 图标风格 · 选中态用 tint color (Apple Blue #007AFF) · 未选中灰色
+  </p>
+</div>

@@ -59,6 +59,36 @@ const SAMPLE_MEDIA: MediaItem[] = [
     timestamp: '3天前',
     likes: 3,
   },
+  {
+    id: '5',
+    type: 'image',
+    imageUrl: '',
+    title: 'AI 生成 — 崩坏·裂痕',
+    timestamp: '1天前',
+    likes: 15,
+  },
+  {
+    id: '6',
+    type: 'memory',
+    content: '剧本世界出现异常——角色说出非预设台词，系统记录异常行为',
+    timestamp: '2天前',
+    likes: 7,
+  },
+  {
+    id: '7',
+    type: 'image',
+    imageUrl: '',
+    title: 'AI 生成 — 星空下的约定',
+    timestamp: '4天前',
+    likes: 10,
+  },
+  {
+    id: '8',
+    type: 'memory',
+    content: '角色觉醒进度记录：探索深度对话 ×23，触发关键剧情节点 ×5，觉醒值 +48',
+    timestamp: '5天前',
+    likes: 4,
+  },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
