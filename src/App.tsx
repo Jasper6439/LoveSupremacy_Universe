@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
+import WorldPage from './pages/WorldPage'
 import GamePage from './pages/GamePage'
 import FarmPage from './pages/FarmPage'
 import MediaPage from './pages/MediaPage'
@@ -20,6 +21,7 @@ function AppLayout() {
     <>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/world" element={<WorldPage />} />
         <Route path="/game" element={<GamePage />} />
         <Route path="/farm" element={<FarmPage />} />
         <Route path="/media" element={<MediaPage />} />

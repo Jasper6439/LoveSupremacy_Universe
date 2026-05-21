@@ -6,7 +6,6 @@ import {
   Sprout,
   Image,
   SlidersHorizontal,
-  Monitor,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,10 +22,9 @@ export interface TabItem {
 
 const TABS: TabItem[] = [
   { id: 'home',   label: '首页',   icon: House,              path: '/' },
-  { id: 'game',   label: '游戏',   icon: Gamepad2,           path: '/game' },
+  { id: 'world',  label: '世界',   icon: Gamepad2,           path: '/world' },
   { id: 'farm',   label: '农场',   icon: Sprout,             path: '/farm' },
   { id: 'media',  label: '多媒体', icon: Image,              path: '/media' },
-  { id: 'monitor', label: '监控',  icon: Monitor,            path: '/monitor', adminOnly: true },
   { id: 'settings', label: '设置', icon: SlidersHorizontal,  path: '/settings' },
 ]
 

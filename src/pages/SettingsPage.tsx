@@ -93,7 +93,7 @@ export default function SettingsPage() {
   const [selectedCharacter, setSelectedCharacter] = useState('')
   const [botToken, setBotToken] = useState('')
   const [characterBindings, setCharacterBindings] = useState<CharacterBindings>({})
-  const [availableCharacters, setAvailableCharacters] = useState<string[]>([])
+  const [availableCharacters, setAvailableCharacters] = useState<{ id: string; name: string }[]>([])
 
   // 管理员
   const [isAdmin, setIsAdmin] = useState(false)
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                 }}
               >
                 <option value="">选择角色</option>
-                {availableCharacters.map((c) => <option key={c} value={c}>{c}</option>)}
+                {availableCharacters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
