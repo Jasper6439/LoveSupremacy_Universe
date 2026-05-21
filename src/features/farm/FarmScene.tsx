@@ -198,6 +198,7 @@ type HarvestResult = {
 export default function FarmScene() {
   const gameRef = useRef<Phaser.Game | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [phaserError, setPhaserError] = useState(false)
   const worldMode = useGameStore((s) => s.worldMode)
   const plots = useFarmStore((s) => s.plots)
   const plant = useFarmStore((s) => s.plant)
@@ -225,7 +226,12 @@ export default function FarmScene() {
       },
     }
 
-    gameRef.current = new Phaser.Game(config)
+    try {
+      gameRef.current = new Phaser.Game(config)
+    } catch {
+      setPhaserError(true)
+      return
+    }
 
     // 注入 plotClick 回调
     const scene = gameRef.current.scene.getScene('FarmScene') as FarmPhaserScene
@@ -316,12 +322,19 @@ export default function FarmScene() {
   const isScript = worldMode === 'script'
   const crops = Object.keys(CROP_DEFINITIONS) as CropId[]
 
+  if (phaserError) {
+    return (
+      <div style={{ textAlign: 'center', padding: 30 }}>
+        <p style={{ fontSize: 14, color: 'var(--ios-gray)', marginBottom: 12 }}>农场引擎加载失败</p>
+        <button
+          onClick={() => { setPhaserError(false); window.location.reload() }}
+          style={{ padding: '6px 16px', borderRadius: 16, background: 'var(--ios-purple)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}
+        >重新加载</button>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col items-center gap-4 relative">
-      {/* 农场标题 */}
-      <div className="text-center">
-        <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--realm-text)' }}>
-          {isScript ? '🌸 梦幻农场' : '⚫ 崩坏农场'}
         </h2>
         <p style={{ fontSize: 12, opacity: 0.6 }}>点击空地种植，点击成熟作物收获</p>
       </div>

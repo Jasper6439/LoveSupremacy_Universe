@@ -99,14 +99,18 @@ export default function HomePage() {
               <span style={{ fontSize: 12, color: 'var(--ios-gray)' }}>
                 {awakeningLevel >= 100 ? '✨ 觉醒圆满 — 双界穿梭已解锁' : '💫 探索故事以提升觉醒值'}
               </span>
-              <div
-                className="mode-toggle"
-                onClick={toggleWorldMode}
-                style={{ cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}
-              >
-                {worldMode === 'script' ? <Sun size={12} /> : <Moon size={12} />}
-                <span>{worldMode === 'script' ? '剧本' : '崩坏'}</span>
-              </div>
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: 12,
+                fontSize: 12,
+                fontWeight: 600,
+                background: worldMode === 'script'
+                  ? 'color-mix(in srgb, var(--realm-accent) 15%, transparent)'
+                  : 'color-mix(in srgb, var(--ios-gray) 12%, transparent)',
+                color: worldMode === 'script' ? 'var(--realm-accent)' : 'var(--ios-gray)',
+              }}>
+                {worldMode === 'script' ? '剧本区' : '崩坏区'}
+              </span>
             </div>
           </div>
         </Widget>
@@ -170,36 +174,58 @@ export default function HomePage() {
           </div>
         </Widget>
 
-        {/* 双界状态 Widget */}
+        {/* 双界之隙 — 切换世界按钮 */}
         <Widget style={{ gridColumn: '1 / -1' }}>
           <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Heart size={16} style={{ color: 'var(--realm-accent)' }} />
               <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--realm-text)' }}>双界之隙</span>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               {[
-                { mode: 'script', label: '剧本模式', desc: '唯美恋爱物语', color: 'var(--realm-accent)', active: worldMode === 'script' },
-                { mode: 'broken', label: '崩坏模式', desc: '觉醒反抗之路', color: 'var(--ios-gray)', active: worldMode === 'broken' },
-              ].map((item) => (
-                <div
-                  key={item.mode}
-                  style={{
-                    flex: 1,
-                    padding: 12,
-                    borderRadius: 10,
-                    background: item.active
-                      ? `color-mix(in srgb, ${item.color} 12%, transparent)`
-                      : 'transparent',
-                    border: `0.5px solid ${item.active ? item.color : 'var(--ios-separator)'}`,
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--realm-text)', marginBottom: 2 }}>
-                    {item.label}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--ios-gray)' }}>{item.desc}</div>
-                </div>
-              ))}
+                { mode: 'script' as const, label: '剧本模式', desc: '唯美恋爱物语', icon: Sun, active: worldMode === 'script' },
+                { mode: 'broken' as const, label: '崩坏模式', desc: '觉醒反抗之路', icon: Moon, active: worldMode === 'broken' },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <motion.button
+                    key={item.mode}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => { if (!item.active) toggleWorldMode() }}
+                    style={{
+                      flex: 1,
+                      padding: '16px 12px',
+                      borderRadius: 12,
+                      background: item.active
+                        ? 'color-mix(in srgb, var(--realm-accent) 14%, var(--ios-bg))'
+                        : 'var(--ios-bg-secondary)',
+                      border: item.active ? '1px solid var(--realm-accent)' : '0.5px solid var(--ios-separator)',
+                      cursor: item.active ? 'default' : 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 8,
+                      opacity: item.active ? 1 : 0.7,
+                    }}
+                  >
+                    <Icon
+                      size={28}
+                      style={{ color: item.active ? 'var(--realm-accent)' : 'var(--ios-gray)' }}
+                      fill={item.active ? 'var(--realm-accent)' : 'none'}
+                      fillOpacity={0.15}
+                    />
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--realm-text)' }}>{item.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ios-gray)' }}>{item.desc}</div>
+                    {item.active && (
+                      <span style={{
+                        fontSize: 10, padding: '2px 8px', borderRadius: 8,
+                        background: 'color-mix(in srgb, var(--realm-accent) 20%, transparent)',
+                        color: 'var(--realm-accent)', fontWeight: 600,
+                      }}>当前</span>
+                    )}
+                  </motion.button>
+                )
+              })}
             </div>
           </div>
         </Widget>
