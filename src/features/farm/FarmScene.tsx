@@ -335,6 +335,10 @@ export default function FarmScene() {
   }
 
   return (
+    <div className="flex flex-col items-center gap-4 relative">
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--realm-text)' }}>
+          {isScript ? '🌸 梦幻农场' : '⚫ 崩坏农场'}
         </h2>
         <p style={{ fontSize: 12, opacity: 0.6 }}>点击空地种植，点击成熟作物收获</p>
       </div>
