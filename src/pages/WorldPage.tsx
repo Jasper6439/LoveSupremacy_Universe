@@ -29,12 +29,7 @@ export default function WorldPage() {
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        const token = localStorage.getItem('ls_token')
-        if (!token) { setLoading(false); return }
-
-        const res = await fetch('/api/characters', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const res = await fetch('/api/characters')
         if (res.ok) {
           const data = await res.json()
           setCharacters(data.characters || [])
