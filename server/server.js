@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import rateLimit from 'express-rate-limit'
 import bcrypt from 'bcryptjs'
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
@@ -35,8 +36,29 @@ const mailTransporter = SMTP_HOST && SMTP_USER && SMTP_PASS
   : null
 
 // ── 中间件 ──────────────────────────────────────────────────────────────────
-app.use(cors({ origin: '*', credentials: true }))
+app.use(cors(corsOptionsDelegate))
 app.use(express.json())
+
+// ── 速率限制 ──────────────────────────────────────────────────────────
+const loginLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: '尝试次数过多，请15分钟后再试' },
+})
+const registerLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: '注册次数过多，请1小时后再试' },
+})
+const forgotPasswordLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: { error: '验证码请求次数过多，请15分钟后再试' },
+})
+
+app.use('/api/login', loginLimit)
+app.use('/api/register', registerLimit)
+app.use('/api/forgot-password', forgotPasswordLimit)
 
 // ── sql.js 辅助函数 ─────────────────────────────────────────────────────────
 
@@ -76,6 +98,30 @@ function all(sql, ...params) {
   const stmt = db.prepare(sql)
   stmt.bind(params)
   return rows(stmt)
+}
+
+// ── 输入过滤（防XSS）────────────────────────────────────────────────────
+function sanitize(str) {
+  if (typeof str !== 'string') return str
+  return str.replace(/[<>'"]/g, '')
+}
+
+// ── CORS 白名单 ─────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://35.212.211.245',
+  'http://35.212.211.245:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean)
+
+function corsOptionsDelegate(req, callback) {
+  const origin = req.header('Origin')
+  const allowed = !origin || ALLOWED_ORIGINS.includes(origin)
+  callback(null, {
+    origin: allowed,
+    credentials: true,
+  })
 }
 
 /** 获取或初始化游戏状态 */
@@ -130,17 +176,22 @@ app.post('/api/send-verification-code', async (req, res) => {
 
 // POST /api/register
 app.post('/api/register', (req, res) => {
-  const { username, password, email, verificationCode, telegramChatId } = req.body
+  let { username, password, email, verificationCode, telegramChatId } = req.body
+  
+  // XSS 防护：过滤特殊字符
+  username = sanitize(username)
+  if (email) email = sanitize(email.trim())
+
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' })
   }
-  if (username.length < 3 || password.length < 6) {
-    return res.status(400).json({ error: '用户名至少3位，密码至少6位' })
+  if (username.length < 3 || password.length < 8) {
+    return res.status(400).json({ error: '用户名至少3位，密码至少8位' })
   }
 
   // 如果提供了邮箱，验证验证码
-  if (email && email.trim()) {
-    const record = verificationCodes.get(email.trim())
+  if (email) {
+    const record = verificationCodes.get(email)
     if (!record) {
       return res.status(400).json({ error: '请先获取邮箱验证码' })
     }
@@ -157,8 +208,8 @@ app.post('/api/register', (req, res) => {
     return res.status(409).json({ error: '用户名已存在' })
   }
 
-  if (email && email.trim()) {
-    const emailExisting = get('SELECT id FROM users WHERE email = ?', email.trim())
+  if (email) {
+    const emailExisting = get('SELECT id FROM users WHERE email = ?', email)
     if (emailExisting) {
       return res.status(409).json({ error: '该邮箱已被注册' })
     }
@@ -166,8 +217,8 @@ app.post('/api/register', (req, res) => {
 
   const hashed = bcrypt.hashSync(password, 10)
   const isAdmin = telegramChatId && String(telegramChatId).trim() === '5315601134'
-  if (email && email.trim()) {
-    db.run('INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)', [username, hashed, email.trim(), isAdmin ? 'admin' : 'user'])
+  if (email) {
+    db.run('INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)', [username, hashed, email, isAdmin ? 'admin' : 'user'])
   } else {
     db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hashed, isAdmin ? 'admin' : 'user'])
   }
@@ -192,7 +243,11 @@ app.post('/api/register', (req, res) => {
 
 // POST /api/login
 app.post('/api/login', (req, res) => {
-  const { username, password } = req.body
+  let { username, password } = req.body
+  
+  // XSS 防护：过滤特殊字符
+  username = sanitize(username)
+
   if (!username || !password) {
     return res.status(400).json({ error: '请输入用户名和密码' })
   }
