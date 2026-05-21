@@ -10,12 +10,20 @@ import { useNavigate } from 'react-router-dom'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FarmPage() {
-  const worldMode = useGameStore((s) => s.worldMode)
-  const matureCount = useFarmStore((s) => s.plots.filter(p => p.cropId && p.stage === 3).length)
-  const plantedCount = useFarmStore((s) => s.plots.filter(p => p.cropId !== null).length)
   const navigate = useNavigate()
-
   const [isGuest] = useState(() => !localStorage.getItem('ls_token'))
+  const [hasError, setHasError] = useState(false)
+
+  let worldMode: 'script' | 'broken' = 'script'
+  let matureCount = 0
+  let plantedCount = 0
+  try {
+    worldMode = useGameStore((s) => s.worldMode) || 'script'
+    matureCount = useFarmStore((s) => s.plots?.filter(p => p.cropId && p.stage === 3)?.length ?? 0)
+    plantedCount = useFarmStore((s) => s.plots?.filter(p => p.cropId !== null)?.length ?? 0)
+  } catch {
+    if (!hasError) setHasError(true)
+  }
 
   return (
     <div className="ios-page">
@@ -81,6 +89,20 @@ export default function FarmPage() {
           position: 'relative',
         }}
       >
+        {hasError ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--ios-gray)' }}>
+            <p style={{ fontSize: 16, marginBottom: 8 }}>农场加载失败</p>
+            <button
+              onClick={() => { setHasError(false); window.location.reload() }}
+              style={{
+                padding: '8px 20px', borderRadius: 20, border: 'none',
+                background: 'var(--ios-purple)', color: '#fff', cursor: 'pointer'
+              }}
+            >
+              重新加载
+            </button>
+          </div>
+        ) : (
         <div
           className="ios-widget-glass"
           style={{
@@ -157,6 +179,7 @@ export default function FarmPage() {
             </motion.div>
           )}
         </div>
+        )}
       </div>
 
       {/* ── 底部提示 ────────────────────────────────────────────────── */}
