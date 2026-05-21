@@ -552,53 +552,73 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toI
 // 密码找回
 // ═════════════════════════════════════════════════════════════════════════
 
-// POST /api/forgot-password
+// POST /api/forgot-password — 邮箱验证码找回密码
 app.post('/api/forgot-password', async (req, res) => {
-  const { username, email } = req.body
-
-  // 优先 username 查找，其次 email
-  let user = null
-  let lookupField = ''
-
-  if (username && username.trim()) {
-    user = get('SELECT id, username, email FROM users WHERE username = ?', username.trim())
-    lookupField = username.trim()
-  } else if (email && /^\S+@\S+\.\S+$/.test(email)) {
-    user = get('SELECT id, username, email FROM users WHERE email = ?', email.trim())
-    lookupField = email.trim()
+  const { email } = req.body
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+    return res.status(400).json({ error: '请输入有效的邮箱地址' })
   }
 
+  const user = get('SELECT id, username, email FROM users WHERE email = ?', email.trim())
   if (!user) {
-    return res.json({ success: true, message: '如果该用户已注册，重置链接已生成（请查看服务器日志）' })
+    return res.json({ success: true, message: '如果该邮箱已注册，验证码已发送' })
   }
 
-  const token = crypto.randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString()
+  // 生成 6 位验证码，10 分钟有效
+  const code = String(Math.floor(100000 + Math.random() * 900000))
+  verificationCodes.set(email.trim(), { code, expiresAt: Date.now() + 10 * 60 * 1000 })
 
-  db.run('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt])
-  saveDb()
-
-  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`
-
-  // 尝试发送邮件；如果用户有邮箱且邮件系统可用则发邮件，否则输出日志
-  if (user.email && mailTransporter) {
+  if (mailTransporter) {
     try {
       await mailTransporter.sendMail({
         from: `"恋爱至上主义" <${SMTP_FROM}>`,
-        to: user.email,
-        subject: '重置密码',
-        text: `重置链接（1小时内有效）：${resetUrl}`,
-        html: `<p>点击重置密码（1小时内有效）：</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
+        to: email.trim(),
+        subject: '密码重置验证码',
+        text: `您的密码重置验证码是：${code}，10分钟内有效。`,
+        html: `<p>您的密码重置验证码是：<strong style="font-size:24px">${code}</strong></p><p>10分钟内有效。</p>`
       })
-      res.json({ success: true, message: '重置链接已发送到邮箱' })
+      res.json({ success: true, message: '验证码已发送到邮箱，10分钟内有效' })
     } catch (err) {
       console.error('[Mail] 发送失败:', err)
       res.status(500).json({ error: '邮件发送失败，请稍后重试' })
     }
   } else {
-    console.log(`[重置密码] ${lookupField} -> ${resetUrl}`)
-    res.json({ success: true, message: '重置链接已生成（测试模式：请查看服务器日志）', devToken: token })
+    console.log(`[重置密码验证码] ${email.trim()} -> ${code}`)
+    res.json({ success: true, message: '验证码已发送（测试模式）', testCode: code })
   }
+})
+
+// POST /api/verify-reset-code — 校验验证码并返回重置 token
+app.post('/api/verify-reset-code', (req, res) => {
+  const { email, code } = req.body
+  if (!email || !code) {
+    return res.status(400).json({ error: '邮箱和验证码不能为空' })
+  }
+
+  const record = verificationCodes.get(email.trim())
+  if (!record) {
+    return res.status(400).json({ error: '请先获取验证码' })
+  }
+  if (record.code !== code.trim()) {
+    return res.status(400).json({ error: '验证码错误' })
+  }
+  if (Date.now() > record.expiresAt) {
+    verificationCodes.delete(email.trim())
+    return res.status(400).json({ error: '验证码已过期，请重新获取' })
+  }
+
+  const user = get('SELECT id FROM users WHERE email = ?', email.trim())
+  if (!user) {
+    return res.status(400).json({ error: '用户不存在' })
+  }
+
+  const token = crypto.randomBytes(32).toString('hex')
+  const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString()
+  db.run('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)', [user.id, token, expiresAt])
+  saveDb()
+  verificationCodes.delete(email.trim())
+
+  res.json({ resetToken: token, message: '验证通过，请设置新密码' })
 })
 
 // POST /api/reset-password

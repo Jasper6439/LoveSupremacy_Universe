@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [resetToken, setResetToken] = useState('')
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotCode, setForgotCode] = useState('')
   const [email, setEmail] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
@@ -64,13 +66,13 @@ export default function LoginPage() {
     setSuccessMsg('')
 
     if (mode === 'forgot') {
-      // ── 忘记密码流程 ──
-      if (!username.trim()) {
-        setError('请输入用户名')
-        return
-      }
-      if (resetToken && newPassword) {
-        // Step 2: 重置密码
+      // ── 邮箱验证码找回密码 ──
+      if (resetToken) {
+        // Step 3: 输入新密码 → 重置
+        if (!newPassword || !confirmPassword) {
+          setError('请输入新密码')
+          return
+        }
         if (newPassword.length < 6) {
           setError('密码至少6位')
           return
@@ -82,29 +84,47 @@ export default function LoginPage() {
         setLoading(true)
         try {
           const res = await authApi.resetPassword(resetToken, newPassword)
-          setSuccessMsg(res.data.message || '密码已重置')
-          setTimeout(() => { setMode('login'); setResetToken(''); setNewPassword(''); setConfirmPassword('') }, 2000)
+          setSuccessMsg(res.data.message || '密码已重置，请登录')
+          setTimeout(() => { setMode('login'); setResetToken(''); setNewPassword(''); setConfirmPassword(''); setForgotEmail(''); setForgotCode('') }, 2000)
         } catch (err: unknown) {
           const axiosErr = err as { response?: { data?: { error?: string } } }
           setError(axiosErr.response?.data?.error || '重置失败')
         } finally {
           setLoading(false)
         }
-      } else {
-        // Step 1: 获取重置令牌
+      } else if (forgotCode) {
+        // Step 2: 输入验证码 → 验证
+        if (!forgotCode.trim()) {
+          setError('请输入验证码')
+          return
+        }
         setLoading(true)
         try {
-          const res = await authApi.forgotPassword(username.trim())
-          // 开发模式: 直接从响应拿到 devToken
-          if (res.data.devToken) {
-            setResetToken(res.data.devToken)
-            setSuccessMsg('重置令牌已生成，请设置新密码')
-          } else {
-            setSuccessMsg(res.data.message || '如果该用户已注册，重置链接已发送')
-          }
+          const res = await authApi.verifyResetCode(forgotEmail.trim(), forgotCode.trim())
+          setResetToken(res.data.resetToken)
+          setSuccessMsg('验证通过，请设置新密码')
         } catch (err: unknown) {
           const axiosErr = err as { response?: { data?: { error?: string } } }
-          setError(axiosErr.response?.data?.error || '请求失败')
+          setError(axiosErr.response?.data?.error || '验证失败')
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        // Step 1: 输入邮箱 → 发送验证码
+        if (!forgotEmail.trim()) {
+          setError('请输入邮箱地址')
+          return
+        }
+        setLoading(true)
+        try {
+          const res = await authApi.forgotPassword(forgotEmail.trim())
+          if (res.data.testCode) {
+            setForgotCode(res.data.testCode) // 测试模式自动填充
+          }
+          setSuccessMsg(res.data.message || '验证码已发送')
+        } catch (err: unknown) {
+          const axiosErr = err as { response?: { data?: { error?: string } } }
+          setError(axiosErr.response?.data?.error || '发送失败')
         } finally {
           setLoading(false)
         }
@@ -192,7 +212,7 @@ export default function LoginPage() {
           {mode === 'forgot' && (
             <div className="mb-6">
               <button
-                onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); setResetToken(''); setNewPassword(''); setConfirmPassword('') }}
+                onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); setResetToken(''); setNewPassword(''); setConfirmPassword(''); setForgotEmail(''); setForgotCode('') }}
                 className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -245,16 +265,55 @@ export default function LoginPage() {
             {mode === 'forgot' && (
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={resetToken ? 'step2' : 'step1'}
+                  key={resetToken ? 'step3' : forgotCode ? 'step2' : 'step1'}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   className="space-y-4"
                 >
-                  {resetToken ? (
+                  {/* Step 1: 输入邮箱 */}
+                  {!forgotCode && (
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">注册邮箱</label>
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="输入注册时使用的邮箱"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg
+                          text-gray-800 placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+                        autoComplete="email"
+                      />
+                      <p className="text-xs text-gray-400 mt-2">验证码将发送到此邮箱，10分钟内有效</p>
+                    </div>
+                  )}
+
+                  {/* Step 2: 输入验证码 */}
+                  {forgotCode && !resetToken && (
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">邮箱验证码</label>
+                      <input
+                        type="text"
+                        value={forgotCode}
+                        onChange={(e) => setForgotCode(e.target.value)}
+                        placeholder="输入6位验证码"
+                        maxLength={6}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg
+                          text-gray-800 placeholder-gray-400 text-center text-xl tracking-widest
+                          focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+                        autoComplete="one-time-code"
+                      />
+                      <p className="text-xs text-gray-400 mt-2">
+                        验证码已发送到 {forgotEmail}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Step 3: 设置新密码 */}
+                  {resetToken && (
                     <>
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-                        ✅ 令牌已生成，请设置新密码
+                        ✅ 验证通过，请设置新密码
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">新密码</label>
@@ -281,10 +340,6 @@ export default function LoginPage() {
                         />
                       </div>
                     </>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      输入用户名，系统将生成密码重置令牌
-                    </p>
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -419,7 +474,7 @@ export default function LoginPage() {
                   ? '登录'
                   : mode === 'register'
                     ? '创建账号'
-                    : resetToken ? '重置密码' : '获取重置令牌'}
+                    : resetToken ? '重置密码' : forgotCode ? '验证验证码' : '发送验证码'}
             </button>
           </form>
         </div>

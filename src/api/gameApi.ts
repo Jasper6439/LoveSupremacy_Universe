@@ -36,8 +36,11 @@ export const authApi = {
 
   me: () => api.get<{ userId: number; username: string }>('/api/auth/me'),
 
-  forgotPassword: (username: string) =>
-    api.post<{ success: boolean; message: string; devToken?: string }>('/api/forgot-password', { username }),
+  forgotPassword: (email: string) =>
+    api.post<{ success: boolean; message: string; testCode?: string }>('/api/forgot-password', { email }),
+
+  verifyResetCode: (email: string, code: string) =>
+    api.post<{ resetToken: string; message: string }>('/api/verify-reset-code', { email, code }),
 
   resetPassword: (token: string, newPassword: string) =>
     api.post<{ success: boolean; message: string }>('/api/reset-password', { token, newPassword }),
